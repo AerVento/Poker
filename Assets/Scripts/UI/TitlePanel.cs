@@ -1,7 +1,9 @@
 using Framework.UI;
+using Mirror;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace Game.UI
@@ -14,6 +16,11 @@ namespace Game.UI
         private Button _option;
         [SerializeField]
         private Button _quit;
+
+        private void Start()
+        {
+
+        }
 
         private void OnEnable()
         {
@@ -31,7 +38,14 @@ namespace Game.UI
         private void Play()
         {
             UIManager.Instance.HidePanel<TitlePanel>();
-            UIManager.Instance.ShowPanel<RoomListPanel>();
+            if (!NetworkClient.isConnected)
+            {
+                // 没连接的话，先连接
+                SceneManager.LoadSceneAsync("ConnectingServer");
+                NetworkManager.singleton.StartClient();
+            }
+            else
+                UIManager.Instance.ShowPanel<RoomListPanel>();
         }
 
         private void Option()
