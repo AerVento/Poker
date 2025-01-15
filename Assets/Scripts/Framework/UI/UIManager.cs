@@ -55,6 +55,11 @@ namespace Framework.UI
         /// </summary>
         public EventSystem EventSystem => _eventSystem;
 
+        /// <summary>
+        /// Identifiers of all showing panel.
+        /// </summary>
+        public ICollection<string> ShowingPanelIdentifiers => _showingPanels.Keys;
+
         protected override void Awake()
         {
             base.Awake();
