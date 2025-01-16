@@ -7,11 +7,12 @@ using UnityEngine.UI;
 
 namespace Game.UI
 {
-    public enum MsgType
+    public enum MsgboxType
     {
         Confirm,
         Cancel,
         ConfirmAndCancel,
+        None,
     }
     public class MsgBox : BasePanel
     {
@@ -30,14 +31,14 @@ namespace Game.UI
         [SerializeField]
         private TextMeshProUGUI _message;
 
-        private MsgType _type = MsgType.Confirm;
+        private MsgboxType _type = MsgboxType.Confirm;
         private bool _showCloseButton = true;
 
 
         public event System.Action OnConfirm;
         public event System.Action OnCancel;
 
-        public MsgType Type
+        public MsgboxType Type
         {
             get => _type;
             set
@@ -45,17 +46,21 @@ namespace Game.UI
                 _type = value;
                 switch (value)
                 {
-                    case MsgType.Confirm:
+                    case MsgboxType.Confirm:
                         _confirmButton.gameObject.SetActive(true);
                         _cancelButton.gameObject.SetActive(false);
                         break;
-                    case MsgType.Cancel:
+                    case MsgboxType.Cancel:
                         _confirmButton.gameObject.SetActive(false);
                         _cancelButton.gameObject.SetActive(true);
                         break;
-                    case MsgType.ConfirmAndCancel:
+                    case MsgboxType.ConfirmAndCancel:
                         _confirmButton.gameObject.SetActive(true);
                         _cancelButton.gameObject.SetActive(true);
+                        break;
+                    case MsgboxType.None:
+                        _confirmButton.gameObject.SetActive(false);
+                        _cancelButton.gameObject.SetActive(false);
                         break;
                 }
             }

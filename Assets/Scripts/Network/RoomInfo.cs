@@ -62,6 +62,7 @@ namespace Game.Network
             RoomInfo room = new RoomInfo();
             room.OwnerName = owner;
             room.Players.Add(owner);
+            room.ReadyStatus.Add(false);
             return room;
         }
     }

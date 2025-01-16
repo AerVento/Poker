@@ -14,61 +14,54 @@ namespace Game.Network
 {
     public class NetworkRoom : NetworkManager
     {
+        #region Server Only
         // server only
         private RoomManager _roomManager = new RoomManager();
         private PlayerManager _playerManager = new PlayerManager();
+
+        #endregion
+
+        #region Client Only
+        // Client Only
+        /// <summary>
+        /// 标识当前是否连接到服务器（客户端使用）
+        /// 不使用<see cref="NetworkClient.isConnected"/>的原因是因为调用<see cref="NetworkManager.OnClientDisconnect"/>时就已经将其值设为false。这将使得无从知晓是否曾经正常连接过。
+        /// </summary>
+        private bool _isConnected = false;
+
+        /// <summary>
+        /// "正在连接服务器"的MsgBox
+        /// </summary>
+        private MsgBox _connectingMsgbox;
+
+        #endregion
 
         public override void Awake()
         {
             base.Awake();
         }
 
-        public override void OnServerReady(NetworkConnectionToClient conn)
-        {
-            // base.OnServerReady(conn);
-        }
-        
-        public override void OnServerAddPlayer(NetworkConnectionToClient conn)
-        {
-            // base.OnServerAddPlayer(conn);
-        }
-
-        public override void OnClientConnect()
-        {
-            // base.OnClientConnect();
-            UIManager.Instance.ShowPanel<RoomListPanel>();
-            var message = new PlayerConnectMessage();
-            message.PlayerName = GameController.Instance.State.Nickname;
-            NetworkClient.Send(message);
-        }
-
+        #region Server
         public override void OnStartServer()
         {
             base.OnStartServer();
-            NetworkServer.RegisterHandler<PlayerConnectMessage>(PlayerConnectMessageHandler, requireAuthentication: false);
             NetworkServer.RegisterHandler<PlayerChangeNameMessage>(PlayerChangeNameMessageHandler, requireAuthentication: false);
-            NetworkServer.RegisterHandler<PlayerJoinRoomRequest>(PlayerJoinRoomRequestHandler, requireAuthentication: false);
+            NetworkServer.RegisterHandler<PlayerChangeReadyMessage>(PlayerChangeReadyMessageHandler, requireAuthentication: false);
+            NetworkServer.RegisterHandler<PlayerConnectMessage>(PlayerConnectMessageHandler, requireAuthentication: false);
             NetworkServer.RegisterHandler<PlayerCreateRoomRequest>(PlayerCreateRoomRequestHandler, requireAuthentication: false);
+            NetworkServer.RegisterHandler<PlayerJoinRoomRequest>(PlayerJoinRoomRequestHandler, requireAuthentication: false);
             NetworkServer.RegisterHandler<PlayerLeaveRoomRequest>(PlayerLeaveRoomRequestHandler, requireAuthentication: false);
-            NetworkServer.RegisterHandler<RoomListRequest>(RoomListRequestHandler, requireAuthentication: false);
+            NetworkServer.RegisterHandler<PlayerStartGameRequest>(PlayerStartGameRequestHandler, requireAuthentication: false);
             NetworkServer.RegisterHandler<RoomInfoChange>(RoomInfoChangeHandler, requireAuthentication: false);
-
-        }
-
-        public override void OnStartClient()
-        {
-            base.OnStartClient();
-            NetworkClient.RegisterHandler<RoomListResponse>(RoomListResponseHandler, requireAuthentication: false);
-            NetworkClient.RegisterHandler<PlayerJoinRoomResponse>(PlayerJoinRoomResponseHandler, requireAuthentication: false);
-            NetworkClient.RegisterHandler<RoomInfoSync>(RoomInfoSyncHandler, requireAuthentication: false);
+            NetworkServer.RegisterHandler<RoomListRequest>(RoomListRequestHandler, requireAuthentication: false);
         }
 
         public override void OnServerDisconnect(NetworkConnectionToClient conn)
         {
             // base.OnServerDisconnect(conn);
-            if(_playerManager.RemoveConnection(conn, out var name))
+            if (_playerManager.RemoveConnection(conn, out var name))
             {
-                if(_roomManager.WhichRoom(name, out var roomId))
+                if (_roomManager.WhichRoom(name, out var roomId))
                 {
                     int result = _roomManager.Leave(roomId, name);
                     switch (result)
@@ -76,7 +69,7 @@ namespace Game.Network
                         case 0:
                             var room = _roomManager.FindRoom(roomId);
                             var sync = new RoomInfoSync() { RoomInfo = room };
-                            foreach(var player in room.Players)
+                            foreach (var player in room.Players)
                             {
                                 var playerConn = _playerManager.GetConnection(player);
                                 playerConn.Send(sync);
@@ -86,11 +79,86 @@ namespace Game.Network
                 }
             }
         }
+        #endregion Server
+        #region Client
+        public override void OnStartClient()
+        {
+            base.OnStartClient();
+            NetworkClient.RegisterHandler<PlayerJoinRoomResponse>(PlayerJoinRoomResponseHandler, requireAuthentication: false);
+            NetworkClient.RegisterHandler<PlayerStartGameResponse>(PlayerStartGameResponseHandler, requireAuthentication: false);
+            NetworkClient.RegisterHandler<RoomInfoSync>(RoomInfoSyncHandler, requireAuthentication: false);
+            NetworkClient.RegisterHandler<RoomListResponse>(RoomListResponseHandler, requireAuthentication: false);
+
+            
+            MsgBox.Create("ConnectingServer", (setting) =>
+            {
+                _connectingMsgbox = setting;
+                setting.Type = MsgboxType.Cancel;
+                setting.Title = "通知";
+                setting.Message = "正在连接到服务器";
+                setting.ShowCloseButton = false;
+                setting.OnCancel += () =>
+                {
+                    StopClient();
+                };
+            });
+        }
+
+        public override void OnClientConnect()
+        {
+            // base.OnClientConnect();
+
+            // 销毁连接时打开的Msgbox"ConnectingServer"
+            if (_connectingMsgbox != null)
+            {
+                _connectingMsgbox.Hide();
+                _connectingMsgbox = null;
+            }
+
+            _isConnected = true;
+
+            UIManager.Instance.ShowPanel<RoomListPanel>();
+            var message = new PlayerConnectMessage();
+            message.PlayerName = GameController.Instance.State.Nickname;
+            NetworkClient.Send(message);
+        }
+
+        public override void OnClientError(TransportError error, string reason)
+        {
+            // base.OnClientError(error, reason);
+            MsgBox.Create((msgbox) =>
+            {
+                msgbox.Title = "无法连接至服务器";
+                msgbox.Message = $"{error}:{reason}";
+            });
+        }
+
+        public override void OnClientTransportException(Exception exception)
+        {
+            // base.OnClientTransportException(exception);
+            MsgBox.Create((msgbox) =>
+            {
+                msgbox.Title = "无法连接至服务器";
+                msgbox.Message = $"{exception}";
+            });
+        }
+
+
 
         public override void OnClientDisconnect()
         {
             // base.OnClientDisconnect();
-            foreach(var identifier in UIManager.Instance.ShowingPanelIdentifiers.ToList())
+
+            // 销毁连接时打开的Msgbox
+            if (_connectingMsgbox != null)
+            {
+                _connectingMsgbox.Hide();
+                _connectingMsgbox = null;
+            }
+            bool oldConnectedStatus = _isConnected;
+            _isConnected = false;
+
+            foreach (var identifier in UIManager.Instance.ShowingPanelIdentifiers.ToList())
             {
                 UIManager.Instance.DestroyPanel(identifier);
             }
@@ -103,12 +171,24 @@ namespace Game.Network
                 UIManager.Instance.ShowPanel<TitlePanel>();
                 MsgBox.Create((msgbox) =>
                 {
-                    msgbox.Title = "与服务器断开连接";
-                    msgbox.Message = "有可能网络状态差，请检查网络连接\n也有极小可能是有同名玩家进入，请考虑更换昵称";
+
+                    if (oldConnectedStatus)
+                    {
+                        msgbox.Title = "与服务器断开连接";
+                        msgbox.Message = "有可能网络状态差，请检查网络连接\n也有极小可能是有同名玩家进入，请考虑更换昵称";
+                    }
+                    else
+                    {
+                        msgbox.Title = "无法连接至服务器";
+                        msgbox.Message = "请检查网络连接";
+                    }
                 });
             });
 
+
         }
+
+        #endregion
 
         #region Message Handler
 
@@ -119,6 +199,22 @@ namespace Game.Network
             Log.Write($"Player {message.OldName} from {conn.address} changed its player name to {message.NewName}.");
         }
 
+        private void PlayerChangeReadyMessageHandler(NetworkConnectionToClient conn, PlayerChangeReadyMessage message)
+        {
+            int result = _roomManager.PlayerChangeReady(message.RoomId, message.PlayerName);
+            if(result == 0)
+            {
+                var room = _roomManager.FindRoom(message.RoomId);
+                var sync = new RoomInfoSync() { RoomInfo = room };
+                foreach(var player in room.Players)
+                {
+                    var playerConn = _playerManager.GetConnection(player);
+                    playerConn.Send(sync);
+                }
+            }
+
+        }
+        
         private void PlayerConnectMessageHandler(NetworkConnectionToClient conn, PlayerConnectMessage message)
         {
             Log.Write($"Player {message.PlayerName} from {conn.address} is connecting to the server.");
@@ -232,6 +328,16 @@ namespace Game.Network
                     Log.WriteError(new System.Diagnostics.StackTrace().ToString());
                     break;
             }
+        }
+
+        private void PlayerStartGameRequestHandler(NetworkConnectionToClient conn, PlayerStartGameRequest message)
+        {
+            Log.WriteError(new NotImplementedException().ToString());
+        }
+
+        private void PlayerStartGameResponseHandler(PlayerStartGameResponse message)
+        {
+            throw new NotImplementedException();
         }
 
         private void RoomInfoChangeHandler(NetworkConnectionToClient conn, RoomInfoChange message)

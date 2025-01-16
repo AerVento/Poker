@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Game.UI
 {
@@ -16,8 +17,16 @@ namespace Game.UI
         [SerializeField]
         private GameObject _ownerIcon;
 
+        [SerializeField]
+        private Image _background;
+        [SerializeField]
+        private Sprite _unreadySprite;
+        [SerializeField]
+        private Sprite _readySprite;
+
         private string _name;
         private bool _isOwner;
+        private bool _isReady;
         public string PlayerName
         {
             get => _name; 
@@ -34,6 +43,22 @@ namespace Game.UI
             {
                 _isOwner = value;
                 _ownerIcon.SetActive(value);
+            }
+        }
+        public bool IsReady
+        {
+            get => _isReady;
+            set
+            {
+                _isReady = value;
+                if (value)
+                {
+                    _background.sprite = _readySprite;
+                }
+                else
+                {
+                    _background.sprite = _unreadySprite;
+                }
             }
         }
     }

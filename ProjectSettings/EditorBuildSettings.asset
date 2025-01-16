@@ -9,12 +9,6 @@ EditorBuildSettings:
     path: Assets/Scenes/Title.unity
     guid: 53592967d687a0443b48b41fe7998816
   - enabled: 1
-    path: Assets/Scenes/ConnectingServer.unity
-    guid: 80aa711f3ea8830468069246718263d8
-  - enabled: 1
     path: Assets/Scenes/GameScene.unity
     guid: 574a8c3186691a244a0e6360811fc0e3
-  - enabled: 1
-    path: Assets/Scenes/Offline.unity
-    guid: 7f2f111c2ceb20e499f7313fa0284533
   m_configObjects: {}
