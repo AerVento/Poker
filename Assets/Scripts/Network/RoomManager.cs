@@ -65,6 +65,7 @@ namespace Game.Network
             }
             
             room.Players.Add(player);
+            room.ReadyStatus.Add(false);
 
             Log.Write($"Player {player} joined the room {roomId}.");
             return 0;
@@ -75,7 +76,7 @@ namespace Game.Network
         /// </summary>
         /// <param name="roomId"></param>
         /// <param name="player"></param>
-        /// <returns> 0 = success, -1 = room doesn't exist</returns>
+        /// <returns> 0 = success, -1 = room doesn't exist, -2 = player doesn't exist</returns>
         public int Leave(int roomId, string player)
         {
             var room = FindRoom(roomId);
@@ -85,7 +86,15 @@ namespace Game.Network
                 return -1;
             }
 
-            room.Players.Remove(player);
+            int index = room.Players.IndexOf(player);
+            if (index == -1)
+            {
+                Log.WriteWarn($"The player {player} requested to leave the room but the player is not in the room {roomId}!");
+                return -2;
+            }
+
+            room.Players.RemoveAt(index);
+            room.ReadyStatus.RemoveAt(index);
             Log.Write($"Player {player} left the room {roomId}.");
             
             if (room.OwnerName != player)
@@ -99,18 +108,63 @@ namespace Game.Network
         }
 
         /// <summary>
-        /// 开始一个房间的游戏
+        /// 玩家更改准备状态（已准备则转为未准备，未准备则转为已准备）
         /// </summary>
         /// <param name="roomId"></param>
-        /// <returns>正常开始返回true，房间不存在或还有玩家没准备则返回false</returns>
-        public bool StartGame(int roomId)
+        /// <param name="playerName"></param>
+        /// <returns>0 = success, -1 = room doesn't exist, -2 = player not in room</returns>
+        public int PlayerChangeReady(int roomId, string playerName)
         {
             var room = FindRoom(roomId);
             if (room == null)
-                return false;
-            foreach (var isReady in room.ReadyStatus)
-                if (!isReady)
-                    return false;
+            {
+                Log.WriteWarn($"Player {playerName} requested to ready in room {roomId} but the room doesn't exist.");
+                return -1;
+            }
+
+            for(int i = 0; i <  room.Players.Count; i++)
+            {
+                var player = room.Players[i];
+                if(player == playerName)
+                {
+                    room.ReadyStatus[i] = !room.ReadyStatus[i];
+                    Log.Write($"Player {playerName} in room {roomId} readied.");
+                    return 0;
+                }
+            }
+
+            // 房间里没有找到此玩家
+            Log.WriteWarn($"Player {playerName} requested to ready in room {roomId} but the player is not in the room.");
+            return -2;
+        }
+
+        /// <summary>
+        /// 开始一个房间的游戏
+        /// </summary>
+        /// <param name="roomId"></param>
+        /// <returns>0 = success, -1 = room doesn't exist, -2 = player not readied, -3 owner not in the room</returns>
+        public int StartGame(int roomId)
+        {
+            var room = FindRoom(roomId);
+            if (room == null)
+                return -1;
+
+            int index = room.Players.IndexOf(room.OwnerName);
+            if (index == -1)
+            {
+                Log.WriteWarn($"The owner of room {room.Id} called {room.OwnerName} is not in the room!");
+                return -3;
+            }
+
+            for(int i = 0; i < room.ReadyStatus.Count; i++)
+            {
+                // 房主不考虑是否准备
+                if (i == index)
+                    continue;
+                if (!room.ReadyStatus[i])
+                    return -2;
+            }
+
             // 开始游戏，不再等待
             room.IsWaiting = false;
             Log.Write($"The game in room {roomId} is started.");
@@ -118,7 +172,7 @@ namespace Game.Network
             foreach(var player in room.Players)
                 log += player.ToString() + ", ";
             Log.Write(log);
-            return true;
+            return 0;
         }
 
         /// <summary>

@@ -14,7 +14,7 @@ namespace Game.Tests
 
         private void Start()
         {
-            TestRoomListDeserialize();
+            TestUnionSerialize();
 
         }
         public void TestRoomInfoSerialize() 
@@ -43,6 +43,25 @@ namespace Game.Tests
         {
             string result = "{\"Rooms\":[{\"Id\":0,\"MaxPlayerCount\":8,\"OwnerName\":\"AerVento\",\"Players\":[\"AerVento\"],\"InitialChips\":300,\"ThinkingTime\":30},{\"Id\":0,\"MaxPlayerCount\":4,\"OwnerName\":\"yurzhang\",\"Players\":[\"yurzhang\"],\"InitialChips\":300,\"ThinkingTime\":30}]}";
             RoomList list = JsonSerializer.Deserialize<RoomList>(result);
+        }
+
+        public void TestUnionSerialize()
+        {
+            List<(int, string)> list = new List<(int, string)>()
+            {
+                (1, "a"),
+                (2, "b"),
+                (3, "c"),
+                (4, "d")
+            };
+            string result = JsonSerializer.Serialize(list);
+            Debug.Log(result);
+        }
+
+        public void TestUnionDeserialize()
+        {
+            string result = "";
+            List<(int, string)> list = JsonSerializer.Deserialize<List<(int, string)>>(result);
         }
     }
 }

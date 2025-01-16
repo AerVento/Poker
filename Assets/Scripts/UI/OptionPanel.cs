@@ -94,7 +94,7 @@ namespace Game.UI
                 if (NetworkClient.isConnected)
                     NetworkClient.Send(new PlayerChangeNameMessage()
                     {
-                        OldName = _nickname.text,
+                        OldName = GameController.Instance.State.Nickname,
                         NewName = newValue
                     });
                 _nickname.text = newValue;

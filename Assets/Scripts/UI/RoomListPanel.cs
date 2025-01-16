@@ -7,6 +7,7 @@ using UnityEngine.UI;
 using TMPro;
 using Game.Network;
 using Mirror;
+using Cysharp.Threading.Tasks;
 namespace Game.UI
 {
     public class RoomListPanel : SingletonPanel<RoomListPanel>
@@ -29,6 +30,11 @@ namespace Game.UI
         [SerializeField]
         private GameObject _roomItem;
 
+        /// <summary>
+        /// ³ÖÐøË¢ÐÂ
+        /// </summary>
+        private bool _refreshRoutineFlag = false;
+        private UniTask? _refreshRoutine = null;
 
         private RoomList _roomList = new RoomList();
         private List<RoomListItem> _tmpRoomItem = new List<RoomListItem>();
@@ -79,6 +85,20 @@ namespace Game.UI
             _back.onClick.AddListener(Back);
             _refresh.onClick.AddListener(RefreshRoomList);
             _createRoom.onClick.AddListener(CreateRoom);
+
+            _refreshRoutineFlag = true;
+            if (_refreshRoutine == null)
+            {
+                _refreshRoutine = UniTask.Create(async () =>
+                {
+                    do
+                    {
+                        RefreshRoomList();
+                        await UniTask.WaitForSeconds(1);
+                    } while (_refreshRoutineFlag);
+                    _refreshRoutine = null;
+                });
+            }
         }
 
         private void OnDisable()
@@ -86,6 +106,7 @@ namespace Game.UI
             _back.onClick.RemoveListener(Back);
             _refresh.onClick.RemoveListener(RefreshRoomList);
             _createRoom.onClick.RemoveListener(CreateRoom);
+            _refreshRoutineFlag = false;
         }
 
         private void Start()

@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 using Framework.UI;
 using UnityEngine.UI;
@@ -8,6 +7,9 @@ using TMPro;
 using Game.Network;
 using Mirror;
 using Assets.Scripts.Network.Messages;
+using Framework.Log;
+using Cysharp.Threading.Tasks;
+using System;
 namespace Game.UI
 {
     public class RoomPanel : SingletonPanel<RoomPanel>
@@ -20,6 +22,12 @@ namespace Game.UI
 
         [SerializeField]
         private Button _ready;
+
+        [SerializeField]
+        private Button _cancelReady;
+
+        [SerializeField]
+        private Button _start;
 
         [SerializeField]
         private ScrollRect _scroll;
@@ -52,7 +60,6 @@ namespace Game.UI
 
         private List<PlayerListItem> _tmpPlayerItems = new List<PlayerListItem>();
 
-
         public RoomInfo RoomInfo
         {
             get => _roomInfo;
@@ -63,27 +70,59 @@ namespace Game.UI
             }
         }
 
+        public string SelfName => GameController.Instance.State.Nickname;
+        
+        /// <summary>
+        /// 当前玩家是否是房主
+        /// </summary>
+        public bool IsOwner => SelfName == RoomInfo.OwnerName;
 
+        /// <summary>
+        /// 当前玩家是否已准备
+        /// </summary>
+        public bool IsReady
+        {
+            get
+            {
+                // 如果是房主，则默认房主已经准备
+                if (IsOwner)
+                    return true;
+
+                int index = RoomInfo.Players.IndexOf(SelfName);
+                if(index == -1)
+                {
+                    Log.WriteError($"Error! The current player {SelfName} is not in the room {RoomInfo.Id}!");
+                    Log.WriteError(new System.Diagnostics.StackTrace().ToString());
+                    throw new System.IndexOutOfRangeException();
+                }
+                return RoomInfo.ReadyStatus[index];
+            }
+        }
 
         private void OnEnable()
         {
             _back.onClick.AddListener(Back);
-            _ready.onClick.AddListener(Ready);
+            _ready.onClick.AddListener(ChangeReady);
+            _cancelReady.onClick.AddListener(ChangeReady);
+            _start.onClick.AddListener(StartGame);
             _initialChips.onEndEdit.AddListener(ChangeChip);
             _thinkingTime.onEndEdit.AddListener(ChangeTime);
             _maxPlayer.onEndEdit.AddListener(ChangeMaxPlayer);
-
-            Refresh();
         }
 
         private void OnDisable()
         {
             _back.onClick.RemoveListener(Back);
-            _ready.onClick.RemoveListener(Ready);
+            _ready.onClick.RemoveListener(ChangeReady);
+            _cancelReady.onClick.RemoveListener(ChangeReady);
+            _start.onClick.RemoveListener(StartGame);
             _initialChips.onEndEdit.RemoveListener(ChangeChip);
             _thinkingTime.onEndEdit.RemoveListener(ChangeTime);
             _maxPlayer.onEndEdit.RemoveListener(ChangeMaxPlayer);
+
         }
+
+
 
         private void Back()
         {
@@ -96,9 +135,14 @@ namespace Game.UI
             UIManager.Instance.ShowPanel<RoomListPanel>();
         }
 
-        private void Ready()
+        private void ChangeReady()
         {
+            NetworkClient.Send(new PlayerChangeReadyMessage() { PlayerName = SelfName, RoomId = _roomInfo.Id });
+        }
 
+        private void StartGame()
+        {
+            NetworkClient.Send(new PlayerStartGameRequest() { PlayerName = SelfName, RoomId = _roomInfo.Id });
         }
 
         private void ChangeChip(string value)
@@ -117,8 +161,7 @@ namespace Game.UI
             }
             else
             {
-                _roomInfo.InitialChips = result;
-                SendChangeRequest();
+                SendChangeRequest(result, _roomInfo.ThinkingTime, _roomInfo.MaxPlayerCount);
             }
 
         }
@@ -132,8 +175,7 @@ namespace Game.UI
             }
             else
             {
-                _roomInfo.ThinkingTime = result;
-                SendChangeRequest();
+                SendChangeRequest(_roomInfo.InitialChips, result, _roomInfo.MaxPlayerCount);
             }
         }
 
@@ -146,45 +188,59 @@ namespace Game.UI
             }
             else
             {
-                _roomInfo.MaxPlayerCount = result;
-                SendChangeRequest();
+                SendChangeRequest(_roomInfo.InitialChips, _roomInfo.ThinkingTime, result);
             }
         }
 
         private void Refresh()
         {
-            bool settingInteractable = _roomInfo.OwnerName == GameController.Instance.State.Nickname;
-            _initialChips.interactable = settingInteractable;
-            _thinkingTime.interactable = settingInteractable;
-            _maxPlayer.interactable = settingInteractable;
+            bool interactable = IsOwner;
+            _initialChips.interactable = interactable;
+            _thinkingTime.interactable = interactable;
+            _maxPlayer.interactable = interactable;
 
             _title.text = $"房间{_roomInfo.Id}";
             _initialChips.text = _roomInfo.InitialChips.ToString();
             _thinkingTime.text = _roomInfo.ThinkingTime.ToString();
             _maxPlayer.text = _roomInfo.MaxPlayerCount.ToString();
 
+            if (IsOwner)
+            {
+                _ready.gameObject.SetActive(false);
+                _cancelReady.gameObject.SetActive(false);
+                _start.gameObject.SetActive(true);
+            }
+            else
+            {
+                _ready.gameObject.SetActive(!IsReady);
+                _cancelReady.gameObject.SetActive(IsReady);
+                _start.gameObject.SetActive(false);
+            }
+
             foreach (var tmp in _tmpPlayerItems)
                 Destroy(tmp.gameObject);
             _tmpPlayerItems.Clear();
-            foreach(var playerName in _roomInfo.Players)
+            for(int i = 0; i < RoomInfo.PlayerCount; i++)
             {
+                var playerName = RoomInfo.Players[i];
                 GameObject obj = Instantiate(_player, parent:_playerList);
                 var component = obj.GetComponent<PlayerListItem>();
                 component.PlayerName = playerName;
                 component.IsOwner = _roomInfo.OwnerName == playerName;
+                component.IsReady = component.IsOwner ? false : RoomInfo.ReadyStatus[i];
                 _tmpPlayerItems.Add(component);
             }
         }
 
-        private void SendChangeRequest()
+        private void SendChangeRequest(int initialChips, float thinkingTime, int maxPlayer)
         {
             NetworkClient.Send(new RoomInfoChange()
             {
                 RoomId = _roomInfo.Id,
-                PlayerName = GameController.Instance.State.Nickname,
-                InitialChips = _roomInfo.InitialChips,
-                ThinkingTime = _roomInfo.ThinkingTime,
-                MaxPlayer = _roomInfo.MaxPlayerCount,
+                PlayerName = SelfName,
+                InitialChips = initialChips,
+                ThinkingTime = thinkingTime,
+                MaxPlayer = maxPlayer,
             });
         }
     }
