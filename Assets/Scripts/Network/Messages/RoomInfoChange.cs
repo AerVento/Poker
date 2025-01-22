@@ -29,6 +29,11 @@ namespace Game.Network
         public int InitialChips;
 
         /// <summary>
+        /// 小盲注
+        /// </summary>
+        public int SmallBlindChips;
+
+        /// <summary>
         /// 思考时间（秒）
         /// </summary>
         public float ThinkingTime;

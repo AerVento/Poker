@@ -41,7 +41,7 @@ namespace Game.Network
         /// </summary>
         /// <param name="roomId"></param>
         /// <param name="player"></param>
-        /// <returns> 0 = success, -1 = room doesn't exist, -2 = already in the room, -3 = full room </returns>
+        /// <returns> 0 = success, -1 = room doesn't exist, -2 = already in the room, -3 = full room, -4 = game started </returns>
         public int Join(int roomId, string player)
         {
             var room = FindRoom(roomId);
@@ -63,7 +63,13 @@ namespace Game.Network
                 Log.Write($"Player {player} requested to join the room {roomId} but the room is full.");
                 return -3;
             }
-            
+
+            if (!room.IsWaiting)
+            {
+                Log.Write($"Player {player} requested to join the room {roomId} but the game is already started.");
+                return -4;
+            }
+
             room.Players.Add(player);
             room.ReadyStatus.Add(false);
 
@@ -128,7 +134,10 @@ namespace Game.Network
                 if(player == playerName)
                 {
                     room.ReadyStatus[i] = !room.ReadyStatus[i];
-                    Log.Write($"Player {playerName} in room {roomId} readied.");
+                    if (room.ReadyStatus[i])
+                        Log.Write($"Player {playerName} in room {roomId} readied.");
+                    else
+                        Log.Write($"Player {playerName} in room {roomId} unreadied.");
                     return 0;
                 }
             }
@@ -139,15 +148,24 @@ namespace Game.Network
         }
 
         /// <summary>
-        /// 开始一个房间的游戏
+        /// 开始一个房间的游戏，房间开始后不能再加入
         /// </summary>
         /// <param name="roomId"></param>
-        /// <returns>0 = success, -1 = room doesn't exist, -2 = player not readied, -3 owner not in the room</returns>
+        /// <returns>0 = success, -1 = room doesn't exist, -2 = player not readied, -3 = owner not in the room, -5 = too few player()</returns>
         public int StartGame(int roomId)
         {
             var room = FindRoom(roomId);
             if (room == null)
+            {
+                Log.WriteWarn($"The room {roomId} doesn't exist when starting the game!");
                 return -1;
+            }
+
+            if(room.PlayerCount < 2)
+            {
+                Log.WriteWarn($"The room {room.Id} has too few player to start the game!");
+                return -5;
+            }
 
             int index = room.Players.IndexOf(room.OwnerName);
             if (index == -1)
@@ -155,6 +173,7 @@ namespace Game.Network
                 Log.WriteWarn($"The owner of room {room.Id} called {room.OwnerName} is not in the room!");
                 return -3;
             }
+
 
             for(int i = 0; i < room.ReadyStatus.Count; i++)
             {

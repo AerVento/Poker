@@ -49,7 +49,7 @@ namespace Framework.Timer
                 if (_isCounting)
                     throw new System.InvalidOperationException("Cannot change the duration while the timer was counting down.");
                 if (value <= 0)
-                    throw new System.ArgumentException("The duration of timer must be a positive number.", "value");
+                    throw new System.ArgumentException($"The duration of timer must be a positive number. Given: {value}.", "value");
 
                 _duration = value;
             }
@@ -64,7 +64,7 @@ namespace Framework.Timer
         /// <summary>
         /// When time up, this event will be automatically called. It will not be called if the timer was stopped by extern.
         /// </summary>
-        public event System.Action OnTimeUp;
+        public System.Action OnTimeUp;
 
         /// <summary>
         /// Initialize a timer with a default duration (1 second).

@@ -3,11 +3,13 @@ using Cysharp.Threading.Tasks;
 using Framework.Log;
 using Framework.UI;
 using Game.UI;
+using Game.UI.GamePanelElement;
 using Mirror;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using UnityEngine;
 
 namespace Game.Network
@@ -18,6 +20,7 @@ namespace Game.Network
         // server only
         private RoomManager _roomManager = new RoomManager();
         private PlayerManager _playerManager = new PlayerManager();
+        private GameManager _gameManager = new GameManager();
 
         #endregion
 
@@ -39,6 +42,10 @@ namespace Game.Network
         public override void Awake()
         {
             base.Awake();
+            _gameManager.OnGameInfoChanged += OnGameInfoChanged;
+            _gameManager.OnGameStageEnded += OnGameStageEnd;
+            _gameManager.OnRoomRoundEnded += OnRoomRoundEnd;
+            _gameManager.OnRoomGameOver += OnGameOver;
         }
 
         #region Server
@@ -51,6 +58,7 @@ namespace Game.Network
             NetworkServer.RegisterHandler<PlayerCreateRoomRequest>(PlayerCreateRoomRequestHandler, requireAuthentication: false);
             NetworkServer.RegisterHandler<PlayerJoinRoomRequest>(PlayerJoinRoomRequestHandler, requireAuthentication: false);
             NetworkServer.RegisterHandler<PlayerLeaveRoomRequest>(PlayerLeaveRoomRequestHandler, requireAuthentication: false);
+            NetworkServer.RegisterHandler<PlayerOperationRequest>(PlayerOperationRequestHandler, requireAuthentication:false);
             NetworkServer.RegisterHandler<PlayerStartGameRequest>(PlayerStartGameRequestHandler, requireAuthentication: false);
             NetworkServer.RegisterHandler<RoomInfoChange>(RoomInfoChangeHandler, requireAuthentication: false);
             NetworkServer.RegisterHandler<RoomListRequest>(RoomListRequestHandler, requireAuthentication: false);
@@ -61,34 +69,48 @@ namespace Game.Network
             // base.OnServerDisconnect(conn);
             if (_playerManager.RemoveConnection(conn, out var name))
             {
+
+                Log.WriteInfo($"Player {name} from {conn.address} is disconnected.");
                 if (_roomManager.WhichRoom(name, out var roomId))
                 {
-                    int result = _roomManager.Leave(roomId, name);
-                    switch (result)
+                    var room = _roomManager.FindRoom(roomId);
+                    // 还在大厅中等待
+                    if (room.IsWaiting)
                     {
-                        case 0:
-                            var room = _roomManager.FindRoom(roomId);
-                            var sync = new RoomInfoSync() { RoomInfo = room };
-                            foreach (var player in room.Players)
-                            {
-                                var playerConn = _playerManager.GetConnection(player);
-                                playerConn.Send(sync);
-                            }
-                            break;
+                        int result = _roomManager.Leave(roomId, name);
+                        switch (result)
+                        {
+                            case 0:
+                                var sync = new RoomInfoSync() { RoomInfo = room };
+                                foreach (var player in room.Players)
+                                {
+                                    var playerConn = _playerManager.GetConnection(player);
+                                    playerConn?.Send(sync);
+                                }
+                                break;
+                        }
+                    }
+                    else // 游戏已经开始
+                    {
+                        _gameManager.SetDisconnected(roomId, name);   
                     }
                 }
             }
         }
         #endregion Server
+
         #region Client
         public override void OnStartClient()
         {
             base.OnStartClient();
+            NetworkClient.RegisterHandler<GameInfoSync>(GameInfoSyncHandler, requireAuthentication: false);
+            NetworkClient.RegisterHandler<GameResultNotification>(GameResultNotificationHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<PlayerJoinRoomResponse>(PlayerJoinRoomResponseHandler, requireAuthentication: false);
+            NetworkClient.RegisterHandler<PlayerOperationResponse>(PlayerOperationResponseHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<PlayerStartGameResponse>(PlayerStartGameResponseHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<RoomInfoSync>(RoomInfoSyncHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<RoomListResponse>(RoomListResponseHandler, requireAuthentication: false);
-
+            NetworkClient.RegisterHandler<RoundResultNotification>(RoundResultNotificationHandler, requireAuthentication: false);
             
             MsgBox.Create("ConnectingServer", (setting) =>
             {
@@ -117,6 +139,7 @@ namespace Game.Network
 
             _isConnected = true;
 
+            UIManager.Instance.HidePanel<TitlePanel>();
             UIManager.Instance.ShowPanel<RoomListPanel>();
             var message = new PlayerConnectMessage();
             message.PlayerName = GameController.Instance.State.Nickname;
@@ -143,8 +166,6 @@ namespace Game.Network
             });
         }
 
-
-
         public override void OnClientDisconnect()
         {
             // base.OnClientDisconnect();
@@ -168,21 +189,24 @@ namespace Game.Network
 
                 // 等待一帧后再打开TitlePanel
                 // 若不等待，同一帧中Destroy并不会真的Destory，若此时出现一个新的TitlePanel，则会导致Singleton冲突
-                UIManager.Instance.ShowPanel<TitlePanel>();
-                MsgBox.Create((msgbox) =>
+                if (UIManager.Available)
                 {
+                    UIManager.Instance.ShowPanel<TitlePanel>();
+                    MsgBox.Create((msgbox) =>
+                    {
 
-                    if (oldConnectedStatus)
-                    {
-                        msgbox.Title = "与服务器断开连接";
-                        msgbox.Message = "有可能网络状态差，请检查网络连接\n也有极小可能是有同名玩家进入，请考虑更换昵称";
-                    }
-                    else
-                    {
-                        msgbox.Title = "无法连接至服务器";
-                        msgbox.Message = "请检查网络连接";
-                    }
-                });
+                        if (oldConnectedStatus)
+                        {
+                            msgbox.Title = "与服务器断开连接";
+                            msgbox.Message = "有可能网络状态差，请检查网络连接\n也有极小可能是有同名玩家进入，请考虑更换昵称";
+                        }
+                        else
+                        {
+                            msgbox.Title = "无法连接至服务器";
+                            msgbox.Message = "请检查网络连接";
+                        }
+                    });
+                }
             });
 
 
@@ -192,11 +216,32 @@ namespace Game.Network
 
         #region Message Handler
 
+        private void GameInfoSyncHandler(GameInfoSync message)
+        {
+            if (GamePanel.Instance == null)
+                UIManager.Instance.ShowPanel<GamePanel>();
+            GamePanel.Instance.Info = message.Info;
+            Log.WriteInfo("Game Sync:" + JsonSerializer.Serialize(message.Info, new JsonSerializerOptions() { WriteIndented = true }));
+        }
+
+        private void GameResultNotificationHandler(GameResultNotification message)
+        {
+            UIManager.Instance.ShowPanel<GameResultMsgBox>(UIManager.Layer.Top);
+            GameResultMsgBox.Instance.Info = message.GameResult;
+        }
+
         private void PlayerChangeNameMessageHandler(NetworkConnectionToClient conn, PlayerChangeNameMessage message)
         {
+            Log.Write($"Player {message.OldName} from {conn.address} requested to changed its player name to {message.NewName}.");
+            if (_playerManager.IsConnected(message.NewName))
+            {
+                Log.Write($"The new name {message.NewName} is occupied by another online player, so the connection will be shutdown.");
+                conn.Disconnect();
+                return;
+            }
             _playerManager.RemoveConnection(message.OldName);
             _playerManager.SetConnection(message.NewName, conn);
-            Log.Write($"Player {message.OldName} from {conn.address} changed its player name to {message.NewName}.");
+            Log.Write($"Player {message.OldName} from {conn.address} successfully changed its player name to {message.NewName}.");
         }
 
         private void PlayerChangeReadyMessageHandler(NetworkConnectionToClient conn, PlayerChangeReadyMessage message)
@@ -209,10 +254,9 @@ namespace Game.Network
                 foreach(var player in room.Players)
                 {
                     var playerConn = _playerManager.GetConnection(player);
-                    playerConn.Send(sync);
+                    playerConn?.Send(sync);
                 }
             }
-
         }
         
         private void PlayerConnectMessageHandler(NetworkConnectionToClient conn, PlayerConnectMessage message)
@@ -256,7 +300,7 @@ namespace Game.Network
                     if (player == request.PlayerName)
                         continue; // 如果是刚加入房间的人，就不给他发Sync了，response里面会给他提供room信息，自己更新就可以
                     var playerConn = _playerManager.GetConnection(player);
-                    playerConn.Send(sync);
+                    playerConn?.Send(sync);
                 }
             }
             else
@@ -296,6 +340,14 @@ namespace Game.Network
                     });
                     RoomListPanel.Instance.RefreshRoomList();
                     return;
+                case -4:
+                    MsgBox.Create((msgbox) =>
+                    {
+                        msgbox.Title = "加入房间时出错";
+                        msgbox.Message = "游戏已开始";
+                    });
+                    RoomListPanel.Instance.RefreshRoomList();
+                    return;
                 default:
                     Log.WriteError($"Unknown success code: {result}.");
                     Log.WriteError(new System.Diagnostics.StackTrace().ToString());
@@ -316,7 +368,7 @@ namespace Game.Network
                         foreach (var player in room.Players)
                         {
                             var playerConn = _playerManager.GetConnection(player);
-                            playerConn.Send(sync);
+                            playerConn?.Send(sync);
                         }
                     }
                     break;
@@ -330,14 +382,238 @@ namespace Game.Network
             }
         }
 
+        private void PlayerOperationRequestHandler(NetworkConnectionToClient conn, PlayerOperationRequest request)
+        {
+            var response = new PlayerOperationResponse() { Type = request.Type };
+            var room = _roomManager.FindRoom(request.RoomId);
+            if (room == null)
+            {
+                response.SuccessCode = -1;
+                conn.Send(response);
+                return;
+            }
+            var result = request.Type switch
+            {
+                PlayerOperationType.Check => _gameManager.Check(request.RoomId, request.PlayerIndex),
+                PlayerOperationType.Bet => _gameManager.Bet(request.RoomId, request.PlayerIndex, request.Number),
+                PlayerOperationType.Raise => _gameManager.Bet(request.RoomId, request.PlayerIndex, request.Number),
+                PlayerOperationType.Call => _gameManager.Call(request.RoomId, request.PlayerIndex),
+                PlayerOperationType.AllIn => _gameManager.AllIn(request.RoomId, request.PlayerIndex),
+                PlayerOperationType.Fold => _gameManager.Fold(request.RoomId, request.PlayerIndex),
+                _ => -1024
+            };
+            response.SuccessCode = result;
+            conn.Send(response);
+
+            // 如果成功，那么就向其他玩家转发新的游戏信息
+            if (result != 0)
+                return;
+            var gameInfo = _gameManager.GetGameInfo(request.RoomId);
+            for(int i = 0; i < gameInfo.PlayersCount; i++)
+            {
+                var name = gameInfo.RoomInfo.Players[i];
+                var playerConn = _playerManager.GetConnection(name);
+
+                var sync = new GameInfoSync() { Info = new ClientGameInfo(gameInfo, i) };
+                playerConn?.Send(sync);
+            }
+        }
+        private void PlayerOperationResponseHandler(PlayerOperationResponse response)
+        {
+            switch (response.Type)
+            {
+                case PlayerOperationType.Check:
+                    switch (response.SuccessCode)
+                    {
+                        case 0:
+                            Log.Write("Successful Request");
+                            break;
+                        case -1:
+                            Log.WriteError("Room doesn't exists.");
+                            break;
+                        case -2:
+                            Log.WriteError("Cannot find current Player.");
+                            break;
+                        case -3:
+                            Log.WriteError("Another player is operating.");
+                            break;
+                        case -4:
+                            Log.WriteError("Cannot check because former player bet or raised.");
+                            break;
+                    }
+                    break;
+                case PlayerOperationType.Bet:
+                    switch (response.SuccessCode)
+                    {
+                        case 0:
+                            Log.Write("Successful Request");
+                            break;
+                        case -1:
+                            Log.WriteError("Room doesn't exists.");
+                            break;
+                        case -2:
+                            Log.WriteError("Cannot find current Player.");
+                            break;
+                        case -3:
+                            Log.WriteError("Another player is operating.");
+                            break;
+                        case -4:
+                            Log.WriteError("The current player has too few chips to bet or raise.");
+                            break;
+                        case -5:
+                            Log.WriteError("Bet or Raise more chips to meet the least bet threshold.");
+                            break;
+                    }
+                    break;
+                case PlayerOperationType.Call:
+                    switch (response.SuccessCode)
+                    {
+                        case 0:
+                            Log.Write("Successful Request");
+                            break;
+                        case -1:
+                            Log.WriteError("Room doesn't exists.");
+                            break;
+                        case -2:
+                            Log.WriteError("Cannot find current Player.");
+                            break;
+                        case -3:
+                            Log.WriteError("Another player is operating.");
+                            break;
+                        case -4:
+                            Log.WriteError("The current player has too few chips to call.");
+                            break;
+                    }
+                    break;
+                case PlayerOperationType.AllIn:
+                    switch (response.SuccessCode)
+                    {
+                        case 0:
+                            Log.Write("Successful Request");
+                            break;
+                        case -1:
+                            Log.WriteError("Room doesn't exists.");
+                            break;
+                        case -2:
+                            Log.WriteError("Cannot find current Player.");
+                            break;
+                        case -3:
+                            Log.WriteError("Another player is operating.");
+                            break;
+                    }
+                    break;
+                case PlayerOperationType.Fold:
+                    switch (response.SuccessCode)
+                    {
+                        case 0:
+                            Log.Write("Successful Request");
+                            break;
+                        case -1:
+                            Log.WriteError("Room doesn't exists.");
+                            break;
+                        case -2:
+                            Log.WriteError("Cannot find current Player.");
+                            break;
+                        case -3:
+                            Log.WriteError("Another player is operating.");
+                            break;
+                        case -4:
+                            Log.WriteError("Big blind cannot fold in preflop stage when all other player choose to call.");
+                            break;
+                    }
+                    break;
+            }
+        }
+
         private void PlayerStartGameRequestHandler(NetworkConnectionToClient conn, PlayerStartGameRequest message)
         {
-            Log.WriteError(new NotImplementedException().ToString());
+            var response = new PlayerStartGameResponse();
+            var room = _roomManager.FindRoom(message.RoomId);
+            if (room == null)
+            {
+                response.SuccessCode = -1;
+            }
+            else
+            {
+                response.SuccessCode = _roomManager.StartGame(message.RoomId);
+            }
+
+            if (response.SuccessCode != 0)
+            {
+                conn.Send(response);
+                return;
+            }
+
+            _gameManager.CreateGame(room);
+            response.SuccessCode = _gameManager.StartNew(room.Id);
+            if (response.SuccessCode != 0)
+            {
+                conn.Send(response);
+                return;
+            }
+
+            var gameInfo = _gameManager.GetGameInfo(room.Id);
+
+            // 如果成功开启游戏，还向其他所有玩家广播游戏开始的信息
+            for(int i = 0; i < room.PlayerCount; i++)
+            {
+                var name = room.Players[i];
+                var playerConn = _playerManager.GetConnection(name);
+                playerConn?.Send(response);
+                playerConn?.Send(new GameInfoSync() { Info = new ClientGameInfo(gameInfo, i) });
+            }
+
         }
 
         private void PlayerStartGameResponseHandler(PlayerStartGameResponse message)
         {
-            throw new NotImplementedException();
+            switch (message.SuccessCode)
+            {
+                case 0:
+                    UIManager.Instance.HidePanel<RoomPanel>();
+                    UIManager.Instance.ShowPanel<GamePanel>();
+                    break;
+                case -1:
+                    MsgBox.Create((msgbox) =>
+                    {
+                        msgbox.Title = "开始游戏时出错";
+                        msgbox.Message = "房间不存在";
+                    });
+                    UIManager.Instance.HidePanel<RoomPanel>();
+                    UIManager.Instance.ShowPanel<RoomListPanel>();
+                    break;
+                case -2:
+                    MsgBox.Create((msgbox) =>
+                    {
+                        msgbox.Title = "提示";
+                        msgbox.Message = "其他玩家尚未全部准备";
+                    });
+                    break;
+                case -3:
+                    // this is a rare situation, add this to prevent fault
+                    MsgBox.Create((msgbox) =>
+                    {
+                        msgbox.Title = "开始游戏时出错";
+                        msgbox.Message = "房主不见了";
+                    });
+                    UIManager.Instance.HidePanel<RoomPanel>();
+                    UIManager.Instance.ShowPanel<RoomListPanel>();
+                    break;
+                case -4:
+                    MsgBox.Create((msgbox) =>
+                    {
+                        msgbox.Title = "开始游戏时出错";
+                        msgbox.Message = "你不是房主";
+                    });
+                    break;
+                case -5:
+                    MsgBox.Create((msgbox) =>
+                    {
+                        msgbox.Title = "开始游戏时出错";
+                        msgbox.Message = "需要大于等于两个玩家才能开始游戏";
+                    });
+                    break;
+            }
         }
 
         private void RoomInfoChangeHandler(NetworkConnectionToClient conn, RoomInfoChange message)
@@ -364,7 +640,7 @@ namespace Game.Network
             foreach(var player in room.Players)
             {
                 var playerConn = _playerManager.GetConnection(player);
-                playerConn.Send(sync);
+                playerConn?.Send(sync);
             }
         }
 
@@ -385,6 +661,98 @@ namespace Game.Network
             RoomListPanel.Instance.Rooms = response.RoomList;
         }
 
+
+        private void RoundResultNotificationHandler(RoundResultNotification message)
+        {
+            UIManager.Instance.ShowPanel<RoundResultMsgBox>(UIManager.Layer.System);
+            RoundResultMsgBox.Instance.Info = message.RoundResult;
+        }
+
+        #endregion
+
+        #region EventListener
+
+        private void OnGameInfoChanged(int roomId)
+        {
+            var gameInfo = _gameManager.GetGameInfo(roomId);
+            if (gameInfo == null)
+                return;
+            for (int i = 0; i < gameInfo.PlayersCount; i++)
+            {
+                var name = gameInfo.RoomInfo.Players[i];
+                if (gameInfo.Players[i].IsDisconnected)
+                    continue;
+                var conn = _playerManager.GetConnection(name);
+                var sync = new GameInfoSync()
+                {
+                    Info = new ClientGameInfo(gameInfo, i)
+                };
+                conn?.Send(sync);
+            }
+#if UNITY_EDITOR
+            Debug.Log(JsonSerializer.Serialize(gameInfo, new JsonSerializerOptions() { WriteIndented = true}));
+#endif
+        }
+
+        private async void OnGameStageEnd(int roomId)
+        {
+            var gameInfo = _gameManager.GetGameInfo(roomId);
+            if (gameInfo == null)
+                return;
+            gameInfo.OperatingPlayer = -1;
+            OnGameInfoChanged(roomId);
+            // 等待一段时间
+            await UniTask.WaitForSeconds(2);
+            _gameManager.NextStage(roomId);
+        }
+
+        private async void OnRoomRoundEnd(int roomId, RoundResult result)
+        {
+            var gameInfo = _gameManager.GetGameInfo(roomId);
+            if (gameInfo == null)
+                return;
+            for (int i = 0; i < gameInfo.PlayersCount; i++)
+            {
+                var name = gameInfo.RoomInfo.Players[i];
+                if (gameInfo.Players[i].IsDisconnected)
+                    continue;
+                var conn = _playerManager.GetConnection(name);
+                var roundResult = new RoundResultNotification()
+                {
+                    RoundResult = result
+                };
+                conn?.Send(roundResult);
+            }
+
+            gameInfo.Timer.Stop();
+            await UniTask.WaitForSeconds(5);
+
+            if(gameInfo.Stage == GameStage.RoundOver)
+                _gameManager.StartNew(roomId);
+        }
+        private void OnGameOver(int roomId, GameResult result)
+        {
+            var gameInfo = _gameManager.GetGameInfo(roomId);
+            if (gameInfo == null)
+                return;
+
+            gameInfo.Timer.Stop();
+            for (int i = 0; i < gameInfo.PlayersCount; i++)
+            {
+                var name = gameInfo.RoomInfo.Players[i];
+                if (gameInfo.Players[i].IsDisconnected)
+                    continue;
+                var conn = _playerManager.GetConnection(name);
+                var gameResult = new GameResultNotification()
+                {
+                    GameResult = result
+                };
+                conn?.Send(gameResult);
+            }
+
+            _roomManager.DeleteRoom(roomId);
+            _gameManager.GameOver(roomId);
+        }
         #endregion
     }
 }

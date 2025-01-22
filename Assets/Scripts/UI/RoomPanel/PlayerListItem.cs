@@ -7,7 +7,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Game.UI
+namespace Game.UI.RoomPanelElement
 {
     public class PlayerListItem : MonoBehaviour
     {

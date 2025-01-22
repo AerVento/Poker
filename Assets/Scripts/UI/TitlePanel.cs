@@ -55,7 +55,6 @@ namespace Game.UI
 
         private void Play()
         {
-            UIManager.Instance.HidePanel<TitlePanel>();
             if (!NetworkClient.isConnected)
             {
                 // 没连接的话，先连接

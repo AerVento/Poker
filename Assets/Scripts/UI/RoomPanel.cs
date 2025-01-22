@@ -10,6 +10,8 @@ using Assets.Scripts.Network.Messages;
 using Framework.Log;
 using Cysharp.Threading.Tasks;
 using System;
+using PlayerListItem = Game.UI.RoomPanelElement.PlayerListItem;
+
 namespace Game.UI
 {
     public class RoomPanel : SingletonPanel<RoomPanel>
@@ -34,6 +36,9 @@ namespace Game.UI
 
         [SerializeField]
         private TMP_InputField _initialChips;
+
+        [SerializeField]
+        private TMP_InputField _smallBlindChips;
 
         [SerializeField]
         private TMP_InputField _thinkingTime;
@@ -105,9 +110,12 @@ namespace Game.UI
             _ready.onClick.AddListener(ChangeReady);
             _cancelReady.onClick.AddListener(ChangeReady);
             _start.onClick.AddListener(StartGame);
-            _initialChips.onEndEdit.AddListener(ChangeChip);
+
+            _initialChips.onEndEdit.AddListener(ChangeInitialChip);
+            _smallBlindChips.onEndEdit.AddListener(ChangeSmallBlindChip);
             _thinkingTime.onEndEdit.AddListener(ChangeTime);
             _maxPlayer.onEndEdit.AddListener(ChangeMaxPlayer);
+
         }
 
         private void OnDisable()
@@ -116,7 +124,9 @@ namespace Game.UI
             _ready.onClick.RemoveListener(ChangeReady);
             _cancelReady.onClick.RemoveListener(ChangeReady);
             _start.onClick.RemoveListener(StartGame);
-            _initialChips.onEndEdit.RemoveListener(ChangeChip);
+
+            _initialChips.onEndEdit.RemoveListener(ChangeInitialChip);
+            _smallBlindChips.onEndEdit.RemoveListener(ChangeSmallBlindChip);
             _thinkingTime.onEndEdit.RemoveListener(ChangeTime);
             _maxPlayer.onEndEdit.RemoveListener(ChangeMaxPlayer);
 
@@ -145,7 +155,7 @@ namespace Game.UI
             NetworkClient.Send(new PlayerStartGameRequest() { PlayerName = SelfName, RoomId = _roomInfo.Id });
         }
 
-        private void ChangeChip(string value)
+        private void ChangeInitialChip(string value)
         {
             if (!System.Int32.TryParse(value, out var result) || result <= 0)
             {
@@ -161,7 +171,28 @@ namespace Game.UI
             }
             else
             {
-                SendChangeRequest(result, _roomInfo.ThinkingTime, _roomInfo.MaxPlayerCount);
+                SendChangeRequest(result, _roomInfo.SmallBlindChips, _roomInfo.ThinkingTime, _roomInfo.MaxPlayerCount);
+            }
+
+        }
+
+        private void ChangeSmallBlindChip(string value)
+        {
+            if (!System.Int32.TryParse(value, out var result) || result <= 0)
+            {
+                _smallBlindChips.text = _roomInfo.SmallBlindChips.ToString();
+                return;
+            }
+            // 防止筹码量过大时溢出
+            else if (result >= 10000000)
+            {
+                _smallBlindChips.text = "10000";
+                _roomInfo.SmallBlindChips = 10000;
+                return;
+            }
+            else
+            {
+                SendChangeRequest(_roomInfo.InitialChips, result,  _roomInfo.ThinkingTime, _roomInfo.MaxPlayerCount);
             }
 
         }
@@ -175,7 +206,7 @@ namespace Game.UI
             }
             else
             {
-                SendChangeRequest(_roomInfo.InitialChips, result, _roomInfo.MaxPlayerCount);
+                SendChangeRequest(_roomInfo.InitialChips, _roomInfo.SmallBlindChips, result, _roomInfo.MaxPlayerCount);
             }
         }
 
@@ -188,7 +219,7 @@ namespace Game.UI
             }
             else
             {
-                SendChangeRequest(_roomInfo.InitialChips, _roomInfo.ThinkingTime, result);
+                SendChangeRequest(_roomInfo.InitialChips, _roomInfo.SmallBlindChips, _roomInfo.ThinkingTime, result);
             }
         }
 
@@ -196,11 +227,13 @@ namespace Game.UI
         {
             bool interactable = IsOwner;
             _initialChips.interactable = interactable;
+            _smallBlindChips.interactable = interactable;
             _thinkingTime.interactable = interactable;
             _maxPlayer.interactable = interactable;
 
             _title.text = $"房间{_roomInfo.Id}";
             _initialChips.text = _roomInfo.InitialChips.ToString();
+            _smallBlindChips.text = _roomInfo.SmallBlindChips.ToString();
             _thinkingTime.text = _roomInfo.ThinkingTime.ToString();
             _maxPlayer.text = _roomInfo.MaxPlayerCount.ToString();
 
@@ -232,13 +265,14 @@ namespace Game.UI
             }
         }
 
-        private void SendChangeRequest(int initialChips, float thinkingTime, int maxPlayer)
+        private void SendChangeRequest(int initialChips, int smallBlindChips, float thinkingTime, int maxPlayer)
         {
             NetworkClient.Send(new RoomInfoChange()
             {
                 RoomId = _roomInfo.Id,
                 PlayerName = SelfName,
                 InitialChips = initialChips,
+                SmallBlindChips = smallBlindChips,
                 ThinkingTime = thinkingTime,
                 MaxPlayer = maxPlayer,
             });

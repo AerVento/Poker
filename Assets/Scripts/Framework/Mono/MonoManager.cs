@@ -1,3 +1,4 @@
+using Framework.Log;
 using UnityEngine;
 
 namespace Framework.Mono
@@ -13,19 +14,21 @@ namespace Framework.Mono
         public const int GameLogicDeltaTime = 20;
 
         private static MonoController _controller;
-        private static MonoController _Controller
+        private static bool CreateController()
         {
-            get
+            try
             {
-                if(_controller == null)
-                {
-                    GameObject obj = new GameObject("MonoController");
-                    _controller = obj.AddComponent<MonoController>();
-                    
-                    // 这里不加DontDestroyOnLoad的原因是，加载场景时，公有Mono模块会存在之前场景的监听，而那些监听的物体早已被删除。
-                    // 因此，这里直接将MonoController随着场景的加载一起删除，防止出现问题。
-                }
-                return _controller;
+                GameObject obj = new GameObject("MonoController");
+                _controller = obj.AddComponent<MonoController>();
+                // 这里不加DontDestroyOnLoad的原因是，加载场景时，公有Mono模块会存在之前场景的监听，而那些监听的物体早已被删除。
+                // 因此，这里直接将MonoController随着场景的加载一起删除，防止出现问题。
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogException(e);
+                _controller = null;
+                return false;
             }
         }
 
@@ -39,8 +42,21 @@ namespace Framework.Mono
         /// </summary>
         public static event System.Action OnUpdate
         {
-            add => _Controller.OnUpdate += value;
-            remove => _Controller.OnUpdate -= value;
+            add 
+            {
+                if(_controller == null)
+                {
+                    if (!CreateController())
+                        return;
+                }
+                _controller.OnUpdate += value;
+            }
+            remove
+            {
+                if (_controller == null)
+                    return;
+                _controller.OnUpdate -= value;
+            }
         }
 
         /// <summary>
@@ -48,8 +64,21 @@ namespace Framework.Mono
         /// </summary>
         public static event System.Action OnFixedUpdate
         {
-            add => _Controller.OnFixedUpdate += value;
-            remove => _Controller.OnFixedUpdate -= value;
+            add
+            {
+                if (_controller == null)
+                {
+                    if (!CreateController())
+                        return;
+                }
+                _controller.OnFixedUpdate += value;
+            }
+            remove
+            {
+                if (_controller == null)
+                    return;
+                _controller.OnFixedUpdate -= value;
+            }
         }
 
         /// <summary>
@@ -57,8 +86,21 @@ namespace Framework.Mono
         /// </summary>
         public static event System.Action OnGameLogicUpdate
         {
-            add => _Controller.OnGameLogicUpdate += value;
-            remove => _Controller.OnGameLogicUpdate -= value;
+            add
+            {
+                if (_controller == null)
+                {
+                    if (!CreateController())
+                        return;
+                }
+                _controller.OnGameLogicUpdate += value;
+            }
+            remove
+            {
+                if (_controller == null)
+                    return;
+                _controller.OnGameLogicUpdate -= value;
+            }
         }
     }
 }

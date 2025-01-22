@@ -14,7 +14,7 @@ namespace Game.Tests
 
         private void Start()
         {
-            TestUnionSerialize();
+            TestRoundResultDeserialize();
 
         }
         public void TestRoomInfoSerialize() 
@@ -62,6 +62,54 @@ namespace Game.Tests
         {
             string result = "";
             List<(int, string)> list = JsonSerializer.Deserialize<List<(int, string)>>(result);
+        }
+
+        public void TestRoundResultSerialize()
+        {
+            var deck = Poker.RandomDeck();
+            var item = new RoundResult()
+            {
+                PlayerResults = new List<RoundResult.Player>()
+                {
+                    new RoundResult.Player()
+                    {
+                        PlayerName = "yurzhang",
+                        IsFold = true,
+                        Hole = new List<Poker>() { deck.Dequeue(), deck.Dequeue()},
+                        ChipEarned = 0
+                    },
+                    new RoundResult.Player()
+                    {
+                        PlayerName = "kakie",
+                        IsFold = false,
+                        Hole = new List<Poker>() { deck.Dequeue(), deck.Dequeue()},
+                        ChipEarned = 12
+                    },
+                    new RoundResult.Player()
+                    {
+                        PlayerName = "aervento",
+                        IsFold = true,
+                        Hole = new List<Poker>() { deck.Dequeue(), deck.Dequeue()},
+                        ChipEarned = 50
+                    },
+                    new RoundResult.Player()
+                    {
+                        PlayerName = "schoparks",
+                        IsFold = false,
+                        Hole = new List<Poker>() { deck.Dequeue(), deck.Dequeue()},
+                        ChipEarned = 500
+                    }
+                }
+            };
+            string result = JsonSerializer.Serialize(item);
+            Debug.Log(result);
+        }
+
+        public void TestRoundResultDeserialize()
+        {
+            string result = "{\"PlayerResults\":[{\"PlayerName\":\"yurzhang\",\"IsFold\":true,\"Hole\":[{\"Suit\":0,\"Rank\":12},{\"Suit\":1,\"Rank\":4}],\"ChipEarned\":0},{\"PlayerName\":\"kakie\",\"IsFold\":false,\"Hole\":[{\"Suit\":0,\"Rank\":6},{\"Suit\":3,\"Rank\":1}],\"ChipEarned\":12},{\"PlayerName\":\"aervento\",\"IsFold\":true,\"Hole\":[{\"Suit\":0,\"Rank\":1},{\"Suit\":1,\"Rank\":3}],\"ChipEarned\":50},{\"PlayerName\":\"schoparks\",\"IsFold\":false,\"Hole\":[{\"Suit\":2,\"Rank\":10},{\"Suit\":1,\"Rank\":7}],\"ChipEarned\":500}]}";
+            RoundResult item = JsonSerializer.Deserialize<RoundResult>(result);
+            Debug.Log(result);
         }
     }
 }

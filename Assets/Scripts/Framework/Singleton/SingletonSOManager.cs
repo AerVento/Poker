@@ -28,5 +28,16 @@ namespace Framework.SO
             else
                 return LoadSOFiles<T>(filename);
         }
+
+        public T GetSOFile<T>() where T : SingletonSO
+        {
+            var type = typeof(T);
+            if (_loadedSOFiles.TryGetValue(type, out ScriptableObject so))
+            {
+                return so as T;
+            }
+            else
+                return LoadSOFiles<T>(type.Name);
+        }
     }
 }

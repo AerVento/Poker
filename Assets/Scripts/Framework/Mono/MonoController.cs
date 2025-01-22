@@ -48,5 +48,13 @@ namespace Framework.Mono
         {
             OnFixedUpdate?.Invoke();       
         }
+
+        private void OnDestroy()
+        {
+            _cancel.Cancel();
+            OnUpdate = null;
+            OnFixedUpdate = null;
+            OnGameLogicUpdate = null;
+        }
     }
 }
