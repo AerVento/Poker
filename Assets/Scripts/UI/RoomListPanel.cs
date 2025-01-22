@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 using Framework.UI;
 using UnityEngine.UI;
@@ -8,6 +7,8 @@ using TMPro;
 using Game.Network;
 using Mirror;
 using Cysharp.Threading.Tasks;
+using RoomListItem = Game.UI.RoomListPanelElement.RoomListItem;
+
 namespace Game.UI
 {
     public class RoomListPanel : SingletonPanel<RoomListPanel>

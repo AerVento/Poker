@@ -81,7 +81,11 @@ namespace Framework.Log
 
         public static void Close()
         {
-            _stream.Close();
+            if(_stream != null)
+            {
+                _stream.Close();
+                _stream = null;
+            }
         }
     }
 }

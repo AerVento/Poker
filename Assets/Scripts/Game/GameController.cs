@@ -1,28 +1,68 @@
+
+using Framework.Configs;
+using Framework.Log;
 using Framework.Singleton;
 using Framework.UI;
 using Game.UI;
+using Mirror;
+using Mirror.SimpleWeb;
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
-using static UnityEngine.Rendering.DebugUI;
+
 
 namespace Game
 {
     public class GameController : MonoSingleton<GameController>
     {
-        public GameState State { get; private set; }
+        public GameSettings State { get; private set; }
         
         protected override void Awake()
         {
             base.Awake();
+
             DontDestroyOnLoad(gameObject);
-            State = new GameState(); // PlayerPrefs不能在构造函数中调用
+            State = new GameSettings(); // PlayerPrefs不能在构造函数中调用
         }
 
         private void Start()
         {
+
+
+
+#if UNITY_EDITOR || UNITY_STANDALONE_WIN
+            //NetworkManager.singleton.AddComponent<NetworkManagerHUD>();
+            //NetworkManager.singleton.networkAddress = "localhost";
             UIManager.Instance.ShowPanel<TitlePanel>();
+            Application.targetFrameRate = 60;
             AdjustScreen();
+            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
+            {
+                Exception e = args.ExceptionObject as Exception;
+                Framework.Log.Log.WriteError($"Unhandled exception: {e?.Message}\n{e?.StackTrace}");
+                Framework.Log.Log.Close();
+            };
+#endif
+
+#if UNITY_WEBGL
+
+            UIManager.Instance.ShowPanel<TitlePanel>();
+            Application.targetFrameRate = 60;
+            AdjustScreen();
+            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
+            {
+                Exception e = args.ExceptionObject as Exception;
+                Framework.Log.Log.WriteError($"Unhandled exception: {e?.Message}\n{e?.StackTrace}");
+                Framework.Log.Log.Close();
+            };
+#endif
+
+#if UNITY_STANDALONE_LINUX
+            NetworkManager.singleton.StartServer();
+#endif
+
         }
 
         private void AdjustScreen()
@@ -34,7 +74,11 @@ namespace Game
                 Screen.fullScreen;
             Screen.SetResolution(width, height, fullScreen);
         }
-
+        
+        private void OnApplicationQuit()
+        {
+            Framework.Log.Log.Close();
+        }
     }
 }
 

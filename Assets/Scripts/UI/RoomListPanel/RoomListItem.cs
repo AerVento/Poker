@@ -8,7 +8,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
-namespace Game.UI
+namespace Game.UI.RoomListPanelElement
 {
     public class RoomListItem : MonoBehaviour
     {

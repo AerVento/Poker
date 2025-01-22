@@ -108,6 +108,7 @@ namespace Game.UI
 
         public override void Hide()
         {
+            IsShowing = false;
             _closeButton.onClick.RemoveAllListeners();
             _confirmButton.onClick.RemoveAllListeners();
             _cancelButton.onClick.RemoveAllListeners();

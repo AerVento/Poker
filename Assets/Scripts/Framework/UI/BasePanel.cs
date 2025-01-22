@@ -6,7 +6,7 @@ namespace Framework.UI
     {
         public string Identifier { get; set; }
 
-        public bool IsShowing { get; private set; }
+        public bool IsShowing { get; protected set; }
 
         public virtual void Show()
         {
