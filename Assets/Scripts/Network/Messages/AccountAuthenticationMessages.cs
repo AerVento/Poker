@@ -27,7 +27,7 @@ namespace Game.Network
         public AccountAuthenticationCode Code;
         public string AccountId;
         public string UserName;
-        public long Chips;
+        public uint Chips;
         public bool HasLastRoom;
         public int LastRoomId;
     }

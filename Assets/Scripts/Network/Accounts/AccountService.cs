@@ -23,22 +23,19 @@ namespace Game.Network.Accounts
 
     public sealed class AccountService
     {
-        public const long DefaultInitialChips = 10000;
+        public const uint DefaultInitialChips = 10000;
 
         private readonly IAccountRepository _repository;
         private readonly PasswordHasher _passwordHasher;
-        private readonly long _initialChips;
+        private readonly uint _initialChips;
 
         public AccountService(
             IAccountRepository repository,
             PasswordHasher passwordHasher = null,
-            long initialChips = DefaultInitialChips)
+            uint initialChips = DefaultInitialChips)
         {
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
             _passwordHasher = passwordHasher ?? new PasswordHasher();
-            if (initialChips < 0)
-                throw new ArgumentOutOfRangeException(nameof(initialChips));
-
             _initialChips = initialChips;
         }
 

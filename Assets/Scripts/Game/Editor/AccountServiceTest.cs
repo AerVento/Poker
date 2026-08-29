@@ -149,6 +149,110 @@ WHERE account_id = $accountId
             Assert.AreEqual(42, reopened.FindById(account.AccountId).LastRoomId);
         }
 
+        [Test]
+        public void HandTransactionsAreAtomicConservativeAndIdempotent()
+        {
+            var service = CreateService();
+            var alice = service.Register("HandAlice", "password123").Account;
+            var bob = service.Register("HandBob", "password123").Account;
+            var repository = new SqliteAccountRepository(_databasePath);
+            repository.Initialize();
+
+            Assert.AreEqual(
+                HandStartResult.Started,
+                repository.BeginHand(
+                    "hand-atomic",
+                    7,
+                    new[] { alice.AccountId, bob.AccountId },
+                    100,
+                    out _));
+
+            var debits = new[]
+            {
+                new HandChipDebit { AccountId = alice.AccountId, Amount = 150 },
+                new HandChipDebit { AccountId = bob.AccountId, Amount = 100 },
+            };
+            Assert.AreEqual(
+                HandDebitResult.Applied,
+                repository.ApplyHandDebits("hand-atomic", "debit-1", debits, out var debited));
+            Assert.AreEqual(9850, debited[alice.AccountId].Chips);
+            Assert.AreEqual(9900, debited[bob.AccountId].Chips);
+            Assert.AreEqual(
+                HandDebitResult.AlreadyApplied,
+                repository.ApplyHandDebits("hand-atomic", "debit-1", debits, out var repeatedDebit));
+            Assert.AreEqual(9850, repeatedDebit[alice.AccountId].Chips);
+            Assert.AreEqual(
+                ChipMutationResult.AccountBusyInHand,
+                repository.ApplyChipMutation(
+                    alice.AccountId,
+                    "mid-hand-grant",
+                    "Grant",
+                    100,
+                    null,
+                    null,
+                    out _));
+            Assert.AreEqual(
+                HandStartResult.AccountAlreadyInHand,
+                repository.BeginHand(
+                    "second-hand",
+                    9,
+                    new[] { alice.AccountId, bob.AccountId },
+                    100,
+                    out _));
+
+            var credits = new[]
+            {
+                new HandChipCredit { AccountId = alice.AccountId, Amount = 250 },
+            };
+            Assert.AreEqual(
+                HandSettlementResult.Applied,
+                repository.SettleHand("hand-atomic", "settlement-1", credits, out var settled));
+            Assert.AreEqual(10100, settled[alice.AccountId].Chips);
+            Assert.AreEqual(
+                HandSettlementResult.AlreadyApplied,
+                repository.SettleHand("hand-atomic", "settlement-1", credits, out var repeatedSettlement));
+            Assert.AreEqual(10100, repeatedSettlement[alice.AccountId].Chips);
+            Assert.AreEqual(
+                20000,
+                (long)repository.FindById(alice.AccountId).Chips + repository.FindById(bob.AccountId).Chips);
+        }
+
+        [Test]
+        public void InitializeRefundsAnAbandonedActiveHand()
+        {
+            var service = CreateService();
+            var alice = service.Register("RecoveryAlice", "password123").Account;
+            var bob = service.Register("RecoveryBob", "password123").Account;
+            var repository = new SqliteAccountRepository(_databasePath);
+            repository.Initialize();
+            Assert.AreEqual(
+                HandStartResult.Started,
+                repository.BeginHand(
+                    "hand-recovery",
+                    8,
+                    new[] { alice.AccountId, bob.AccountId },
+                    100,
+                    out _));
+            Assert.AreEqual(
+                HandDebitResult.Applied,
+                repository.ApplyHandDebits(
+                    "hand-recovery",
+                    "recovery-debit",
+                    new[]
+                    {
+                        new HandChipDebit { AccountId = alice.AccountId, Amount = 300 },
+                        new HandChipDebit { AccountId = bob.AccountId, Amount = 200 },
+                    },
+                    out _));
+
+            var restartedRepository = new SqliteAccountRepository(_databasePath);
+            restartedRepository.Initialize();
+
+            Assert.AreEqual(10000, restartedRepository.FindById(alice.AccountId).Chips);
+            Assert.AreEqual(10000, restartedRepository.FindById(bob.AccountId).Chips);
+            Assert.IsFalse(restartedRepository.AbortHand("hand-recovery", "RepeatedAbort"));
+        }
+
         private AccountService CreateService()
         {
             var service = new AccountService(

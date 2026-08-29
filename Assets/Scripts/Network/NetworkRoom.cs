@@ -56,6 +56,8 @@ namespace Game.Network
         public override void OnStartServer()
         {
             base.OnStartServer();
+            if (authenticator is AccountAuthenticator accountAuthenticator)
+                _gameManager.SetAccountRepository(accountAuthenticator.AccountRepository);
             NetworkServer.RegisterHandler<PlayerChangeReadyMessage>(PlayerChangeReadyMessageHandler, requireAuthentication: true);
             NetworkServer.RegisterHandler<PlayerCreateRoomRequest>(PlayerCreateRoomRequestHandler, requireAuthentication: true);
             NetworkServer.RegisterHandler<PlayerJoinRoomRequest>(PlayerJoinRoomRequestHandler, requireAuthentication: true);
@@ -595,10 +597,13 @@ namespace Game.Network
                 return;
             }
 
-            _gameManager.CreateGame(room);
-            response.SuccessCode = _gameManager.StartNew(room.Id);
+            response.SuccessCode = _gameManager.CreateGame(room);
+            if (response.SuccessCode == 0)
+                response.SuccessCode = _gameManager.StartNew(room.Id);
             if (response.SuccessCode != 0)
             {
+                _gameManager.CancelGame(room.Id, "StartFailed");
+                _roomManager.ReturnToWaiting(room.Id);
                 conn.Send(response);
                 return;
             }
@@ -695,19 +700,16 @@ namespace Game.Network
                 Log.WriteWarn($"Non-owner {playerName} requested to change room {message.RoomId}.");
                 return;
             }
-            if (message.InitialChips <= 0 ||
-                message.SmallBlindChips <= 0 ||
+            if (message.SmallBlindChips <= 0 ||
                 message.ThinkingTime <= 0 ||
                 message.MaxPlayer < 2 ||
                 message.MaxPlayer > 16 ||
-                message.MaxPlayer < room.PlayerCount ||
-                (ulong)message.InitialChips * (uint)room.PlayerCount > uint.MaxValue)
+                message.MaxPlayer < room.PlayerCount)
             {
                 Log.WriteWarn($"Player {playerName} sent invalid room settings for room {message.RoomId}.");
                 return;
             }
 
-            room.InitialChips = message.InitialChips;
             room.SmallBlindChips = message.SmallBlindChips;
             room.ThinkingTime = message.ThinkingTime;
             room.MaxPlayerCount = message.MaxPlayer;

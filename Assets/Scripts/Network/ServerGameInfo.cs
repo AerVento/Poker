@@ -1,5 +1,6 @@
 ﻿using Framework.States;
 using Framework.Timer;
+using Game.Network.Accounts;
 using Mirror.BouncyCastle.Bcpg.OpenPgp;
 using System;
 using System.Collections.Generic;
@@ -63,6 +64,12 @@ namespace Game.Network
         public Queue<Poker> Deck { get; set; }
 
         public RoomInfo RoomInfo { get; set; }
+
+        [JsonIgnore]
+        public string HandId { get; set; }
+
+        [JsonIgnore]
+        public long ActionSequence { get; set; }
 
         /// <summary>
         /// 思考Timer
@@ -142,16 +149,27 @@ namespace Game.Network
                 CurrentHighestRaise);
         }
 
-        public static ServerGameInfo Create(RoomInfo roomInfo)
+        public static ServerGameInfo Create(
+            RoomInfo roomInfo,
+            IReadOnlyList<PlayerAccount> accounts)
         {
+            if (accounts == null || accounts.Count != roomInfo.PlayerCount)
+                throw new ArgumentException("Every room player must have an account snapshot.", nameof(accounts));
+
             ServerGameInfo info = new ServerGameInfo();
             info.RoomInfo = roomInfo;
             info.Timer = new Timer(roomInfo.ThinkingTime);
-            foreach(var player in roomInfo.Players)
+            for (int index = 0; index < roomInfo.Players.Count; index++)
             {
+                var player = roomInfo.Players[index];
+                var account = accounts[index];
+                if (account.UserName != player)
+                    throw new ArgumentException("Account snapshots must follow room player order.", nameof(accounts));
+
                 info.Players.Add(new PlayerInfo()
-                { 
-                    Chips = System.Convert.ToUInt32(roomInfo.InitialChips),
+                {
+                    AccountId = account.AccountId,
+                    Chips = account.Chips,
                     PlayerName = player,
                 });
             }
@@ -166,6 +184,12 @@ namespace Game.Network
         [System.Serializable]
         public class PlayerInfo
         {
+
+            [JsonIgnore]
+            public string AccountId { get; set; }
+
+            [JsonIgnore]
+            public uint HandStartingChips { get; set; }
 
             /// <summary>
             /// 筹码量

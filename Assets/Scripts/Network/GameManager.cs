@@ -1,5 +1,6 @@
 using Cysharp.Threading.Tasks;
 using Framework.Log;
+using Game.Network.Accounts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,26 +14,61 @@ namespace Game.Network
     {
         private readonly Dictionary<int, ServerGameInfo> _games = new Dictionary<int, ServerGameInfo>();
         private readonly HashSet<int> _autoRunningRooms = new HashSet<int>();
+        private IHandAccountRepository _accountRepository;
 
         public event Action<int> OnGameInfoChanged;
         public event Action<int> OnGameStageEnded;
         public event Action<int, RoundResult> OnRoomRoundEnded;
         public event Action<int, GameResult> OnRoomGameOver;
 
-        public void CreateGame(RoomInfo room)
+        public GameManager(IHandAccountRepository accountRepository = null)
+        {
+            _accountRepository = accountRepository;
+        }
+
+        public void SetAccountRepository(IHandAccountRepository accountRepository)
+        {
+            _accountRepository = accountRepository;
+        }
+
+        public int CreateGame(RoomInfo room)
         {
             if (room == null)
                 throw new ArgumentNullException(nameof(room));
             if (room.PlayerCount < 2)
                 throw new ArgumentException("At least two players are required.", nameof(room));
-            if (room.InitialChips <= 0 || room.SmallBlindChips <= 0 || room.ThinkingTime <= 0)
-                throw new ArgumentException("Chip counts, blinds, and thinking time must be positive.", nameof(room));
-            if ((ulong)room.InitialChips * (uint)room.PlayerCount > uint.MaxValue)
-                throw new ArgumentException("The table chip count exceeds UInt32.MaxValue.", nameof(room));
+            if (room.SmallBlindChips <= 0 || room.ThinkingTime <= 0)
+                throw new ArgumentException("Blinds and thinking time must be positive.", nameof(room));
+            if (_accountRepository == null)
+                return -7;
 
-            var gameInfo = ServerGameInfo.Create(room);
+            var accounts = new List<PlayerAccount>(room.PlayerCount);
+            var bigBlind = checked((uint)room.SmallBlindChips * 2U);
+            var eligiblePlayerCount = 0;
+            try
+            {
+                foreach (var playerName in room.Players)
+                {
+                    var account = _accountRepository.FindByUserName(playerName);
+                    if (account == null)
+                        return -7;
+                    if (account.Chips >= bigBlind)
+                        eligiblePlayerCount++;
+                    accounts.Add(account);
+                }
+            }
+            catch (Exception exception)
+            {
+                Log.WriteError($"Unable to load account balances for room {room.Id}: {exception}");
+                return -7;
+            }
+            if (eligiblePlayerCount < 2)
+                return -8;
+
+            var gameInfo = ServerGameInfo.Create(room, accounts);
             _games.Add(room.Id, gameInfo);
             gameInfo.Timer.OnTimeUp += () => AutoOperation(gameInfo);
+            return 0;
         }
 
         public ServerGameInfo GetGameInfo(int roomId)
@@ -53,9 +89,11 @@ namespace Game.Network
             return !player.IsFold && !player.IsAllIn;
         }
 
-        private static bool CanParticipateInNextHand(ServerGameInfo.PlayerInfo player)
+        private static bool CanParticipateInNextHand(
+            ServerGameInfo info,
+            ServerGameInfo.PlayerInfo player)
         {
-            return player.Chips > 0 && !player.IsDisconnected;
+            return player.Chips >= GetBigBlindAmount(info) && !player.IsDisconnected;
         }
 
         private static int FindSeatAtOrAfter(
@@ -118,42 +156,141 @@ namespace Game.Network
                 info.Players.Select(player => player.IsFold).ToArray());
         }
 
-        private static void ApplyPotRefunds(ServerGameInfo info, PotCalculator.Result calculation)
+        private bool ApplySettlement(
+            ServerGameInfo info,
+            IReadOnlyList<uint> earned,
+            PotCalculator.Result calculation)
         {
-            ulong totalRefund = 0;
+            var credits = new List<HandChipCredit>();
+            ulong totalCredit = 0;
             for (int playerIndex = 0; playerIndex < calculation.Refunds.Length; playerIndex++)
             {
-                var refund = calculation.Refunds[playerIndex];
-                if (refund == 0)
+                var credit = checked(calculation.Refunds[playerIndex] + earned[playerIndex]);
+                totalCredit = checked(totalCredit + credit);
+                if (credit == 0)
                     continue;
 
-                info.Players[playerIndex].Chips = checked(info.Players[playerIndex].Chips + refund);
-                totalRefund += refund;
+                credits.Add(new HandChipCredit
+                {
+                    AccountId = info.Players[playerIndex].AccountId,
+                    Amount = credit,
+                });
             }
 
-            if (totalRefund > info.TotalPot)
-                throw new InvalidOperationException("Uncalled chip refunds exceed the total pot.");
+            if (totalCredit != info.TotalPot)
+                throw new InvalidOperationException("The hand settlement does not conserve the pot.");
 
-            info.TotalPot -= (uint)totalRefund;
+            HandSettlementResult result;
+            IReadOnlyDictionary<string, PlayerAccount> accounts;
+            try
+            {
+                result = _accountRepository.SettleHand(
+                    info.HandId,
+                    info.HandId + ":settlement",
+                    credits,
+                    out accounts);
+            }
+            catch (Exception exception)
+            {
+                Log.WriteError($"Unable to settle hand {info.HandId}: {exception}");
+                return false;
+            }
+            if (result != HandSettlementResult.Applied && result != HandSettlementResult.AlreadyApplied)
+                return false;
+
+            foreach (var player in info.Players)
+            {
+                if (accounts.TryGetValue(player.AccountId, out var account))
+                    player.Chips = account.Chips;
+            }
+
+            info.TotalPot = 0;
+            return true;
         }
 
-        private static void CommitChips(ServerGameInfo info, ServerGameInfo.PlayerInfo player, uint chipCount)
+        private bool CommitChips(ServerGameInfo info, ServerGameInfo.PlayerInfo player, uint chipCount)
         {
             if (chipCount > player.Chips)
                 throw new InvalidOperationException("A player cannot commit more chips than are in their stack.");
 
-            player.Chips -= chipCount;
+            var requestId = info.HandId + ":action:" + info.ActionSequence.ToString();
+            HandDebitResult result;
+            IReadOnlyDictionary<string, PlayerAccount> accounts;
+            try
+            {
+                result = _accountRepository.ApplyHandDebits(
+                    info.HandId,
+                    requestId,
+                    new[]
+                    {
+                        new HandChipDebit { AccountId = player.AccountId, Amount = chipCount },
+                    },
+                    out accounts);
+            }
+            catch (Exception exception)
+            {
+                Log.WriteError($"Unable to persist an action for hand {info.HandId}: {exception}");
+                return false;
+            }
+            if ((result != HandDebitResult.Applied && result != HandDebitResult.AlreadyApplied) ||
+                !accounts.TryGetValue(player.AccountId, out var account))
+                return false;
+
+            info.ActionSequence++;
+            player.Chips = account.Chips;
             player.StageBet = checked(player.StageBet + chipCount);
             player.RoundBet = checked(player.RoundBet + chipCount);
             info.TotalPot = checked(info.TotalPot + chipCount);
             if (player.Chips == 0)
                 player.IsAllIn = true;
+            return true;
         }
 
-        private static void PostBlind(ServerGameInfo info, int playerIndex, uint blindAmount)
+        private bool PostBlinds(ServerGameInfo info, uint smallBlindAmount, uint bigBlindAmount)
         {
-            var player = info.Players[playerIndex];
-            CommitChips(info, player, Math.Min(player.Chips, blindAmount));
+            var smallBlind = info.Players[info.SmallBlind];
+            var bigBlind = info.Players[info.BigBlind];
+            var smallCommit = Math.Min(smallBlind.Chips, smallBlindAmount);
+            var bigCommit = Math.Min(bigBlind.Chips, bigBlindAmount);
+            HandDebitResult result;
+            IReadOnlyDictionary<string, PlayerAccount> accounts;
+            try
+            {
+                result = _accountRepository.ApplyHandDebits(
+                    info.HandId,
+                    info.HandId + ":blinds",
+                    new[]
+                    {
+                        new HandChipDebit { AccountId = smallBlind.AccountId, Amount = smallCommit },
+                        new HandChipDebit { AccountId = bigBlind.AccountId, Amount = bigCommit },
+                    },
+                    out accounts);
+            }
+            catch (Exception exception)
+            {
+                Log.WriteError($"Unable to persist blinds for hand {info.HandId}: {exception}");
+                return false;
+            }
+            if (result != HandDebitResult.Applied && result != HandDebitResult.AlreadyApplied)
+                return false;
+
+            ApplyCommittedBlind(info, smallBlind, smallCommit, accounts[smallBlind.AccountId]);
+            ApplyCommittedBlind(info, bigBlind, bigCommit, accounts[bigBlind.AccountId]);
+            return true;
+        }
+
+        private static void ApplyCommittedBlind(
+            ServerGameInfo info,
+            ServerGameInfo.PlayerInfo player,
+            uint chipCount,
+            PlayerAccount account)
+        {
+            player.Chips = account.Chips;
+            player.StageBet = checked(player.StageBet + chipCount);
+            player.RoundBet = checked(player.RoundBet + chipCount);
+            info.TotalPot = checked(info.TotalPot + chipCount);
+            if (player.Chips == 0)
+                player.IsAllIn = true;
         }
 
         private static void ResetActionTimer(ServerGameInfo info)
@@ -260,7 +397,7 @@ namespace Game.Network
             info.TotalPot = 0;
             info.Timer.Stop();
 
-            var remainingPlayers = info.Players.Count(CanParticipateInNextHand);
+            var remainingPlayers = info.Players.Count(player => CanParticipateInNextHand(info, player));
             info.Stage = remainingPlayers <= 1 ? GameStage.GameOver : GameStage.RoundOver;
 
             var roundResult = new RoundResult() { Community = info.Community };
@@ -295,11 +432,10 @@ namespace Game.Network
             OnRoomGameOver?.Invoke(info.RoomInfo.Id, gameResult);
         }
 
-        private void RiverExiting(ServerGameInfo info)
+        private bool RiverExiting(ServerGameInfo info)
         {
             info.OperatingPlayer = -1;
             var potCalculation = CalculatePots(info);
-            ApplyPotRefunds(info, potCalculation);
 
             var patterns = new List<(int Player, PokerPattern Pattern)>();
             for (int playerIndex = 0; playerIndex < info.PlayersCount; playerIndex++)
@@ -339,7 +475,6 @@ namespace Game.Network
                 var share = pot.ChipCount / winnerCount;
                 foreach (var winner in winners)
                 {
-                    info.Players[winner].Chips = checked(info.Players[winner].Chips + share);
                     earned[winner] = checked(earned[winner] + share);
                 }
 
@@ -348,18 +483,20 @@ namespace Game.Network
                 for (int offset = 0; offset < oddChips; offset++)
                 {
                     var winner = oddChipOrder[offset];
-                    info.Players[winner].Chips = checked(info.Players[winner].Chips + 1);
                     earned[winner] = checked(earned[winner] + 1);
                 }
             }
 
+            if (!ApplySettlement(info, earned, potCalculation))
+                return false;
+
             CompleteRound(info, earned, revealShowdownHands: true);
+            return true;
         }
 
-        private void EarlyTermination(ServerGameInfo info)
+        private bool EarlyTermination(ServerGameInfo info)
         {
             var potCalculation = CalculatePots(info);
-            ApplyPotRefunds(info, potCalculation);
             var earned = new uint[info.PlayersCount];
 
             foreach (var pot in potCalculation.Pots)
@@ -368,11 +505,14 @@ namespace Game.Network
                     throw new InvalidOperationException("An uncontested pot must have exactly one eligible player.");
 
                 var winner = pot.EligiblePlayers[0];
-                info.Players[winner].Chips = checked(info.Players[winner].Chips + pot.ChipCount);
                 earned[winner] = checked(earned[winner] + pot.ChipCount);
             }
 
+            if (!ApplySettlement(info, earned, potCalculation))
+                return false;
+
             CompleteRound(info, earned, revealShowdownHands: false);
+            return true;
         }
 
         private async void Auto(ServerGameInfo info)
@@ -392,7 +532,8 @@ namespace Game.Network
                 {
                     if (info.Players.Count(player => !player.IsFold) <= 1)
                     {
-                        EarlyTermination(info);
+                        if (!EarlyTermination(info))
+                            Log.WriteError($"Failed to persist the settlement for room {roomId}.");
                         break;
                     }
 
@@ -408,8 +549,9 @@ namespace Game.Network
                             DealRunoutStreet(info, GameStage.River, 1);
                             break;
                         case GameStage.River:
-                            RiverExiting(info);
-                            continue;
+                            if (!RiverExiting(info))
+                                Log.WriteError($"Failed to persist the settlement for room {roomId}.");
+                            return;
                     }
 
                     await UniTask.WaitForSeconds(3);
@@ -430,17 +572,68 @@ namespace Game.Network
             if (info.RoomInfo.SmallBlindChips <= 0)
                 return -3;
 
+            var bigBlindAmount = GetBigBlindAmount(info);
+            try
+            {
+                foreach (var player in info.Players)
+                {
+                    var account = _accountRepository.FindById(player.AccountId);
+                    if (account == null)
+                        return -7;
+                    player.Chips = account.Chips;
+                }
+            }
+            catch (Exception exception)
+            {
+                Log.WriteError($"Unable to refresh account balances for room {roomId}: {exception}");
+                return -7;
+            }
+
+            var participatingPlayers = info.Players
+                .Select(player => CanParticipateInNextHand(info, player))
+                .ToArray();
+            if (participatingPlayers.Count(participates => participates) < 2)
+                return -2;
+
+            var handId = Guid.NewGuid().ToString("N");
+            var participatingAccountIds = info.Players
+                .Where((player, index) => participatingPlayers[index])
+                .Select(player => player.AccountId)
+                .ToArray();
+            HandStartResult handStartResult;
+            IReadOnlyList<PlayerAccount> handAccounts;
+            try
+            {
+                handStartResult = _accountRepository.BeginHand(
+                    handId,
+                    roomId,
+                    participatingAccountIds,
+                    bigBlindAmount,
+                    out handAccounts);
+            }
+            catch (Exception exception)
+            {
+                Log.WriteError($"Unable to begin a hand in room {roomId}: {exception}");
+                return -7;
+            }
+            if (handStartResult != HandStartResult.Started)
+                return handStartResult == HandStartResult.InsufficientChips ? -2 : -7;
+
+            info.HandId = handId;
+            info.ActionSequence = 0;
+            var handAccountsById = handAccounts.ToDictionary(account => account.AccountId);
+            foreach (var player in info.Players)
+            {
+                player.HandStartingChips = participatingAccountIds.Contains(player.AccountId)
+                    ? handAccountsById[player.AccountId].Chips
+                    : 0;
+            }
+
             info.Timer.Stop();
             info.Deck = Poker.RandomDeck();
             info.Community.Clear();
             info.TotalPot = 0;
             info.Stage = GameStage.Preflop;
-
-            var participatingPlayers = info.Players
-                .Select(CanParticipateInNextHand)
-                .ToArray();
-            if (participatingPlayers.Count(participates => participates) < 2)
-                return -2;
 
             var participantCount = participatingPlayers.Count(participates => participates);
             if (participantCount == 2)
@@ -493,9 +686,11 @@ namespace Game.Network
             }
 
             var smallBlindAmount = checked((uint)info.RoomInfo.SmallBlindChips);
-            var bigBlindAmount = GetBigBlindAmount(info);
-            PostBlind(info, info.SmallBlind, smallBlindAmount);
-            PostBlind(info, info.BigBlind, bigBlindAmount);
+            if (!PostBlinds(info, smallBlindAmount, bigBlindAmount))
+            {
+                SafeAbortHand(info.HandId, "BlindPostingFailed");
+                return -7;
+            }
 
             info.CurrentHighestRaise = bigBlindAmount;
             var postedBigBlind = info.Players[info.BigBlind].StageBet;
@@ -529,8 +724,7 @@ namespace Game.Network
 
             if (info.Players.Count(player => !player.IsFold) <= 1)
             {
-                EarlyTermination(info);
-                return 0;
+                return EarlyTermination(info) ? 0 : -7;
             }
 
             if (CanRunOutBoard(info))
@@ -551,8 +745,7 @@ namespace Game.Network
                     BeginNextStreet(info, GameStage.River, 1);
                     break;
                 case GameStage.River:
-                    RiverExiting(info);
-                    break;
+                    return RiverExiting(info) ? 0 : -7;
             }
 
             return 0;
@@ -653,7 +846,8 @@ namespace Game.Network
 
             var previousBet = info.CurrentHighestPlayerBet;
             var raiseIncrement = num - previousBet;
-            CommitChips(info, player, num - player.StageBet);
+            if (!CommitChips(info, player, num - player.StageBet))
+                return -7;
             info.CurrentHighestPlayerBet = num;
             if (raiseIncrement >= info.CurrentHighestRaise)
                 info.CurrentHighestRaise = raiseIncrement;
@@ -684,7 +878,8 @@ namespace Game.Network
 
             var required = info.CurrentHighestPlayerBet - player.StageBet;
             var committed = Math.Min(required, player.Chips);
-            CommitChips(info, player, committed);
+            if (!CommitChips(info, player, committed))
+                return -5;
             player.LastOperation = new PlayerOperation()
             {
                 Type = committed < required ? PlayerOperationType.AllIn : PlayerOperationType.Call,
@@ -714,7 +909,8 @@ namespace Game.Network
                 return -5;
 
             var previousBet = info.CurrentHighestPlayerBet;
-            CommitChips(info, player, player.Chips);
+            if (!CommitChips(info, player, player.Chips))
+                return -6;
             if (allInTotal > previousBet)
             {
                 var raiseIncrement = allInTotal - previousBet;
@@ -758,15 +954,34 @@ namespace Game.Network
         public void GameOver(int roomId)
         {
             OnGameInfoChanged?.Invoke(roomId);
+            CancelGame(roomId, "GameClosed");
+            GC.Collect();
+        }
+
+        public void CancelGame(int roomId, string reason)
+        {
             var gameInfo = GetGameInfo(roomId);
             if (gameInfo == null)
                 return;
 
             gameInfo.Timer.OnTimeUp = null;
             gameInfo.Timer.Stop();
+            if (gameInfo.Stage != GameStage.RoundOver && gameInfo.Stage != GameStage.GameOver)
+                SafeAbortHand(gameInfo.HandId, reason);
             _autoRunningRooms.Remove(roomId);
             _games.Remove(roomId);
-            GC.Collect();
+        }
+
+        private void SafeAbortHand(string handId, string reason)
+        {
+            try
+            {
+                _accountRepository?.AbortHand(handId, reason);
+            }
+            catch (Exception exception)
+            {
+                Log.WriteError($"Unable to abort hand {handId}: {exception}");
+            }
         }
     }
 }

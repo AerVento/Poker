@@ -16,7 +16,7 @@ namespace Game.Network.Accounts
 
         public int PasswordIterations { get; set; }
 
-        public long Chips { get; set; }
+        public uint Chips { get; set; }
 
         public int? LastRoomId { get; set; }
 

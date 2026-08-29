@@ -15,7 +15,7 @@ namespace Game.Network
         private string _databaseFileName = "PokerAccounts.db";
 
         [SerializeField]
-        private long _initialChips = AccountService.DefaultInitialChips;
+        private uint _initialChips = AccountService.DefaultInitialChips;
 
         private NetworkRoom _networkRoom;
         private AccountService _accountService;
@@ -28,6 +28,8 @@ namespace Game.Network
 
         public bool IsAuthenticationPending => _pendingOperation.HasValue;
 
+        public IHandAccountRepository AccountRepository { get; private set; }
+
         private void Awake()
         {
             _networkRoom = GetComponent<NetworkRoom>();
@@ -39,8 +41,9 @@ namespace Game.Network
             try
             {
                 var databasePath = Path.Combine(Application.persistentDataPath, _databaseFileName);
+                AccountRepository = new SqliteAccountRepository(databasePath);
                 _accountService = new AccountService(
-                    new SqliteAccountRepository(databasePath),
+                    AccountRepository,
                     initialChips: _initialChips);
                 _accountService.Initialize();
                 Log.WriteInfo($"Account database initialized at {databasePath}.");
@@ -48,10 +51,12 @@ namespace Game.Network
             catch (Exception exception)
             {
                 _accountService = null;
+                AccountRepository = null;
                 Log.WriteError($"Unable to initialize the account database: {exception}");
             }
 #else
             _accountService = null;
+            AccountRepository = null;
             Log.WriteError("The account database server is only supported in the Unity Editor and Linux Standalone server.");
 #endif
 
@@ -64,6 +69,7 @@ namespace Game.Network
             NetworkServer.UnregisterHandler<AccountRegisterRequest>();
             NetworkServer.UnregisterHandler<AccountLoginRequest>();
             _accountService = null;
+            AccountRepository = null;
         }
 
         public override void OnServerAuthenticate(NetworkConnectionToClient conn)

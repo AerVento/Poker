@@ -200,6 +200,15 @@ namespace Game.Network
             return 0;
         }
 
+        public void ReturnToWaiting(int roomId)
+        {
+            var room = FindRoom(roomId);
+            if (room == null)
+                return;
+
+            room.IsWaiting = true;
+        }
+
         /// <summary>
         /// 此玩家在哪个房间中
         /// </summary>

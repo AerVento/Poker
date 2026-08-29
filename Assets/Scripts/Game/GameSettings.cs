@@ -8,7 +8,7 @@ namespace Game
 
         public string Nickname => UserName;
 
-        public long Chips { get; private set; }
+        public uint Chips { get; private set; }
 
         public int? LastRoomId { get; private set; }
 
@@ -17,7 +17,7 @@ namespace Game
         public void SetAuthenticatedAccount(
             string accountId,
             string userName,
-            long chips,
+            uint chips,
             int? lastRoomId)
         {
             AccountId = accountId;
