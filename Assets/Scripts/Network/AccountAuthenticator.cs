@@ -19,8 +19,14 @@ namespace Game.Network
 
         private NetworkRoom _networkRoom;
         private AccountService _accountService;
+        private AccountAuthenticationOperation? _pendingOperation;
+        private string _pendingUserName;
+        private string _pendingPassword;
+        private bool _pendingRequestSent;
 
         public event Action<AccountAuthenticationResponse> AuthenticationResponseReceived;
+
+        public bool IsAuthenticationPending => _pendingOperation.HasValue;
 
         private void Awake()
         {
@@ -75,35 +81,80 @@ namespace Game.Network
         public override void OnStopClient()
         {
             NetworkClient.UnregisterHandler<AccountAuthenticationResponse>();
+            ClearPendingAuthentication();
         }
 
         public override void OnClientAuthenticate()
         {
-            // The login UI submits credentials after the transport connection is established.
+            SendPendingAuthentication();
         }
 
         public void Register(string userName, string password)
         {
-            if (NetworkClient.connection == null || NetworkClient.connection.isAuthenticated)
-                return;
-
-            NetworkClient.Send(new AccountRegisterRequest
-            {
-                UserName = userName,
-                Password = password,
-            });
+            BeginAuthentication(AccountAuthenticationOperation.Register, userName, password);
         }
 
         public void Login(string userName, string password)
         {
-            if (NetworkClient.connection == null || NetworkClient.connection.isAuthenticated)
+            BeginAuthentication(AccountAuthenticationOperation.Login, userName, password);
+        }
+
+        public void CancelPendingAuthentication()
+        {
+            ClearPendingAuthentication();
+        }
+
+        private void BeginAuthentication(
+            AccountAuthenticationOperation operation,
+            string userName,
+            string password)
+        {
+            if (NetworkClient.connection != null && NetworkClient.connection.isAuthenticated)
                 return;
 
-            NetworkClient.Send(new AccountLoginRequest
+            _pendingOperation = operation;
+            _pendingUserName = userName;
+            _pendingPassword = password;
+            _pendingRequestSent = false;
+
+            if (NetworkClient.isConnected)
             {
-                UserName = userName,
-                Password = password,
-            });
+                SendPendingAuthentication();
+            }
+            else if (!NetworkClient.active)
+            {
+                _networkRoom.StartClient();
+            }
+        }
+
+        private void SendPendingAuthentication()
+        {
+            if (!_pendingOperation.HasValue ||
+                _pendingRequestSent ||
+                !NetworkClient.isConnected ||
+                NetworkClient.connection == null ||
+                NetworkClient.connection.isAuthenticated)
+            {
+                return;
+            }
+
+            _pendingRequestSent = true;
+            if (_pendingOperation.Value == AccountAuthenticationOperation.Register)
+            {
+                NetworkClient.Send(new AccountRegisterRequest
+                {
+                    UserName = _pendingUserName,
+                    Password = _pendingPassword,
+                });
+            }
+            else
+            {
+                NetworkClient.Send(new AccountLoginRequest
+                {
+                    UserName = _pendingUserName,
+                    Password = _pendingPassword,
+                });
+            }
         }
 
         private void OnRegisterRequest(NetworkConnectionToClient conn, AccountRegisterRequest request)
@@ -167,9 +218,15 @@ namespace Game.Network
 
         private void OnAuthenticationResponse(AccountAuthenticationResponse response)
         {
-            AuthenticationResponseReceived?.Invoke(response);
-            if (response.Code != AccountAuthenticationCode.Success)
+            if (!_pendingOperation.HasValue || response.Operation != _pendingOperation.Value)
                 return;
+
+            ClearPendingAuthentication();
+            if (response.Code != AccountAuthenticationCode.Success)
+            {
+                AuthenticationResponseReceived?.Invoke(response);
+                return;
+            }
 
             if (GameController.Available)
             {
@@ -180,7 +237,16 @@ namespace Game.Network
                     response.HasLastRoom ? (int?)response.LastRoomId : null);
             }
 
+            AuthenticationResponseReceived?.Invoke(response);
             ClientAccept();
+        }
+
+        private void ClearPendingAuthentication()
+        {
+            _pendingOperation = null;
+            _pendingUserName = null;
+            _pendingPassword = null;
+            _pendingRequestSent = false;
         }
 
         private static AccountAuthenticationResponse CreateResponse(
