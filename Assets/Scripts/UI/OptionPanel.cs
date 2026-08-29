@@ -1,12 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 using Framework.UI;
 using UnityEngine.UI;
 using TMPro;
-using Mirror;
-using Game.Network;
 namespace Game.UI
 {
     public class OptionPanel : SingletonPanel<OptionPanel>
@@ -58,7 +55,7 @@ namespace Game.UI
             _back.onClick.AddListener(Back);
 
             _nickname.text = GameController.Instance.State.Nickname;
-            _nickname.onEndEdit.AddListener(NicknameChange);
+            _nickname.interactable = false;
 
             var resolutions = Screen.resolutions;
             for (int i = 0; i < resolutions.Length; i++)
@@ -78,28 +75,12 @@ namespace Game.UI
         private void OnDisable()
         {
             _back.onClick.RemoveListener(Back);
-            _nickname.onEndEdit.RemoveListener(NicknameChange);
         }
 
         private void Back()
         {
             UIManager.Instance.HidePanel<OptionPanel>();
             UIManager.Instance.ShowPanel<TitlePanel>();
-        }
-
-        private void NicknameChange(string newValue)
-        {
-            if (!string.IsNullOrEmpty(newValue))
-            {
-                if (NetworkClient.isConnected)
-                    NetworkClient.Send(new PlayerChangeNameMessage()
-                    {
-                        OldName = GameController.Instance.State.Nickname,
-                        NewName = newValue
-                    });
-                _nickname.text = newValue;
-                GameController.Instance.State.Nickname = newValue;
-            }
         }
 
         private void ChangeResolution(int option)

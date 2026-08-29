@@ -2,6 +2,7 @@ using Assets.Scripts.Network.Messages;
 using Cysharp.Threading.Tasks;
 using Framework.Log;
 using Framework.UI;
+using Game.Network.Accounts;
 using Game.UI;
 using Game.UI.GamePanelElement;
 using Mirror;
@@ -41,6 +42,9 @@ namespace Game.Network
 
         public override void Awake()
         {
+            if (authenticator == null)
+                authenticator = GetComponent<AccountAuthenticator>() ?? gameObject.AddComponent<AccountAuthenticator>();
+
             base.Awake();
             _gameManager.OnGameInfoChanged += OnGameInfoChanged;
             _gameManager.OnGameStageEnded += OnGameStageEnd;
@@ -52,21 +56,56 @@ namespace Game.Network
         public override void OnStartServer()
         {
             base.OnStartServer();
-            NetworkServer.RegisterHandler<PlayerChangeNameMessage>(PlayerChangeNameMessageHandler, requireAuthentication: false);
-            NetworkServer.RegisterHandler<PlayerChangeReadyMessage>(PlayerChangeReadyMessageHandler, requireAuthentication: false);
-            NetworkServer.RegisterHandler<PlayerConnectMessage>(PlayerConnectMessageHandler, requireAuthentication: false);
-            NetworkServer.RegisterHandler<PlayerCreateRoomRequest>(PlayerCreateRoomRequestHandler, requireAuthentication: false);
-            NetworkServer.RegisterHandler<PlayerJoinRoomRequest>(PlayerJoinRoomRequestHandler, requireAuthentication: false);
-            NetworkServer.RegisterHandler<PlayerLeaveRoomRequest>(PlayerLeaveRoomRequestHandler, requireAuthentication: false);
-            NetworkServer.RegisterHandler<PlayerOperationRequest>(PlayerOperationRequestHandler, requireAuthentication:false);
-            NetworkServer.RegisterHandler<PlayerStartGameRequest>(PlayerStartGameRequestHandler, requireAuthentication: false);
-            NetworkServer.RegisterHandler<RoomInfoChange>(RoomInfoChangeHandler, requireAuthentication: false);
-            NetworkServer.RegisterHandler<RoomListRequest>(RoomListRequestHandler, requireAuthentication: false);
+            NetworkServer.RegisterHandler<PlayerChangeReadyMessage>(PlayerChangeReadyMessageHandler, requireAuthentication: true);
+            NetworkServer.RegisterHandler<PlayerCreateRoomRequest>(PlayerCreateRoomRequestHandler, requireAuthentication: true);
+            NetworkServer.RegisterHandler<PlayerJoinRoomRequest>(PlayerJoinRoomRequestHandler, requireAuthentication: true);
+            NetworkServer.RegisterHandler<PlayerLeaveRoomRequest>(PlayerLeaveRoomRequestHandler, requireAuthentication: true);
+            NetworkServer.RegisterHandler<PlayerOperationRequest>(PlayerOperationRequestHandler, requireAuthentication: true);
+            NetworkServer.RegisterHandler<PlayerStartGameRequest>(PlayerStartGameRequestHandler, requireAuthentication: true);
+            NetworkServer.RegisterHandler<RoomInfoChange>(RoomInfoChangeHandler, requireAuthentication: true);
+            NetworkServer.RegisterHandler<RoomListRequest>(RoomListRequestHandler, requireAuthentication: true);
+        }
+
+        internal NetworkConnectionToClient BindAuthenticatedAccount(
+            PlayerAccount account,
+            NetworkConnectionToClient conn)
+        {
+            return _playerManager.BindAccount(account, conn);
+        }
+
+        public override void OnServerConnect(NetworkConnectionToClient conn)
+        {
+            if (!_playerManager.TryGetPlayerName(conn, out var playerName) ||
+                !_roomManager.WhichRoom(playerName, out var roomId))
+            {
+                return;
+            }
+
+            var room = _roomManager.FindRoom(roomId);
+            if (room == null)
+                return;
+
+            if (room.IsWaiting)
+            {
+                conn.Send(new PlayerJoinRoomResponse
+                {
+                    SuccessCode = 0,
+                    RoomInfo = room,
+                });
+                return;
+            }
+
+            var playerIndex = _gameManager.SetConnected(roomId, playerName);
+            var gameInfo = _gameManager.GetGameInfo(roomId);
+            if (playerIndex < 0 || gameInfo == null)
+                return;
+
+            conn.Send(new PlayerStartGameResponse { SuccessCode = 0 });
+            conn.Send(new GameInfoSync { Info = new ClientGameInfo(gameInfo, playerIndex) });
         }
 
         public override void OnServerDisconnect(NetworkConnectionToClient conn)
         {
-            // base.OnServerDisconnect(conn);
             if (_playerManager.RemoveConnection(conn, out var name))
             {
 
@@ -96,6 +135,8 @@ namespace Game.Network
                     }
                 }
             }
+
+            base.OnServerDisconnect(conn);
         }
         #endregion Server
 
@@ -141,9 +182,6 @@ namespace Game.Network
 
             UIManager.Instance.HidePanel<TitlePanel>();
             UIManager.Instance.ShowPanel<RoomListPanel>();
-            var message = new PlayerConnectMessage();
-            message.PlayerName = GameController.Instance.State.Nickname;
-            NetworkClient.Send(message);
         }
 
         public override void OnClientError(TransportError error, string reason)
@@ -198,7 +236,7 @@ namespace Game.Network
                         if (oldConnectedStatus)
                         {
                             msgbox.Title = "与服务器断开连接";
-                            msgbox.Message = "有可能网络状态差，请检查网络连接\n也有极小可能是有同名玩家进入，请考虑更换昵称";
+                            msgbox.Message = "请检查网络连接；如果此账号在其他设备登录，原连接也会被替换";
                         }
                         else
                         {
@@ -216,9 +254,11 @@ namespace Game.Network
 
         #region Message Handler
 
-        private bool IsAuthorizedPlayer(NetworkConnectionToClient conn, string playerName)
+        private bool TryGetAuthenticatedPlayer(
+            NetworkConnectionToClient conn,
+            out string playerName)
         {
-            return _playerManager.IsConnectionForPlayer(playerName, conn);
+            return _playerManager.TryGetPlayerName(conn, out playerName);
         }
 
         private void GameInfoSyncHandler(GameInfoSync message)
@@ -235,36 +275,12 @@ namespace Game.Network
             GameResultMsgBox.Instance.Info = message.GameResult;
         }
 
-        private void PlayerChangeNameMessageHandler(NetworkConnectionToClient conn, PlayerChangeNameMessage message)
-        {
-            Log.Write($"Player {message.OldName} from {conn.address} requested to changed its player name to {message.NewName}.");
-            if (!IsAuthorizedPlayer(conn, message.OldName))
-            {
-                Log.WriteWarn($"Connection {conn.address} attempted to rename player {message.OldName} without owning that identity.");
-                return;
-            }
-            if (_roomManager.WhichRoom(message.OldName, out _))
-            {
-                Log.WriteWarn($"Player {message.OldName} attempted to rename while seated in a room.");
-                return;
-            }
-            if (_playerManager.IsConnected(message.NewName))
-            {
-                Log.Write($"The new name {message.NewName} is occupied by another online player, so the connection will be shutdown.");
-                conn.Disconnect();
-                return;
-            }
-            _playerManager.RemoveConnection(message.OldName);
-            _playerManager.SetConnection(message.NewName, conn);
-            Log.Write($"Player {message.OldName} from {conn.address} successfully changed its player name to {message.NewName}.");
-        }
-
         private void PlayerChangeReadyMessageHandler(NetworkConnectionToClient conn, PlayerChangeReadyMessage message)
         {
-            if (!IsAuthorizedPlayer(conn, message.PlayerName))
+            if (!TryGetAuthenticatedPlayer(conn, out var playerName))
                 return;
 
-            int result = _roomManager.PlayerChangeReady(message.RoomId, message.PlayerName);
+            int result = _roomManager.PlayerChangeReady(message.RoomId, playerName);
             if(result == 0)
             {
                 var room = _roomManager.FindRoom(message.RoomId);
@@ -277,46 +293,22 @@ namespace Game.Network
             }
         }
         
-        private void PlayerConnectMessageHandler(NetworkConnectionToClient conn, PlayerConnectMessage message)
-        {
-            Log.Write($"Player {message.PlayerName} from {conn.address} is connecting to the server.");
-            if (_playerManager.TryGetPlayerName(conn, out var connectedName))
-            {
-                if (connectedName != message.PlayerName)
-                {
-                    Log.WriteWarn($"Connection {conn.address} attempted to register a second identity.");
-                    conn.Disconnect();
-                }
-                return;
-            }
-            if (_playerManager.IsConnected(message.PlayerName))
-            {
-                Log.Write($"Player {message.PlayerName} from {conn.address} is already connected to the server. Therefore the cuurent connection will be disconnected.");
-                conn.Disconnect();
-            }
-            else
-            {
-                _playerManager.SetConnection(message.PlayerName, conn);
-                Log.Write($"Player {message.PlayerName} from {conn.address} is connected to the server.");
-            }
-        }
-
         private void PlayerCreateRoomRequestHandler(NetworkConnectionToClient conn, PlayerCreateRoomRequest message)
         {
-            if (!IsAuthorizedPlayer(conn, message.PlayerName))
+            if (!TryGetAuthenticatedPlayer(conn, out var playerName))
                 return;
 
-            var room = _roomManager.CreateRoom(message.PlayerName);
+            var room = _roomManager.CreateRoom(playerName);
             var sync = new RoomInfoSync() { RoomInfo = room };
             conn.Send(sync);
         }
 
         private void PlayerJoinRoomRequestHandler(NetworkConnectionToClient conn, PlayerJoinRoomRequest request)
         {
-            if (!IsAuthorizedPlayer(conn, request.PlayerName))
+            if (!TryGetAuthenticatedPlayer(conn, out var playerName))
                 return;
 
-            int result = _roomManager.Join(request.RoomId, request.PlayerName);
+            int result = _roomManager.Join(request.RoomId, playerName);
             var response = new PlayerJoinRoomResponse()
             {
                 SuccessCode = result,
@@ -330,7 +322,7 @@ namespace Game.Network
                 var sync = new RoomInfoSync() { RoomInfo = room };
                 foreach (var player in room.Players)
                 {
-                    if (player == request.PlayerName)
+                    if (player == playerName)
                         continue; // 如果是刚加入房间的人，就不给他发Sync了，response里面会给他提供room信息，自己更新就可以
                     var playerConn = _playerManager.GetConnection(player);
                     playerConn?.Send(sync);
@@ -390,10 +382,10 @@ namespace Game.Network
 
         private void PlayerLeaveRoomRequestHandler(NetworkConnectionToClient conn, PlayerLeaveRoomRequest message)
         {
-            if (!IsAuthorizedPlayer(conn, message.PlayerName))
+            if (!TryGetAuthenticatedPlayer(conn, out var playerName))
                 return;
 
-            int result = _roomManager.Leave(message.RoomId, message.PlayerName);
+            int result = _roomManager.Leave(message.RoomId, playerName);
             switch (result)
             {
                 case 0:
@@ -409,7 +401,7 @@ namespace Game.Network
                     }
                     break;
                 case -1:
-                    Log.WriteError($"Player {message.PlayerName} requested to leave the room {message.RoomId}, which is not exist. This shouldn't be happen when the player using the client software. Please be noted.");
+                    Log.WriteError($"Player {playerName} requested to leave the room {message.RoomId}, which does not exist.");
                     break;
                 default:
                     Log.WriteError($"Unknown code: {result}.");
@@ -583,11 +575,12 @@ namespace Game.Network
         {
             var response = new PlayerStartGameResponse();
             var room = _roomManager.FindRoom(message.RoomId);
+            var authenticated = TryGetAuthenticatedPlayer(conn, out var playerName);
             if (room == null)
             {
                 response.SuccessCode = -1;
             }
-            else if (!IsAuthorizedPlayer(conn, message.PlayerName) || room.OwnerName != message.PlayerName)
+            else if (!authenticated || room.OwnerName != playerName)
             {
                 response.SuccessCode = -4;
             }
@@ -683,20 +676,23 @@ namespace Game.Network
 
         private void RoomInfoChangeHandler(NetworkConnectionToClient conn, RoomInfoChange message)
         {
+            if (!TryGetAuthenticatedPlayer(conn, out var playerName))
+                return;
+
             var room = _roomManager.FindRoom(message.RoomId);
             if (room == null)
             {
-                Log.WriteWarn($"Player from {conn.address} called {message.PlayerName} requested to change the room info of room {message.RoomId} but the room doesn't exists.");
+                Log.WriteWarn($"Player {playerName} requested to change missing room {message.RoomId}.");
                 return;
             }
             if (!room.IsWaiting)
             {
-                Log.WriteWarn($"Player {message.PlayerName} attempted to change settings after room {message.RoomId} started.");
+                Log.WriteWarn($"Player {playerName} attempted to change settings after room {message.RoomId} started.");
                 return;
             }
-            if (!IsAuthorizedPlayer(conn, message.PlayerName) || room.OwnerName != message.PlayerName)
+            if (room.OwnerName != playerName)
             {
-                Log.WriteWarn($"Non-owner {message.PlayerName} requested to change the room {message.RoomId}");
+                Log.WriteWarn($"Non-owner {playerName} requested to change room {message.RoomId}.");
                 return;
             }
             if (message.InitialChips <= 0 ||
@@ -707,7 +703,7 @@ namespace Game.Network
                 message.MaxPlayer < room.PlayerCount ||
                 (ulong)message.InitialChips * (uint)room.PlayerCount > uint.MaxValue)
             {
-                Log.WriteWarn($"Player {message.PlayerName} sent invalid room settings for room {message.RoomId}.");
+                Log.WriteWarn($"Player {playerName} sent invalid room settings for room {message.RoomId}.");
                 return;
             }
 

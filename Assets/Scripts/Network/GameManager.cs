@@ -1,4 +1,4 @@
-﻿using Cysharp.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using Framework.Log;
 using System;
 using System.Collections.Generic;
@@ -572,6 +572,20 @@ namespace Game.Network
                 AutoOperation(info);
             else
                 OnGameInfoChanged?.Invoke(roomId);
+        }
+
+        public int SetConnected(int roomId, string playerName)
+        {
+            if (!_games.TryGetValue(roomId, out var info))
+                return -1;
+
+            var playerIndex = info.Players.FindIndex(player => player.PlayerName == playerName);
+            if (playerIndex < 0)
+                return -1;
+
+            info.Players[playerIndex].IsDisconnected = false;
+            OnGameInfoChanged?.Invoke(roomId);
+            return playerIndex;
         }
 
         private void AutoOperation(ServerGameInfo info)

@@ -1,82 +1,142 @@
-﻿using Mirror;
+﻿using Game.Network.Accounts;
+using Mirror;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Game.Network
 {
+    public sealed class PlayerSession
+    {
+        public string SessionId { get; set; }
+
+        public PlayerAccount Account { get; set; }
+
+        public NetworkConnectionToClient Connection { get; set; }
+    }
+
     /// <summary>
-    /// 建立连接和玩家名之间的映射关系
+    /// Stores the server-authoritative mapping between authenticated accounts and connections.
     /// </summary>
     public class PlayerManager
     {
-        private Dictionary<string, NetworkConnectionToClient> _conns = new Dictionary<string, NetworkConnectionToClient>();
+        private readonly Dictionary<string, PlayerSession> _sessionsByUserName =
+            new Dictionary<string, PlayerSession>(StringComparer.Ordinal);
+
+        private readonly Dictionary<NetworkConnectionToClient, PlayerSession> _sessionsByConnection =
+            new Dictionary<NetworkConnectionToClient, PlayerSession>();
+
+        public NetworkConnectionToClient BindAccount(
+            PlayerAccount account,
+            NetworkConnectionToClient connection)
+        {
+            if (account == null)
+                throw new ArgumentNullException(nameof(account));
+            if (connection == null)
+                throw new ArgumentNullException(nameof(connection));
+
+            NetworkConnectionToClient replacedConnection = null;
+            if (_sessionsByUserName.TryGetValue(account.UserName, out var replacedSession))
+            {
+                replacedConnection = replacedSession.Connection;
+                _sessionsByConnection.Remove(replacedSession.Connection);
+            }
+
+            if (_sessionsByConnection.TryGetValue(connection, out var connectionSession))
+            {
+                _sessionsByConnection.Remove(connection);
+                if (_sessionsByUserName.TryGetValue(connectionSession.Account.UserName, out var currentSession) &&
+                    ReferenceEquals(currentSession, connectionSession))
+                {
+                    _sessionsByUserName.Remove(connectionSession.Account.UserName);
+                }
+            }
+
+            var session = new PlayerSession
+            {
+                SessionId = Guid.NewGuid().ToString("N"),
+                Account = account.Copy(),
+                Connection = connection,
+            };
+            _sessionsByUserName[account.UserName] = session;
+            _sessionsByConnection[connection] = session;
+            return replacedConnection;
+        }
+
         public bool IsConnected(string playerName)
         {
-            return _conns.ContainsKey(playerName);
+            return playerName != null && _sessionsByUserName.ContainsKey(playerName);
         }
-        
+
         public NetworkConnectionToClient GetConnection(string playerName)
         {
-            if (_conns.ContainsKey(playerName))
-                return _conns[playerName];
-            else
-                return null;
+            return playerName != null &&
+                _sessionsByUserName.TryGetValue(playerName, out var session)
+                ? session.Connection
+                : null;
         }
 
-        public bool IsConnectionForPlayer(string playerName, NetworkConnectionToClient conn)
+        public bool IsConnectionForPlayer(string playerName, NetworkConnectionToClient connection)
         {
             return playerName != null &&
-                conn != null &&
-                _conns.TryGetValue(playerName, out var registeredConnection) &&
-                registeredConnection == conn;
+                connection != null &&
+                _sessionsByUserName.TryGetValue(playerName, out var session) &&
+                session.Connection == connection;
         }
 
-        public bool TryGetPlayerName(NetworkConnectionToClient conn, out string playerName)
+        public bool TryGetSession(NetworkConnectionToClient connection, out PlayerSession session)
         {
-            foreach (var pair in _conns)
+            if (connection != null && _sessionsByConnection.TryGetValue(connection, out session))
+                return true;
+
+            session = null;
+            return false;
+        }
+
+        public bool TryGetAccount(NetworkConnectionToClient connection, out PlayerAccount account)
+        {
+            if (TryGetSession(connection, out var session))
             {
-                if (pair.Value == conn)
-                {
-                    playerName = pair.Key;
-                    return true;
-                }
+                account = session.Account;
+                return true;
+            }
+
+            account = null;
+            return false;
+        }
+
+        public bool TryGetPlayerName(NetworkConnectionToClient connection, out string playerName)
+        {
+            if (TryGetSession(connection, out var session))
+            {
+                playerName = session.Account.UserName;
+                return true;
             }
 
             playerName = null;
             return false;
         }
 
-        public void SetConnection(string playerName, NetworkConnectionToClient conn)
-        {
-            if(_conns.ContainsKey(playerName))
-                _conns[playerName] = conn;
-            else
-                _conns.Add(playerName, conn);
-        }
-
-        public void RemoveConnection(string playerName)
-        {
-            _conns.Remove(playerName);   
-        }
-
         /// <summary>
-        /// 移除连接
+        /// Removes a connection only when it still owns the current account session.
+        /// A replaced connection is already detached and cannot remove its replacement.
         /// </summary>
-        /// <param name="conn">连接</param>
-        /// <param name="playerName">此连接对应的用户名</param>
-        /// <returns>是否存在此链接</returns>
-        public bool RemoveConnection(NetworkConnectionToClient conn, out string playerName)
+        public bool RemoveConnection(NetworkConnectionToClient connection, out string playerName)
         {
-            if (!TryGetPlayerName(conn, out playerName))
+            if (!TryGetSession(connection, out var session))
+            {
+                playerName = null;
                 return false;
+            }
 
-            _conns.Remove(playerName);
+            playerName = session.Account.UserName;
+            _sessionsByConnection.Remove(connection);
+            if (_sessionsByUserName.TryGetValue(playerName, out var currentSession) &&
+                ReferenceEquals(currentSession, session))
+            {
+                _sessionsByUserName.Remove(playerName);
+            }
+
             return true;
         }
-
-
     }
 }

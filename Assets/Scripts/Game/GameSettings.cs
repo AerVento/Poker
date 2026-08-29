@@ -1,25 +1,29 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-
 namespace Game
 {
     public class GameSettings
     {
-        private string _nickname;
-        public string Nickname
+        public string AccountId { get; private set; }
+
+        public string UserName { get; private set; }
+
+        public string Nickname => UserName;
+
+        public long Chips { get; private set; }
+
+        public int? LastRoomId { get; private set; }
+
+        public bool IsAuthenticated => !string.IsNullOrEmpty(AccountId);
+
+        public void SetAuthenticatedAccount(
+            string accountId,
+            string userName,
+            long chips,
+            int? lastRoomId)
         {
-            get => _nickname;
-            set
-            {
-                _nickname = value;
-                PlayerPrefs.SetString("nickname", value);
-            }
-        }
-        public GameSettings()
-        {
-            System.Random r = new System.Random();
-            _nickname = PlayerPrefs.GetString("nickname", defaultValue:$"Anonymous{r.Next(0,10000)}");
+            AccountId = accountId;
+            UserName = userName;
+            Chips = chips;
+            LastRoomId = lastRoomId;
         }
     }
 }
