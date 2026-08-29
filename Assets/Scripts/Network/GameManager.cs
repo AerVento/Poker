@@ -35,6 +35,7 @@ namespace Game.Network
         {
             if (room == null)
                 throw new ArgumentNullException(nameof(room));
+            room.EnsureSeatModel();
             if (room.PlayerCount < 2)
                 throw new ArgumentException("At least two players are required.", nameof(room));
             if (room.SmallBlindChips <= 0 || room.ThinkingTime <= 0)
@@ -86,14 +87,20 @@ namespace Game.Network
 
         private static bool CanAct(ServerGameInfo.PlayerInfo player)
         {
-            return !player.IsFold && !player.IsAllIn;
+            return player.IsOccupied &&
+                player.ParticipatedThisHand &&
+                !player.IsFold &&
+                !player.IsAllIn;
         }
 
         private static bool CanParticipateInNextHand(
             ServerGameInfo info,
             ServerGameInfo.PlayerInfo player)
         {
-            return player.Chips >= GetBigBlindAmount(info) && !player.IsDisconnected;
+            return player.IsOccupied &&
+                !player.IsLeaving &&
+                player.Chips >= GetBigBlindAmount(info) &&
+                !player.IsDisconnected;
         }
 
         private static int FindSeatAtOrAfter(
@@ -200,8 +207,12 @@ namespace Game.Network
 
             foreach (var player in info.Players)
             {
-                if (accounts.TryGetValue(player.AccountId, out var account))
+                if (player.IsOccupied &&
+                    !string.IsNullOrEmpty(player.AccountId) &&
+                    accounts.TryGetValue(player.AccountId, out var account))
+                {
                     player.Chips = account.Chips;
+                }
             }
 
             info.TotalPot = 0;
@@ -397,15 +408,17 @@ namespace Game.Network
             info.TotalPot = 0;
             info.Timer.Stop();
 
-            var remainingPlayers = info.Players.Count(player => CanParticipateInNextHand(info, player));
-            info.Stage = remainingPlayers <= 1 ? GameStage.GameOver : GameStage.RoundOver;
+            info.Stage = GameStage.RoundOver;
 
             var roundResult = new RoundResult() { Community = info.Community };
             for (int i = 0; i < info.PlayersCount; i++)
             {
+                if (!info.Players[i].ParticipatedThisHand)
+                    continue;
+
                 roundResult.PlayerResults.Add(new RoundResult.Player()
                 {
-                    PlayerName = info.RoomInfo.Players[i],
+                    PlayerName = info.Players[i].PlayerName,
                     Hole = revealShowdownHands && !info.Players[i].IsFold
                         ? info.Players[i].Hole
                         : new List<Poker>(),
@@ -415,21 +428,8 @@ namespace Game.Network
                 });
             }
 
+            UpdateRoomSeatStatesAfterHand(info);
             OnRoomRoundEnded?.Invoke(info.RoomInfo.Id, roundResult);
-            if (info.Stage != GameStage.GameOver)
-                return;
-
-            var gameResult = new GameResult();
-            foreach (var player in info.Players)
-            {
-                gameResult.PlayerResults.Add(new GameResult.Player()
-                {
-                    Name = player.PlayerName,
-                    Chips = player.Chips,
-                    IsDisconnected = player.IsDisconnected,
-                });
-            }
-            OnRoomGameOver?.Invoke(info.RoomInfo.Id, gameResult);
         }
 
         private bool RiverExiting(ServerGameInfo info)
@@ -563,6 +563,161 @@ namespace Game.Network
             }
         }
 
+        public bool IsHandInProgress(int roomId)
+        {
+            return _games.TryGetValue(roomId, out var info) &&
+                info.Stage != GameStage.RoundOver &&
+                info.Stage != GameStage.GameOver;
+        }
+
+        public int FindPlayerSeat(int roomId, string playerName)
+        {
+            if (!_games.TryGetValue(roomId, out var info))
+                return -1;
+
+            return info.Players.FindIndex(player =>
+                player.IsOccupied && player.PlayerName == playerName);
+        }
+
+        public int CountEligiblePlayers(int roomId)
+        {
+            if (!_games.TryGetValue(roomId, out var info))
+                return 0;
+
+            return info.Players.Count(player => CanParticipateInNextHand(info, player));
+        }
+
+        public int SynchronizeRoomSeats(int roomId)
+        {
+            if (!_games.TryGetValue(roomId, out var info))
+                return -1;
+
+            if (!SynchronizeRoomSeats(info))
+                return -7;
+
+            return 0;
+        }
+
+        public int SetLeaving(int roomId, string playerName)
+        {
+            if (!_games.TryGetValue(roomId, out var info))
+                return -1;
+
+            var playerIndex = FindPlayerSeat(roomId, playerName);
+            if (playerIndex < 0)
+                return -2;
+
+            var player = info.Players[playerIndex];
+            player.IsLeaving = true;
+            player.IsWaitingForNextHand = false;
+            if (!IsHandInProgress(roomId) || !player.ParticipatedThisHand || player.IsFold || player.IsAllIn)
+            {
+                OnGameInfoChanged?.Invoke(roomId);
+                return 0;
+            }
+
+            player.IsFold = true;
+            player.LastOperation = new PlayerOperation { Type = PlayerOperationType.Fold };
+            player.HasActedThisStage = true;
+            player.BetFacedAtLastAction = info.CurrentHighestPlayerBet;
+            if (playerIndex == info.OperatingPlayer)
+            {
+                AdvanceAfterAction(info);
+            }
+            else if (info.Players.Count(candidate =>
+                candidate.ParticipatedThisHand && !candidate.IsFold) <= 1 ||
+                IsBettingRoundComplete(info))
+            {
+                info.OperatingPlayer = -1;
+                OnGameInfoChanged?.Invoke(roomId);
+                OnGameStageEnded?.Invoke(roomId);
+            }
+            else
+            {
+                OnGameInfoChanged?.Invoke(roomId);
+            }
+
+            return 0;
+        }
+
+        private bool SynchronizeRoomSeats(ServerGameInfo info)
+        {
+            info.RoomInfo.EnsureSeatModel();
+            if (info.RoomInfo.Seats.Any(seat =>
+                    seat.SeatIndex < 0 || seat.SeatIndex >= info.PlayersCount) ||
+                info.RoomInfo.Seats.Select(seat => seat.SeatIndex).Distinct().Count() !=
+                info.RoomInfo.Seats.Count)
+            {
+                return false;
+            }
+
+            try
+            {
+                for (int seatIndex = 0; seatIndex < info.PlayersCount; seatIndex++)
+                {
+                    var roomSeat = info.RoomInfo.Seats.Find(seat => seat.SeatIndex == seatIndex);
+                    var currentPlayer = info.Players[seatIndex];
+                    if (roomSeat == null)
+                    {
+                        if (!IsHandInProgress(info.RoomInfo.Id) || !currentPlayer.ParticipatedThisHand)
+                            info.Players[seatIndex] = CreateEmptySeat(seatIndex);
+                        continue;
+                    }
+
+                    if (currentPlayer.IsOccupied && currentPlayer.PlayerName == roomSeat.PlayerName)
+                    {
+                        currentPlayer.IsLeaving = roomSeat.State == RoomSeatState.Leaving;
+                        currentPlayer.IsWaitingForNextHand =
+                            roomSeat.State == RoomSeatState.WaitingForNextHand ||
+                            roomSeat.State == RoomSeatState.Waiting;
+                        continue;
+                    }
+
+                    if (IsHandInProgress(info.RoomInfo.Id) && currentPlayer.ParticipatedThisHand)
+                        return false;
+
+                    var account = _accountRepository.FindByUserName(roomSeat.PlayerName);
+                    if (account == null)
+                        return false;
+                    info.Players[seatIndex] = ServerGameInfo.CreatePlayer(roomSeat, account);
+                }
+
+                return true;
+            }
+            catch (Exception exception)
+            {
+                Log.WriteError($"Unable to synchronize seats for room {info.RoomInfo.Id}: {exception}");
+                return false;
+            }
+        }
+
+        private static ServerGameInfo.PlayerInfo CreateEmptySeat(int seatIndex)
+        {
+            return new ServerGameInfo.PlayerInfo
+            {
+                SeatIndex = seatIndex,
+                IsFold = true,
+            };
+        }
+
+        private static void UpdateRoomSeatStatesAfterHand(ServerGameInfo info)
+        {
+            foreach (var seat in info.RoomInfo.Seats)
+            {
+                var player = info.Players[seat.SeatIndex];
+                if (seat.State == RoomSeatState.Leaving)
+                    continue;
+
+                var eligible = CanParticipateInNextHand(info, player);
+                seat.State = eligible
+                    ? RoomSeatState.WaitingForNextHand
+                    : RoomSeatState.Watching;
+                player.IsWaitingForNextHand = eligible;
+            }
+
+            info.RoomInfo.SynchronizeLegacyLists();
+        }
+
         public int StartNew(int roomId)
         {
             if (!_games.TryGetValue(roomId, out var info))
@@ -571,12 +726,17 @@ namespace Game.Network
                 return -2;
             if (info.RoomInfo.SmallBlindChips <= 0)
                 return -3;
+            if (!SynchronizeRoomSeats(info))
+                return -7;
 
             var bigBlindAmount = GetBigBlindAmount(info);
             try
             {
                 foreach (var player in info.Players)
                 {
+                    if (!player.IsOccupied || player.IsLeaving)
+                        continue;
+
                     var account = _accountRepository.FindById(player.AccountId);
                     if (account == null)
                         return -7;
@@ -624,9 +784,11 @@ namespace Game.Network
             var handAccountsById = handAccounts.ToDictionary(account => account.AccountId);
             foreach (var player in info.Players)
             {
-                player.HandStartingChips = participatingAccountIds.Contains(player.AccountId)
+                player.ParticipatedThisHand = participatingAccountIds.Contains(player.AccountId);
+                player.HandStartingChips = player.ParticipatedThisHand
                     ? handAccountsById[player.AccountId].Chips
                     : 0;
+                player.IsWaitingForNextHand = !player.ParticipatedThisHand && player.IsOccupied;
             }
 
             info.Timer.Stop();
@@ -672,7 +834,16 @@ namespace Game.Network
                 player.HasActedThisStage = false;
                 player.BetFacedAtLastAction = 0;
                 player.Hole.Clear();
+
+                var seat = info.RoomInfo.FindSeat(playerIndex);
+                if (seat != null && seat.State != RoomSeatState.Leaving)
+                {
+                    seat.State = participatingPlayers[playerIndex]
+                        ? RoomSeatState.Playing
+                        : RoomSeatState.Watching;
+                }
             }
+            info.RoomInfo.SynchronizeLegacyLists();
 
             var firstDealtPlayer = positions.SmallBlind;
             for (int cardRound = 0; cardRound < 2; cardRound++)

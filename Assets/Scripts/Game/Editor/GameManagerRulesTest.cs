@@ -205,6 +205,56 @@ namespace Game.Tests
         }
 
         [Test]
+        public void JoinDuringHand_WaitsThenParticipatesInNextHandAtStableSeat()
+        {
+            var manager = CreateManager(2, out var info, maxPlayerCount: 4);
+            info.Dealer = 1;
+            Assert.AreEqual(0, manager.StartNew(info.RoomInfo.Id));
+
+            var newcomer = CreateRepositoryAccount("Newcomer", 1000);
+            info.RoomInfo.Seats.Add(new RoomSeatInfo
+            {
+                SeatIndex = 2,
+                PlayerName = newcomer.UserName,
+                State = RoomSeatState.WaitingForNextHand,
+            });
+            info.RoomInfo.SynchronizeLegacyLists();
+
+            Assert.AreEqual(0, manager.SynchronizeRoomSeats(info.RoomInfo.Id));
+            Assert.IsTrue(info.Players[2].IsOccupied);
+            Assert.IsTrue(info.Players[2].IsWaitingForNextHand);
+            Assert.IsFalse(info.Players[2].ParticipatedThisHand);
+            Assert.AreEqual(0, info.Players[2].Hole.Count);
+
+            Assert.AreEqual(0, manager.Fold(info.RoomInfo.Id, info.OperatingPlayer));
+            Assert.AreEqual(0, manager.NextStage(info.RoomInfo.Id));
+            Assert.AreEqual(GameStage.RoundOver, info.Stage);
+            Assert.AreEqual(0, manager.StartNew(info.RoomInfo.Id));
+
+            Assert.IsTrue(info.Players[2].ParticipatedThisHand);
+            Assert.AreEqual(2, info.Players[2].Hole.Count);
+        }
+
+        [Test]
+        public void StartNew_WithSeatGapUsesStablePhysicalSeatIndices()
+        {
+            var manager = CreateManager(3, out var info, maxPlayerCount: 4);
+            info.RoomInfo.FindSeat("Player1").SeatIndex = 2;
+            info.RoomInfo.FindSeat("Player2").SeatIndex = 3;
+            info.RoomInfo.SynchronizeLegacyLists();
+            Assert.AreEqual(0, manager.SynchronizeRoomSeats(info.RoomInfo.Id));
+            info.Dealer = 3;
+
+            Assert.AreEqual(0, manager.StartNew(info.RoomInfo.Id));
+
+            Assert.AreEqual(0, info.Dealer);
+            Assert.AreEqual(2, info.SmallBlind);
+            Assert.AreEqual(3, info.BigBlind);
+            Assert.AreEqual(0, info.OperatingPlayer);
+            Assert.IsFalse(info.Players[1].IsOccupied);
+        }
+
+        [Test]
         public void RaiseRights_ShortAllInDoesNotReopenButCumulativeAmountDoes()
         {
             var manager = CreateManager(3, out var info);
@@ -297,11 +347,13 @@ namespace Game.Tests
         private GameManager CreateManager(
             int playerCount,
             out ServerGameInfo info,
-            uint[] startingChips = null)
+            uint[] startingChips = null,
+            int? maxPlayerCount = null)
         {
             var room = new RoomInfo()
             {
                 Id = 1000 + playerCount,
+                MaxPlayerCount = maxPlayerCount ?? playerCount,
                 SmallBlindChips = 50,
                 ThinkingTime = 1000,
             };
@@ -310,25 +362,34 @@ namespace Game.Tests
                 var playerName = $"Player{playerIndex}";
                 room.Players.Add(playerName);
                 room.ReadyStatus.Add(true);
-                var now = DateTime.UtcNow;
-                Assert.AreEqual(CreateAccountResult.Created, _repository.Create(new PlayerAccount
-                {
-                    AccountId = Guid.NewGuid().ToString("N"),
-                    UserName = playerName,
-                    PasswordAlgorithm = "Test",
-                    PasswordHash = new byte[] { 1 },
-                    PasswordSalt = new byte[] { 2 },
-                    PasswordIterations = 1,
-                    Chips = startingChips == null ? 1000U : startingChips[playerIndex],
-                    CreatedAtUtc = now,
-                    UpdatedAtUtc = now,
-                }));
+                CreateRepositoryAccount(
+                    playerName,
+                    startingChips == null ? 1000U : startingChips[playerIndex]);
             }
 
             var manager = new GameManager(_repository);
             Assert.AreEqual(0, manager.CreateGame(room));
             info = manager.GetGameInfo(room.Id);
             return manager;
+        }
+
+        private PlayerAccount CreateRepositoryAccount(string playerName, uint chips)
+        {
+            var now = DateTime.UtcNow;
+            var account = new PlayerAccount
+            {
+                AccountId = Guid.NewGuid().ToString("N"),
+                UserName = playerName,
+                PasswordAlgorithm = "Test",
+                PasswordHash = new byte[] { 1 },
+                PasswordSalt = new byte[] { 2 },
+                PasswordIterations = 1,
+                Chips = chips,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now,
+            };
+            Assert.AreEqual(CreateAccountResult.Created, _repository.Create(account));
+            return account;
         }
 
         private void SetBalance(ServerGameInfo.PlayerInfo player, uint chips)
@@ -420,6 +481,52 @@ namespace Game.Tests
             }
 
             public bool AbortHand(string handId, string reason) => _inner.AbortHand(handId, reason);
+        }
+    }
+
+    [TestFixture]
+    public class RoomManagerSeatTest
+    {
+        [Test]
+        public void ActiveRoom_UsesStableSeatsAndReusesOnlyFinalizedDepartures()
+        {
+            var manager = new RoomManager();
+            var room = manager.CreateRoom("Owner");
+            room.MaxPlayerCount = 4;
+            Assert.IsNull(manager.CreateRoom("Owner"));
+            Assert.AreEqual(0, manager.Join(room.Id, "Bob"));
+            Assert.AreEqual(0, manager.PlayerChangeReady(room.Id, "Bob"));
+            Assert.AreEqual(0, manager.StartGame(room.Id));
+
+            Assert.AreEqual(0, manager.Join(room.Id, "Carol"));
+            Assert.AreEqual(2, room.FindSeat("Carol").SeatIndex);
+            Assert.AreEqual(RoomSeatState.WaitingForNextHand, room.FindSeat("Carol").State);
+
+            Assert.AreEqual(0, manager.Leave(room.Id, "Bob", deferRemoval: true));
+            Assert.AreEqual(RoomSeatState.Leaving, room.FindSeat("Bob").State);
+            Assert.AreEqual(0, manager.Join(room.Id, "Dave"));
+            Assert.AreEqual(3, room.FindSeat("Dave").SeatIndex);
+
+            Assert.IsTrue(manager.FinalizeDepartures(room.Id));
+            Assert.AreEqual(0, manager.Join(room.Id, "Erin"));
+            Assert.AreEqual(1, room.FindSeat("Erin").SeatIndex);
+
+            Assert.AreEqual(0, manager.Leave(room.Id, "Owner"));
+            Assert.AreEqual("Erin", room.OwnerName);
+            Assert.IsNotNull(manager.FindRoom(room.Id));
+        }
+
+        [Test]
+        public void LastMemberLeavingDissolvesRoomImmediately()
+        {
+            var manager = new RoomManager();
+            var room = manager.CreateRoom("OnlyPlayer");
+            Assert.AreEqual(0, manager.Join(room.Id, "TemporaryPlayer"));
+            Assert.AreEqual(0, manager.Leave(room.Id, "TemporaryPlayer"));
+            Assert.IsNotNull(manager.FindRoom(room.Id));
+
+            Assert.AreEqual(0, manager.Leave(room.Id, "OnlyPlayer"));
+            Assert.IsNull(manager.FindRoom(room.Id));
         }
     }
 }

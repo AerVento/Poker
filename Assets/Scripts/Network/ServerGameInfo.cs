@@ -79,7 +79,7 @@ namespace Game.Network
         public List<PlayerInfo> Players { get; set; } = new List<PlayerInfo>();
         
         [JsonIgnore]
-        public int PlayersCount => RoomInfo.Players.Count;
+        public int PlayersCount => Players.Count;
 
         /// <summary>
         /// 总奖池金额
@@ -153,37 +153,71 @@ namespace Game.Network
             RoomInfo roomInfo,
             IReadOnlyList<PlayerAccount> accounts)
         {
+            roomInfo.EnsureSeatModel();
             if (accounts == null || accounts.Count != roomInfo.PlayerCount)
                 throw new ArgumentException("Every room player must have an account snapshot.", nameof(accounts));
 
             ServerGameInfo info = new ServerGameInfo();
             info.RoomInfo = roomInfo;
             info.Timer = new Timer(roomInfo.ThinkingTime);
-            for (int index = 0; index < roomInfo.Players.Count; index++)
+            for (int seatIndex = 0; seatIndex < roomInfo.MaxPlayerCount; seatIndex++)
             {
-                var player = roomInfo.Players[index];
-                var account = accounts[index];
-                if (account.UserName != player)
-                    throw new ArgumentException("Account snapshots must follow room player order.", nameof(accounts));
-
-                info.Players.Add(new PlayerInfo()
+                info.Players.Add(new PlayerInfo
                 {
-                    AccountId = account.AccountId,
-                    Chips = account.Chips,
-                    PlayerName = player,
+                    SeatIndex = seatIndex,
+                    IsFold = true,
                 });
+            }
+
+            var accountsByName = accounts.ToDictionary(account => account.UserName, StringComparer.Ordinal);
+            foreach (var seat in roomInfo.Seats.Where(seat => seat.State != RoomSeatState.Leaving))
+            {
+                if (seat.SeatIndex < 0 || seat.SeatIndex >= info.PlayersCount)
+                    throw new ArgumentException("An occupied seat is outside the room capacity.", nameof(roomInfo));
+                if (!accountsByName.TryGetValue(seat.PlayerName, out var account))
+                    throw new ArgumentException("Every occupied room seat must have an account snapshot.", nameof(accounts));
+
+                info.Players[seat.SeatIndex] = CreatePlayer(seat, account);
             }
             
             // 游戏开始时随机选择按钮；StartNew 会按照仍在参赛的玩家重新计算盲注和行动位置。
             Random r = new Random();
-            info.Dealer = r.Next(0, info.RoomInfo.PlayerCount);
+            info.Dealer = r.Next(0, info.PlayersCount);
 
             return info;
+        }
+
+        public static PlayerInfo CreatePlayer(RoomSeatInfo seat, PlayerAccount account)
+        {
+            return new PlayerInfo
+            {
+                SeatIndex = seat.SeatIndex,
+                AccountId = account.AccountId,
+                Chips = account.Chips,
+                PlayerName = seat.PlayerName,
+                IsOccupied = true,
+                IsLeaving = seat.State == RoomSeatState.Leaving,
+                IsWaitingForNextHand =
+                    seat.State == RoomSeatState.Waiting ||
+                    seat.State == RoomSeatState.WaitingForNextHand,
+                IsFold = true,
+            };
         }
 
         [System.Serializable]
         public class PlayerInfo
         {
+
+            public int SeatIndex { get; set; }
+
+            public bool IsOccupied { get; set; }
+
+            public bool IsWaitingForNextHand { get; set; }
+
+            public bool IsLeaving { get; set; }
+
+            [JsonIgnore]
+            public bool ParticipatedThisHand { get; set; }
 
             [JsonIgnore]
             public string AccountId { get; set; }

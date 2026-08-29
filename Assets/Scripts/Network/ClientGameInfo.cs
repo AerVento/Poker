@@ -19,7 +19,7 @@ namespace Game.Network
         public List<PlayerInfo> Players { get; set; }
 
         [JsonIgnore]
-        public int PlayersCount => RoomInfo.Players.Count;
+        public int PlayersCount => Players?.Count ?? 0;
 
         public GameStage Round { get; set; }
 
@@ -105,7 +105,11 @@ namespace Game.Network
                 Players.Add(new PlayerInfo()
                 {
                     Chips = serverGameInfo.Players[i].Chips,
+                    SeatIndex = serverGameInfo.Players[i].SeatIndex,
                     PlayerName = serverGameInfo.Players[i].PlayerName,
+                    IsOccupied = serverGameInfo.Players[i].IsOccupied,
+                    IsWaitingForNextHand = serverGameInfo.Players[i].IsWaitingForNextHand,
+                    IsLeaving = serverGameInfo.Players[i].IsLeaving,
                     StageBet = serverGameInfo.Players[i].StageBet,
                     RoundBet = serverGameInfo.Players[i].RoundBet,
                     LastOperation = serverGameInfo.Players[i].LastOperation,
@@ -134,6 +138,14 @@ namespace Game.Network
         [System.Serializable]
         public struct PlayerInfo
         {
+            public int SeatIndex { get; set; }
+
+            public bool IsOccupied { get; set; }
+
+            public bool IsWaitingForNextHand { get; set; }
+
+            public bool IsLeaving { get; set; }
+
             /// <summary>
             /// 筹码量
             /// </summary>

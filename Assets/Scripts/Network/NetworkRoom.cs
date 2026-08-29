@@ -301,6 +301,11 @@ namespace Game.Network
                 return;
 
             var room = _roomManager.CreateRoom(playerName);
+            if (room == null)
+            {
+                Log.WriteWarn($"Player {playerName} attempted to create a room while already in one.");
+                return;
+            }
             var sync = new RoomInfoSync() { RoomInfo = room };
             conn.Send(sync);
         }
@@ -318,17 +323,26 @@ namespace Game.Network
             if (result == 0)
             {
                 var room = _roomManager.FindRoom(request.RoomId);
+                if (!room.IsWaiting && _gameManager.SynchronizeRoomSeats(request.RoomId) != 0)
+                {
+                    _roomManager.Leave(request.RoomId, playerName);
+                    response.SuccessCode = -5;
+                    conn.Send(response);
+                    return;
+                }
+
                 response.RoomInfo = room;
                 conn.Send(response);
-
-                var sync = new RoomInfoSync() { RoomInfo = room };
-                foreach (var player in room.Players)
+                if (!room.IsWaiting)
                 {
-                    if (player == playerName)
-                        continue; // 如果是刚加入房间的人，就不给他发Sync了，response里面会给他提供room信息，自己更新就可以
-                    var playerConn = _playerManager.GetConnection(player);
-                    playerConn?.Send(sync);
+                    var playerIndex = _gameManager.FindPlayerSeat(request.RoomId, playerName);
+                    var gameInfo = _gameManager.GetGameInfo(request.RoomId);
+                    conn.Send(new PlayerStartGameResponse { SuccessCode = 0 });
+                    conn.Send(new GameInfoSync { Info = new ClientGameInfo(gameInfo, playerIndex) });
                 }
+
+                BroadcastRoomInfo(room, playerName);
+                BroadcastGameInfo(request.RoomId);
             }
             else
                 conn.Send(response);
@@ -387,20 +401,24 @@ namespace Game.Network
             if (!TryGetAuthenticatedPlayer(conn, out var playerName))
                 return;
 
-            int result = _roomManager.Leave(message.RoomId, playerName);
+            var deferRemoval = _gameManager.IsHandInProgress(message.RoomId);
+            int result = _roomManager.Leave(message.RoomId, playerName, deferRemoval);
             switch (result)
             {
                 case 0:
                     var room = _roomManager.FindRoom(message.RoomId);
-                    if(room != null)
+                    if (room == null)
                     {
-                        var sync = new RoomInfoSync() { RoomInfo = room };
-                        foreach (var player in room.Players)
-                        {
-                            var playerConn = _playerManager.GetConnection(player);
-                            playerConn?.Send(sync);
-                        }
+                        _gameManager.CancelGame(message.RoomId, "RoomEmpty");
+                        break;
                     }
+
+                    if (deferRemoval)
+                        _gameManager.SetLeaving(message.RoomId, playerName);
+                    else
+                        _gameManager.SynchronizeRoomSeats(message.RoomId);
+                    BroadcastRoomInfo(room);
+                    BroadcastGameInfo(message.RoomId);
                     break;
                 case -1:
                     Log.WriteError($"Player {playerName} requested to leave the room {message.RoomId}, which does not exist.");
@@ -422,10 +440,13 @@ namespace Game.Network
                 conn.Send(response);
                 return;
             }
+            var gameInfo = _gameManager.GetGameInfo(request.RoomId);
             if (!_playerManager.TryGetPlayerName(conn, out var playerName) ||
+                gameInfo == null ||
                 request.PlayerIndex < 0 ||
-                request.PlayerIndex >= room.Players.Count ||
-                room.Players[request.PlayerIndex] != playerName)
+                request.PlayerIndex >= gameInfo.PlayersCount ||
+                !gameInfo.Players[request.PlayerIndex].IsOccupied ||
+                gameInfo.Players[request.PlayerIndex].PlayerName != playerName)
             {
                 response.SuccessCode = -2;
                 conn.Send(response);
@@ -447,15 +468,7 @@ namespace Game.Network
             // 如果成功，那么就向其他玩家转发新的游戏信息
             if (result != 0)
                 return;
-            var gameInfo = _gameManager.GetGameInfo(request.RoomId);
-            for(int i = 0; i < gameInfo.PlayersCount; i++)
-            {
-                var name = gameInfo.RoomInfo.Players[i];
-                var playerConn = _playerManager.GetConnection(name);
-
-                var sync = new GameInfoSync() { Info = new ClientGameInfo(gameInfo, i) };
-                playerConn?.Send(sync);
-            }
+            BroadcastGameInfo(request.RoomId);
         }
         private void PlayerOperationResponseHandler(PlayerOperationResponse response)
         {
@@ -608,16 +621,10 @@ namespace Game.Network
                 return;
             }
 
-            var gameInfo = _gameManager.GetGameInfo(room.Id);
-
             // 如果成功开启游戏，还向其他所有玩家广播游戏开始的信息
-            for(int i = 0; i < room.PlayerCount; i++)
-            {
-                var name = room.Players[i];
-                var playerConn = _playerManager.GetConnection(name);
-                playerConn?.Send(response);
-                playerConn?.Send(new GameInfoSync() { Info = new ClientGameInfo(gameInfo, i) });
-            }
+            foreach (var name in room.Players)
+                _playerManager.GetConnection(name)?.Send(response);
+            BroadcastGameInfo(room.Id);
 
         }
 
@@ -710,9 +717,11 @@ namespace Game.Network
                 return;
             }
 
+            if (!_roomManager.ResizeSeats(message.RoomId, message.MaxPlayer))
+                return;
+
             room.SmallBlindChips = message.SmallBlindChips;
             room.ThinkingTime = message.ThinkingTime;
-            room.MaxPlayerCount = message.MaxPlayer;
 
             RoomInfoSync sync = new RoomInfoSync();
             sync.RoomInfo = room;
@@ -757,18 +766,7 @@ namespace Game.Network
             var gameInfo = _gameManager.GetGameInfo(roomId);
             if (gameInfo == null)
                 return;
-            for (int i = 0; i < gameInfo.PlayersCount; i++)
-            {
-                var name = gameInfo.RoomInfo.Players[i];
-                if (gameInfo.Players[i].IsDisconnected)
-                    continue;
-                var conn = _playerManager.GetConnection(name);
-                var sync = new GameInfoSync()
-                {
-                    Info = new ClientGameInfo(gameInfo, i)
-                };
-                conn?.Send(sync);
-            }
+            BroadcastGameInfo(roomId);
 #if UNITY_EDITOR
             Debug.Log(JsonSerializer.Serialize(gameInfo, new JsonSerializerOptions() { WriteIndented = true}));
 #endif
@@ -791,11 +789,11 @@ namespace Game.Network
             var gameInfo = _gameManager.GetGameInfo(roomId);
             if (gameInfo == null)
                 return;
-            for (int i = 0; i < gameInfo.PlayersCount; i++)
+            var room = _roomManager.FindRoom(roomId);
+            if (room == null)
+                return;
+            foreach (var name in room.Players)
             {
-                var name = gameInfo.RoomInfo.Players[i];
-                if (gameInfo.Players[i].IsDisconnected)
-                    continue;
                 var conn = _playerManager.GetConnection(name);
                 var roundResult = new RoundResultNotification()
                 {
@@ -805,10 +803,41 @@ namespace Game.Network
             }
 
             gameInfo.Timer.Stop();
-            await UniTask.WaitForSeconds(5);
+            if (!_roomManager.FinalizeDepartures(roomId))
+            {
+                _gameManager.CancelGame(roomId, "RoomEmpty");
+                return;
+            }
 
-            if(gameInfo.Stage == GameStage.RoundOver)
-                _gameManager.StartNew(roomId);
+            room = _roomManager.FindRoom(roomId);
+            if (_gameManager.SynchronizeRoomSeats(roomId) != 0)
+            {
+                ReturnRoomToLobby(roomId);
+                return;
+            }
+            BroadcastRoomInfo(room);
+            if (_gameManager.CountEligiblePlayers(roomId) < 2)
+            {
+                ReturnRoomToLobby(roomId);
+                return;
+            }
+
+            await UniTask.WaitForSeconds(10);
+
+            room = _roomManager.FindRoom(roomId);
+            gameInfo = _gameManager.GetGameInfo(roomId);
+            if (room == null || gameInfo == null || room.IsWaiting || gameInfo.Stage != GameStage.RoundOver)
+                return;
+
+            if (_gameManager.SynchronizeRoomSeats(roomId) != 0 ||
+                _gameManager.CountEligiblePlayers(roomId) < 2 ||
+                _gameManager.StartNew(roomId) != 0)
+            {
+                ReturnRoomToLobby(roomId);
+                return;
+            }
+
+            BroadcastGameInfo(roomId);
         }
         private void OnGameOver(int roomId, GameResult result)
         {
@@ -817,21 +846,55 @@ namespace Game.Network
                 return;
 
             gameInfo.Timer.Stop();
-            for (int i = 0; i < gameInfo.PlayersCount; i++)
+            ReturnRoomToLobby(roomId);
+        }
+
+        private void BroadcastRoomInfo(RoomInfo room, string exceptPlayer = null)
+        {
+            if (room == null)
+                return;
+
+            var sync = new RoomInfoSync { RoomInfo = room };
+            foreach (var playerName in room.Players)
             {
-                var name = gameInfo.RoomInfo.Players[i];
-                if (gameInfo.Players[i].IsDisconnected)
+                if (playerName == exceptPlayer)
                     continue;
-                var conn = _playerManager.GetConnection(name);
-                var gameResult = new GameResultNotification()
+                _playerManager.GetConnection(playerName)?.Send(sync);
+            }
+        }
+
+        private void BroadcastGameInfo(int roomId)
+        {
+            var gameInfo = _gameManager.GetGameInfo(roomId);
+            if (gameInfo == null)
+                return;
+
+            for (int seatIndex = 0; seatIndex < gameInfo.PlayersCount; seatIndex++)
+            {
+                var player = gameInfo.Players[seatIndex];
+                if (!player.IsOccupied || player.IsDisconnected || player.IsLeaving)
+                    continue;
+
+                var conn = _playerManager.GetConnection(player.PlayerName);
+                conn?.Send(new GameInfoSync
                 {
-                    GameResult = result
-                };
-                conn?.Send(gameResult);
+                    Info = new ClientGameInfo(gameInfo, seatIndex),
+                });
+            }
+        }
+
+        private void ReturnRoomToLobby(int roomId)
+        {
+            var room = _roomManager.FindRoom(roomId);
+            if (room == null)
+            {
+                _gameManager.CancelGame(roomId, "RoomMissing");
+                return;
             }
 
-            _roomManager.DeleteRoom(roomId);
-            _gameManager.GameOver(roomId);
+            _roomManager.ReturnToWaiting(roomId);
+            _gameManager.CancelGame(roomId, "ReturnedToLobby");
+            BroadcastRoomInfo(room);
         }
         #endregion
     }

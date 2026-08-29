@@ -19,6 +19,12 @@ namespace Game.Network
 
         public RoomInfo CreateRoom(string owner)
         {
+            if (WhichRoom(owner, out _))
+            {
+                Log.WriteWarn($"Player {owner} attempted to create a second room association.");
+                return null;
+            }
+
             var roomInfo = RoomInfo.CreateRoom(owner);
             roomInfo.Id = Number++;
             _roomList.Rooms.Add(roomInfo);
@@ -41,7 +47,7 @@ namespace Game.Network
         /// </summary>
         /// <param name="roomId"></param>
         /// <param name="player"></param>
-        /// <returns> 0 = success, -1 = room doesn't exist, -2 = already in the room, -3 = full room, -4 = game started </returns>
+        /// <returns> 0 = success, -1 = room doesn't exist, -2 = already associated with a room, -3 = full room </returns>
         public int Join(int roomId, string player)
         {
             var room = FindRoom(roomId);
@@ -51,29 +57,30 @@ namespace Game.Network
                 Log.WriteWarn($"Player {player} requested to join the room {roomId} but the room doesn't exist.");
                 return -1;
             }
-            
-            if(room.Players.Contains(player))
+            room.EnsureSeatModel();
+            if (WhichRoom(player, out _))
             {
-                Log.WriteWarn($"Player {player} requested to join the room {roomId} but the player is already in the room.");
+                Log.WriteWarn($"Player {player} requested to join room {roomId} while already associated with a room.");
                 return -2;
             }
 
-            if(room.PlayerCount >= room.MaxPlayerCount)
+            var seatIndex = room.FindAvailableSeatIndex();
+            if (seatIndex < 0)
             {
                 Log.Write($"Player {player} requested to join the room {roomId} but the room is full.");
                 return -3;
             }
 
-            if (!room.IsWaiting)
+            room.Seats.Add(new RoomSeatInfo
             {
-                Log.Write($"Player {player} requested to join the room {roomId} but the game is already started.");
-                return -4;
-            }
+                SeatIndex = seatIndex,
+                PlayerName = player,
+                IsReady = false,
+                State = room.IsWaiting ? RoomSeatState.Waiting : RoomSeatState.WaitingForNextHand,
+            });
+            room.SynchronizeLegacyLists();
 
-            room.Players.Add(player);
-            room.ReadyStatus.Add(false);
-
-            Log.Write($"Player {player} joined the room {roomId}.");
+            Log.Write($"Player {player} joined room {roomId} at seat {seatIndex}.");
             return 0;
         }
 
@@ -83,7 +90,7 @@ namespace Game.Network
         /// <param name="roomId"></param>
         /// <param name="player"></param>
         /// <returns> 0 = success, -1 = room doesn't exist, -2 = player doesn't exist</returns>
-        public int Leave(int roomId, string player)
+        public int Leave(int roomId, string player, bool deferRemoval = false)
         {
             var room = FindRoom(roomId);
             if (room == null)
@@ -92,25 +99,50 @@ namespace Game.Network
                 return -1;
             }
 
-            int index = room.Players.IndexOf(player);
-            if (index == -1)
+            room.EnsureSeatModel();
+            var seat = room.Seats.Find(candidate => candidate.PlayerName == player);
+            if (seat == null)
             {
                 Log.WriteWarn($"The player {player} requested to leave the room but the player is not in the room {roomId}!");
                 return -2;
             }
 
-            room.Players.RemoveAt(index);
-            room.ReadyStatus.RemoveAt(index);
-            Log.Write($"Player {player} left the room {roomId}.");
-            
-            if (room.OwnerName != player)
-                return 0; // 短路，如果不是owner则不进行下面的逻辑
-            
-            if (room.PlayerCount > 0)
-                room.OwnerName = room.Players[0];
+            if (deferRemoval && !room.IsWaiting)
+            {
+                seat.State = RoomSeatState.Leaving;
+                seat.IsReady = false;
+            }
             else
+            {
+                room.Seats.Remove(seat);
+            }
+            Log.Write($"Player {player} left the room {roomId}.");
+
+            TransferOwnerIfNeeded(room, player);
+            room.SynchronizeLegacyLists();
+            if (room.PlayerCount == 0)
                 DeleteRoom(roomId);
             return 0;
+        }
+
+        public bool FinalizeDepartures(int roomId)
+        {
+            var room = FindRoom(roomId);
+            if (room == null)
+                return false;
+
+            room.EnsureSeatModel();
+            var departingOwner = room.Seats.Any(seat =>
+                seat.State == RoomSeatState.Leaving && seat.PlayerName == room.OwnerName);
+            room.Seats.RemoveAll(seat => seat.State == RoomSeatState.Leaving);
+            if (departingOwner)
+                TransferOwnerIfNeeded(room, room.OwnerName);
+            room.SynchronizeLegacyLists();
+            if (room.PlayerCount > 0)
+                return true;
+
+            DeleteRoom(roomId);
+            return false;
         }
 
         /// <summary>
@@ -127,19 +159,21 @@ namespace Game.Network
                 Log.WriteWarn($"Player {playerName} requested to ready in room {roomId} but the room doesn't exist.");
                 return -1;
             }
+            if (!room.IsWaiting)
+                return -3;
 
-            for(int i = 0; i <  room.Players.Count; i++)
+            room.EnsureSeatModel();
+            var seat = room.Seats.Find(candidate =>
+                candidate.PlayerName == playerName && candidate.State != RoomSeatState.Leaving);
+            if (seat != null)
             {
-                var player = room.Players[i];
-                if(player == playerName)
-                {
-                    room.ReadyStatus[i] = !room.ReadyStatus[i];
-                    if (room.ReadyStatus[i])
-                        Log.Write($"Player {playerName} in room {roomId} readied.");
-                    else
-                        Log.Write($"Player {playerName} in room {roomId} unreadied.");
-                    return 0;
-                }
+                seat.IsReady = !seat.IsReady;
+                room.SynchronizeLegacyLists();
+                if (seat.IsReady)
+                    Log.Write($"Player {playerName} in room {roomId} readied.");
+                else
+                    Log.Write($"Player {playerName} in room {roomId} unreadied.");
+                return 0;
             }
 
             // 房间里没有找到此玩家
@@ -148,7 +182,7 @@ namespace Game.Network
         }
 
         /// <summary>
-        /// 开始一个房间的游戏，房间开始后不能再加入
+        /// 手动开始一个处于大厅等待状态的房间
         /// </summary>
         /// <param name="roomId"></param>
         /// <returns>0 = success, -1 = room doesn't exist, -2 = player not readied, -3 = owner not in the room, -5 = too few player()</returns>
@@ -173,25 +207,30 @@ namespace Game.Network
                 return -6;
             }
 
-            int index = room.Players.IndexOf(room.OwnerName);
-            if (index == -1)
+            room.EnsureSeatModel();
+            var ownerSeat = room.Seats.Find(seat =>
+                seat.PlayerName == room.OwnerName && seat.State != RoomSeatState.Leaving);
+            if (ownerSeat == null)
             {
                 Log.WriteWarn($"The owner of room {room.Id} called {room.OwnerName} is not in the room!");
                 return -3;
             }
 
 
-            for(int i = 0; i < room.ReadyStatus.Count; i++)
+            foreach (var seat in room.Seats.Where(seat => seat.State != RoomSeatState.Leaving))
             {
                 // 房主不考虑是否准备
-                if (i == index)
+                if (seat == ownerSeat)
                     continue;
-                if (!room.ReadyStatus[i])
+                if (!seat.IsReady)
                     return -2;
             }
 
             // 开始游戏，不再等待
             room.IsWaiting = false;
+            foreach (var seat in room.Seats.Where(seat => seat.State != RoomSeatState.Leaving))
+                seat.State = RoomSeatState.WaitingForNextHand;
+            room.SynchronizeLegacyLists();
             Log.Write($"The game in room {roomId} is started.");
             string log = $"Containing {room.PlayerCount}: ";
             foreach(var player in room.Players)
@@ -207,6 +246,31 @@ namespace Game.Network
                 return;
 
             room.IsWaiting = true;
+            room.EnsureSeatModel();
+            foreach (var seat in room.Seats.Where(seat => seat.State != RoomSeatState.Leaving))
+            {
+                seat.State = RoomSeatState.Waiting;
+                seat.IsReady = false;
+            }
+            room.SynchronizeLegacyLists();
+        }
+
+        public bool ResizeSeats(int roomId, int maxPlayerCount)
+        {
+            var room = FindRoom(roomId);
+            if (room == null || !room.IsWaiting || maxPlayerCount < 2 || maxPlayerCount < room.PlayerCount)
+                return false;
+
+            room.EnsureSeatModel();
+            var occupiedSeats = room.Seats
+                .Where(seat => seat.State != RoomSeatState.Leaving)
+                .OrderBy(seat => seat.SeatIndex)
+                .ToList();
+            for (int index = 0; index < occupiedSeats.Count; index++)
+                occupiedSeats[index].SeatIndex = index;
+            room.MaxPlayerCount = maxPlayerCount;
+            room.SynchronizeLegacyLists();
+            return true;
         }
 
         /// <summary>
@@ -219,7 +283,8 @@ namespace Game.Network
         {
             foreach(var room in RoomList.Rooms)
             {
-                if(room.Players.Contains(playerName))
+                room.EnsureSeatModel();
+                if (room.Seats.Any(seat => seat.PlayerName == playerName))
                 {
                     roomId = room.Id;
                     return true;
@@ -232,8 +297,25 @@ namespace Game.Network
         public void DeleteRoom(int roomId)
         {
             var room = FindRoom(roomId);
+            if (room == null)
+                return;
             _roomList.Rooms.Remove(room);
             Log.Write($"Room {roomId} is deleted.");
+        }
+
+        private static void TransferOwnerIfNeeded(RoomInfo room, string departingPlayer)
+        {
+            if (room.OwnerName != departingPlayer && room.Seats.Any(seat =>
+                seat.PlayerName == room.OwnerName && seat.State != RoomSeatState.Leaving))
+            {
+                return;
+            }
+
+            room.OwnerName = room.Seats
+                .Where(seat => seat.State != RoomSeatState.Leaving)
+                .OrderBy(seat => seat.SeatIndex)
+                .Select(seat => seat.PlayerName)
+                .FirstOrDefault();
         }
     }
 }
