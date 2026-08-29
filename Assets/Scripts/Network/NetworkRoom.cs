@@ -216,6 +216,11 @@ namespace Game.Network
 
         #region Message Handler
 
+        private bool IsAuthorizedPlayer(NetworkConnectionToClient conn, string playerName)
+        {
+            return _playerManager.IsConnectionForPlayer(playerName, conn);
+        }
+
         private void GameInfoSyncHandler(GameInfoSync message)
         {
             if (GamePanel.Instance == null)
@@ -233,6 +238,16 @@ namespace Game.Network
         private void PlayerChangeNameMessageHandler(NetworkConnectionToClient conn, PlayerChangeNameMessage message)
         {
             Log.Write($"Player {message.OldName} from {conn.address} requested to changed its player name to {message.NewName}.");
+            if (!IsAuthorizedPlayer(conn, message.OldName))
+            {
+                Log.WriteWarn($"Connection {conn.address} attempted to rename player {message.OldName} without owning that identity.");
+                return;
+            }
+            if (_roomManager.WhichRoom(message.OldName, out _))
+            {
+                Log.WriteWarn($"Player {message.OldName} attempted to rename while seated in a room.");
+                return;
+            }
             if (_playerManager.IsConnected(message.NewName))
             {
                 Log.Write($"The new name {message.NewName} is occupied by another online player, so the connection will be shutdown.");
@@ -246,6 +261,9 @@ namespace Game.Network
 
         private void PlayerChangeReadyMessageHandler(NetworkConnectionToClient conn, PlayerChangeReadyMessage message)
         {
+            if (!IsAuthorizedPlayer(conn, message.PlayerName))
+                return;
+
             int result = _roomManager.PlayerChangeReady(message.RoomId, message.PlayerName);
             if(result == 0)
             {
@@ -262,6 +280,15 @@ namespace Game.Network
         private void PlayerConnectMessageHandler(NetworkConnectionToClient conn, PlayerConnectMessage message)
         {
             Log.Write($"Player {message.PlayerName} from {conn.address} is connecting to the server.");
+            if (_playerManager.TryGetPlayerName(conn, out var connectedName))
+            {
+                if (connectedName != message.PlayerName)
+                {
+                    Log.WriteWarn($"Connection {conn.address} attempted to register a second identity.");
+                    conn.Disconnect();
+                }
+                return;
+            }
             if (_playerManager.IsConnected(message.PlayerName))
             {
                 Log.Write($"Player {message.PlayerName} from {conn.address} is already connected to the server. Therefore the cuurent connection will be disconnected.");
@@ -276,6 +303,9 @@ namespace Game.Network
 
         private void PlayerCreateRoomRequestHandler(NetworkConnectionToClient conn, PlayerCreateRoomRequest message)
         {
+            if (!IsAuthorizedPlayer(conn, message.PlayerName))
+                return;
+
             var room = _roomManager.CreateRoom(message.PlayerName);
             var sync = new RoomInfoSync() { RoomInfo = room };
             conn.Send(sync);
@@ -283,6 +313,9 @@ namespace Game.Network
 
         private void PlayerJoinRoomRequestHandler(NetworkConnectionToClient conn, PlayerJoinRoomRequest request)
         {
+            if (!IsAuthorizedPlayer(conn, request.PlayerName))
+                return;
+
             int result = _roomManager.Join(request.RoomId, request.PlayerName);
             var response = new PlayerJoinRoomResponse()
             {
@@ -357,6 +390,9 @@ namespace Game.Network
 
         private void PlayerLeaveRoomRequestHandler(NetworkConnectionToClient conn, PlayerLeaveRoomRequest message)
         {
+            if (!IsAuthorizedPlayer(conn, message.PlayerName))
+                return;
+
             int result = _roomManager.Leave(message.RoomId, message.PlayerName);
             switch (result)
             {
@@ -389,6 +425,15 @@ namespace Game.Network
             if (room == null)
             {
                 response.SuccessCode = -1;
+                conn.Send(response);
+                return;
+            }
+            if (!_playerManager.TryGetPlayerName(conn, out var playerName) ||
+                request.PlayerIndex < 0 ||
+                request.PlayerIndex >= room.Players.Count ||
+                room.Players[request.PlayerIndex] != playerName)
+            {
+                response.SuccessCode = -2;
                 conn.Send(response);
                 return;
             }
@@ -463,6 +508,9 @@ namespace Game.Network
                         case -5:
                             Log.WriteError("Bet or Raise more chips to meet the least bet threshold.");
                             break;
+                        case -6:
+                            Log.WriteError("A short all-in did not reopen raising for this player.");
+                            break;
                     }
                     break;
                 case PlayerOperationType.Call:
@@ -500,6 +548,12 @@ namespace Game.Network
                         case -3:
                             Log.WriteError("Another player is operating.");
                             break;
+                        case -4:
+                            Log.WriteError("The current player cannot move all-in.");
+                            break;
+                        case -5:
+                            Log.WriteError("A short all-in did not reopen raising for this player.");
+                            break;
                     }
                     break;
                 case PlayerOperationType.Fold:
@@ -518,7 +572,7 @@ namespace Game.Network
                             Log.WriteError("Another player is operating.");
                             break;
                         case -4:
-                            Log.WriteError("Big blind cannot fold in preflop stage when all other player choose to call.");
+                            Log.WriteError("The current player cannot fold.");
                             break;
                     }
                     break;
@@ -532,6 +586,10 @@ namespace Game.Network
             if (room == null)
             {
                 response.SuccessCode = -1;
+            }
+            else if (!IsAuthorizedPlayer(conn, message.PlayerName) || room.OwnerName != message.PlayerName)
+            {
+                response.SuccessCode = -4;
             }
             else
             {
@@ -613,6 +671,13 @@ namespace Game.Network
                         msgbox.Message = "需要大于等于两个玩家才能开始游戏";
                     });
                     break;
+                case -6:
+                    MsgBox.Create((msgbox) =>
+                    {
+                        msgbox.Title = "开始游戏时出错";
+                        msgbox.Message = "该房间的游戏已经开始";
+                    });
+                    break;
             }
         }
 
@@ -624,13 +689,30 @@ namespace Game.Network
                 Log.WriteWarn($"Player from {conn.address} called {message.PlayerName} requested to change the room info of room {message.RoomId} but the room doesn't exists.");
                 return;
             }
-            if (room.OwnerName != message.PlayerName)
+            if (!room.IsWaiting)
+            {
+                Log.WriteWarn($"Player {message.PlayerName} attempted to change settings after room {message.RoomId} started.");
+                return;
+            }
+            if (!IsAuthorizedPlayer(conn, message.PlayerName) || room.OwnerName != message.PlayerName)
             {
                 Log.WriteWarn($"Non-owner {message.PlayerName} requested to change the room {message.RoomId}");
                 return;
             }
+            if (message.InitialChips <= 0 ||
+                message.SmallBlindChips <= 0 ||
+                message.ThinkingTime <= 0 ||
+                message.MaxPlayer < 2 ||
+                message.MaxPlayer > 16 ||
+                message.MaxPlayer < room.PlayerCount ||
+                (ulong)message.InitialChips * (uint)room.PlayerCount > uint.MaxValue)
+            {
+                Log.WriteWarn($"Player {message.PlayerName} sent invalid room settings for room {message.RoomId}.");
+                return;
+            }
 
             room.InitialChips = message.InitialChips;
+            room.SmallBlindChips = message.SmallBlindChips;
             room.ThinkingTime = message.ThinkingTime;
             room.MaxPlayerCount = message.MaxPlayer;
 

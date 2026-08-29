@@ -54,12 +54,7 @@ namespace Game.Network
         public List<Poker> Community { get; set; }
 
         /// <summary>
-        /// 上轮中最高加注的筹码量
-        /// </summary>
-        public uint LastHighestRaise { get; set; }
-        
-        /// <summary>
-        /// 此轮中最高加注的筹码量
+        /// 当前下注街最后一次完整下注或加注的增量
         /// </summary>
         public uint CurrentHighestRaise { get; set; }
 
@@ -67,12 +62,17 @@ namespace Game.Network
         /// 加注时最小加注量
         /// </summary>
         [JsonIgnore]
-        public uint LeastRaise => System.Math.Max(LastHighestRaise, CurrentHighestRaise);
+        public uint LeastRaise => CurrentHighestRaise;
         
         /// <summary>
         /// 此轮中下注最高的玩家下注的数量
         /// </summary>
         public uint CurrentHighestPlayerBet { get; set; }
+
+        /// <summary>
+        /// 当前玩家是否拥有加注权。短码 all-in 可能使玩家只能跟注或弃牌。
+        /// </summary>
+        public bool CanRaise { get; set; }
 
         /// <summary>
         /// 此玩家的下标
@@ -122,9 +122,9 @@ namespace Game.Network
             BigBlind = serverGameInfo.BigBlind;
             OperatingPlayer = serverGameInfo.OperatingPlayer;
             Community = serverGameInfo.Community;
-            LastHighestRaise = serverGameInfo.LastHighestRaise;
             CurrentHighestRaise = serverGameInfo.CurrentHighestRaise;
             CurrentHighestPlayerBet = serverGameInfo.CurrentHighestPlayerBet;
+            CanRaise = serverGameInfo.CanPlayerRaise(playerIndex);
 
             CurrentPlayerIndex = playerIndex;
             Hole = serverGameInfo.Players[playerIndex].Hole;

@@ -26,6 +26,29 @@ namespace Game.Network
                 return null;
         }
 
+        public bool IsConnectionForPlayer(string playerName, NetworkConnectionToClient conn)
+        {
+            return playerName != null &&
+                conn != null &&
+                _conns.TryGetValue(playerName, out var registeredConnection) &&
+                registeredConnection == conn;
+        }
+
+        public bool TryGetPlayerName(NetworkConnectionToClient conn, out string playerName)
+        {
+            foreach (var pair in _conns)
+            {
+                if (pair.Value == conn)
+                {
+                    playerName = pair.Key;
+                    return true;
+                }
+            }
+
+            playerName = null;
+            return false;
+        }
+
         public void SetConnection(string playerName, NetworkConnectionToClient conn)
         {
             if(_conns.ContainsKey(playerName))
@@ -47,17 +70,11 @@ namespace Game.Network
         /// <returns>是否存在此链接</returns>
         public bool RemoveConnection(NetworkConnectionToClient conn, out string playerName)
         {
-            playerName = null;
-            foreach(var pair in _conns)
-            {
-                if(pair.Value == conn)
-                {
-                    playerName = pair.Key;
-                    _conns.Remove(pair.Key);
-                    return true;
-                }
-            }
-            return false;
+            if (!TryGetPlayerName(conn, out playerName))
+                return false;
+
+            _conns.Remove(playerName);
+            return true;
         }
 
 

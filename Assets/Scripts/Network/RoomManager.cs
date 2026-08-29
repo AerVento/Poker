@@ -167,6 +167,12 @@ namespace Game.Network
                 return -5;
             }
 
+            if (!room.IsWaiting)
+            {
+                Log.WriteWarn($"The game in room {room.Id} has already started.");
+                return -6;
+            }
+
             int index = room.Players.IndexOf(room.OwnerName);
             if (index == -1)
             {

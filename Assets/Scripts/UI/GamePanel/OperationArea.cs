@@ -97,23 +97,36 @@ namespace Game.UI.GamePanelElement
                 });
                 return;
             }
-            else if (num < _info.CurrentHighestPlayerBet + _info.LeastRaise)
+
+            var availableTotal = (ulong)_info.CurrentPlayer.StageBet + _info.CurrentPlayer.Chips;
+            var minimumRaiseTotal = (ulong)_info.CurrentHighestPlayerBet + _info.LeastRaise;
+            if (!_info.CanRaise || num <= _info.CurrentHighestPlayerBet)
             {
-                _betInput.text = (_info.CurrentHighestPlayerBet + _info.LeastRaise).ToString();
+                _betInput.text = minimumRaiseTotal.ToString();
                 MsgBox.Create(msgbox =>
                 {
                     msgbox.Title = "提示";
-                    msgbox.Message = $"当前最少要加注到${_info.CurrentHighestPlayerBet + _info.LeastRaise}。\n你加注到${num}，达不到最小加注金额。";
+                    msgbox.Message = "当前行动没有加注权。";
                 });
                 return;
             }
-            else if(_info.CurrentHighestPlayerBet - _info.CurrentPlayer.StageBet + num >= _info.CurrentPlayer.Chips)
+            if (num > availableTotal)
             {
-                _betInput.text = (_info.CurrentPlayer.Chips - 1).ToString();
+                _betInput.text = availableTotal.ToString();
                 MsgBox.Create(msgbox =>
                 {
                     msgbox.Title = "提示";
-                    msgbox.Message = $"此次加注需要消耗${_info.CurrentHighestPlayerBet - _info.CurrentPlayer.StageBet + num}，而你只有${_info.CurrentPlayer.Chips}。";
+                    msgbox.Message = $"下注到${num}超出了你的可用总额${availableTotal}。";
+                });
+                return;
+            }
+            if (num < minimumRaiseTotal && num != availableTotal)
+            {
+                _betInput.text = minimumRaiseTotal.ToString();
+                MsgBox.Create(msgbox =>
+                {
+                    msgbox.Title = "提示";
+                    msgbox.Message = $"当前最少要加注到${minimumRaiseTotal}。\n只有 all-in 可以低于最小加注额。";
                 });
                 return;
             }
@@ -156,35 +169,26 @@ namespace Game.UI.GamePanelElement
             // 如果不是你操作，则所有按钮都不该显示
             bool isOperating = _info.OperatingPlayer == _info.CurrentPlayerIndex;
 
-            // 如果前方之前所有人都是Check，则可以Check
-            // 但有例外：在Preflop阶段，除了大盲以外的人都Check的话，那么大盲还有一次权力
-            bool exception = _info.Round == GameStage.Preflop && _info.BigBlind == _info.CurrentPlayerIndex && _info.CurrentHighestPlayerBet == _info.CurrentPlayer.StageBet;
-            _checkButton.gameObject.SetActive(isOperating && (exception || _info.CurrentHighestPlayerBet == 0));
+            _checkButton.gameObject.SetActive(isOperating &&
+                _info.CurrentPlayer.StageBet == _info.CurrentHighestPlayerBet);
 
-            // 如果当前筹码不够最小加价，则不能Bet/Raise
-            // 能够Bet/Raise，一定能够Call
-            _betOrRaiseButton.gameObject.SetActive(isOperating && _info.CurrentPlayer.Chips + _info.CurrentPlayer.StageBet > _info.CurrentHighestPlayerBet + _info.LeastRaise);
+            var availableTotal = (ulong)_info.CurrentPlayer.Chips + _info.CurrentPlayer.StageBet;
+            var minimumRaiseTotal = (ulong)_info.CurrentHighestPlayerBet + _info.LeastRaise;
+            _betOrRaiseButton.gameObject.SetActive(isOperating &&
+                _info.CanRaise &&
+                availableTotal > _info.CurrentHighestPlayerBet);
             _betOrRaiseTitle.text = _info.CurrentHighestPlayerBet == 0 ? "Bet" : "Raise";
-            // 修改Bet/Raise的最小值
-            _betChips = _info.CurrentHighestPlayerBet + _info.LeastRaise;
+            _betChips = (uint)Math.Min(availableTotal, minimumRaiseTotal);
             _betInput.text = _betChips.ToString();
 
-            // 如果你投入的筹码和最多的人一样多，那就不能Call（因为没必要）
-            // 如果推入全部筹码也无法与最多的人持平，则不能Call
             _callButton.gameObject.SetActive(isOperating && 
                 _info.CurrentPlayer.StageBet < _info.CurrentHighestPlayerBet && 
-                _info.CurrentPlayer.Chips + _info.CurrentPlayer.StageBet > _info.CurrentHighestPlayerBet);
+                _info.CurrentPlayer.Chips > 0);
 
-            // 什么时候都可以AllIn
-            _allInButton.gameObject.SetActive(isOperating);
+            _allInButton.gameObject.SetActive(isOperating &&
+                (_info.CanRaise || availableTotal <= _info.CurrentHighestPlayerBet));
 
-            // Preflop阶段，如果其他人没有加价，则大盲不能Fold，其余情况可以Fold
-            _foldButton.gameObject.SetActive(isOperating &&
-                !(
-                    _info.Round == GameStage.Preflop && 
-                    _info.BigBlind == _info.CurrentPlayerIndex &&
-                    _info.CurrentHighestPlayerBet == _info.CurrentPlayer.StageBet
-                    ));;
+            _foldButton.gameObject.SetActive(isOperating);
         }
 
         private void OnCheck()

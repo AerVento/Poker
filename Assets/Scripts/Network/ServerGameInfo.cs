@@ -75,24 +75,9 @@ namespace Game.Network
         public int PlayersCount => RoomInfo.Players.Count;
 
         /// <summary>
-        /// 本轮次中新AllIn的选手下标，轮次结束后根据这个分割奖池。
-        /// </summary>
-        public List<int> NewAllInPlayers { get; set; } = new List<int>();
-
-        /// <summary>
-        /// 本轮次中新Fold的选手的下标，轮次结束后根据这个分割奖池。
-        /// </summary>
-        public List<int> NewFoldPlayers { get; set; } = new List<int>();
-
-        /// <summary>
         /// 总奖池金额
         /// </summary>
         public uint TotalPot { get; set; } = 0;
-
-        /// <summary>
-        /// 主池、分池之间的金额
-        /// </summary>
-        public Stack<Pot> Pots { get; set; } = new Stack<Pot>();
 
         /// <summary>
         /// 庄家位置
@@ -109,13 +94,11 @@ namespace Game.Network
         /// </summary>
         public int BigBlind { get; set; } = 2;
 
-        public bool BigBlindRaise { get; set; } = true;
-
         /// <summary>
-        /// 在每一轮次中，起始操作玩家的位置。
-        /// 如果中途有人Raise/Allin，那么起始操作的玩家会变为Raise/Allin的人。
+        /// 上一手牌的参赛人数，用于三人桌转入单挑时避免同一玩家连续承担大盲。
         /// </summary>
-        public int FirstBet { get; set; } = 1;
+        [JsonIgnore]
+        public int LastHandParticipantCount { get; set; }
 
         /// <summary>
         /// 正在操作的玩家
@@ -128,12 +111,7 @@ namespace Game.Network
         public List<Poker> Community { get; set; } = new List<Poker>();
 
         /// <summary>
-        /// 上轮中最高加注的筹码量
-        /// </summary>
-        public uint LastHighestRaise { get; set; } = 0;
-
-        /// <summary>
-        /// 此轮中最高加注的筹码量
+        /// 当前下注街最后一次完整下注或加注的增量。
         /// </summary>
         public uint CurrentHighestRaise { get; set; } = 0;
 
@@ -141,12 +119,28 @@ namespace Game.Network
         /// 加注时最小加注量
         /// </summary>
         [JsonIgnore]
-        public uint LeastRaise => System.Math.Max(LastHighestRaise, CurrentHighestRaise);
+        public uint LeastRaise => CurrentHighestRaise;
 
         /// <summary>
         /// 此轮中下注最高的玩家下注的数量
         /// </summary>
         public uint CurrentHighestPlayerBet { get; set; } = 0;
+
+        public bool CanPlayerRaise(int playerIndex)
+        {
+            if (playerIndex < 0 || playerIndex >= Players.Count)
+                return false;
+
+            var player = Players[playerIndex];
+            if (player.IsFold || player.IsAllIn || player.IsDisconnected)
+                return false;
+
+            return HoldemRules.CanRaise(
+                player.HasActedThisStage,
+                player.BetFacedAtLastAction,
+                CurrentHighestPlayerBet,
+                CurrentHighestRaise);
+        }
 
         public static ServerGameInfo Create(RoomInfo roomInfo)
         {
@@ -162,12 +156,9 @@ namespace Game.Network
                 });
             }
             
-            // 游戏开始时，随机一位成为小盲，后一位成为大盲，然后让大盲的下一个称为第一个进行操作的玩家
+            // 游戏开始时随机选择按钮；StartNew 会按照仍在参赛的玩家重新计算盲注和行动位置。
             Random r = new Random();
             info.Dealer = r.Next(0, info.RoomInfo.PlayerCount);
-            info.SmallBlind = (info.Dealer + 1) % info.RoomInfo.PlayerCount;
-            info.BigBlind = (info.SmallBlind + 1) % info.RoomInfo.PlayerCount;
-            info.OperatingPlayer = (info.BigBlind + 1) % info.RoomInfo.PlayerCount;
 
             return info;
         }
@@ -216,28 +207,23 @@ namespace Game.Network
             /// </summary>
             public PlayerOperation LastOperation { get; set; }
 
+            /// <summary>
+            /// 是否已在当前下注街采取过行动。强制盲注不算行动。
+            /// </summary>
+            [JsonIgnore]
+            public bool HasActedThisStage { get; set; }
+
+            /// <summary>
+            /// 玩家上次行动时所面对的最高下注额，用于判断短码 all-in 是否累计到完整加注并重新开放行动。
+            /// </summary>
+            [JsonIgnore]
+            public uint BetFacedAtLastAction { get; set; }
+
 
             /// <summary>
             /// 底牌
             /// </summary>
             public List<Poker> Hole { get; set; } = new List<Poker>();
-        }
-
-        /// <summary>
-        /// 奖池
-        /// </summary>
-        [System.Serializable]
-        public class Pot
-        {
-            /// <summary>
-            /// 参与奖池分配的玩家下标，从小到大排序
-            /// </summary>
-            public List<int> JoinedPlayers { get; set; } = new List<int>();
-
-            /// <summary>
-            /// 奖池金额
-            /// </summary>
-            public uint ChipCount { get; set; } = 0;
         }
     }
 }
