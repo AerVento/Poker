@@ -17,6 +17,15 @@ namespace Game.UI
         private TextMeshProUGUI _title;
 
         [SerializeField]
+        private TextMeshProUGUI _accountStatus;
+
+        [SerializeField]
+        private TextMeshProUGUI _tableStatus;
+
+        [SerializeField]
+        private TextMeshProUGUI _countdownStatus;
+
+        [SerializeField]
         private GameObject _playerPrefab;
         
         [SerializeField]
@@ -28,6 +37,9 @@ namespace Game.UI
         private List<PlayerListItem> _playerListItems;
 
         private ClientGameInfo _info;
+        private uint _accountChips;
+        private uint _bigBlind;
+        private TableParticipationStatus _participationStatus;
         public ClientGameInfo Info
         {
             get => _info;
@@ -36,6 +48,25 @@ namespace Game.UI
                 _info = value;
                 Refresh();
             }
+        }
+
+        public void ApplySync(GameInfoSync message)
+        {
+            _accountChips = message.AccountChips;
+            _bigBlind = message.BigBlind;
+            _participationStatus = message.ParticipationStatus;
+            Info = message.Info;
+        }
+
+        public void SetInterHandCountdown(bool isActive, int secondsRemaining)
+        {
+            if (_countdownStatus == null)
+                return;
+
+            _countdownStatus.gameObject.SetActive(isActive);
+            _countdownStatus.text = isActive
+                ? $"下一手将在 {secondsRemaining} 秒后开始"
+                : string.Empty;
         }
 
         private void Refresh()
@@ -73,6 +104,19 @@ namespace Game.UI
 
             // 更新标题
             _title.text = $"房间{_info.RoomInfo.Id}-{_info.Round}-总奖池${BigNumberToString(_info.TotalPot)}";
+
+            if (_accountStatus != null)
+                _accountStatus.text = $"账户余额  ${_accountChips:N0}";
+            if (_tableStatus != null)
+            {
+                _tableStatus.text = _participationStatus switch
+                {
+                    TableParticipationStatus.WaitingForNextHand => "等待下一手",
+                    TableParticipationStatus.Spectating => "旁观中",
+                    TableParticipationStatus.InsufficientChips => $"筹码不足（至少需要 ${_bigBlind:N0}）",
+                    _ => string.Empty,
+                };
+            }
         }
 
 

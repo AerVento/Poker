@@ -35,7 +35,10 @@ namespace Game.UI
         private ScrollRect _scroll;
 
         [SerializeField]
-        private TMP_InputField _initialChips;
+        private TextMeshProUGUI _accountStatus;
+
+        [SerializeField]
+        private TextMeshProUGUI _roomStatus;
 
         [SerializeField]
         private TMP_InputField _smallBlindChips;
@@ -82,6 +85,9 @@ namespace Game.UI
         /// </summary>
         public bool IsOwner => SelfName == RoomInfo.OwnerName;
 
+        public bool IsSpectator => RoomInfo.Spectators != null &&
+            RoomInfo.Spectators.Contains(SelfName);
+
         /// <summary>
         /// 当前玩家是否已准备
         /// </summary>
@@ -92,6 +98,9 @@ namespace Game.UI
                 // 如果是房主，则默认房主已经准备
                 if (IsOwner)
                     return true;
+
+                if (IsSpectator)
+                    return false;
 
                 int index = RoomInfo.Players.IndexOf(SelfName);
                 if(index == -1)
@@ -111,7 +120,6 @@ namespace Game.UI
             _cancelReady.onClick.AddListener(ChangeReady);
             _start.onClick.AddListener(StartGame);
 
-            _initialChips.onEndEdit.AddListener(ChangeInitialChip);
             _smallBlindChips.onEndEdit.AddListener(ChangeSmallBlindChip);
             _thinkingTime.onEndEdit.AddListener(ChangeTime);
             _maxPlayer.onEndEdit.AddListener(ChangeMaxPlayer);
@@ -125,7 +133,6 @@ namespace Game.UI
             _cancelReady.onClick.RemoveListener(ChangeReady);
             _start.onClick.RemoveListener(StartGame);
 
-            _initialChips.onEndEdit.RemoveListener(ChangeInitialChip);
             _smallBlindChips.onEndEdit.RemoveListener(ChangeSmallBlindChip);
             _thinkingTime.onEndEdit.RemoveListener(ChangeTime);
             _maxPlayer.onEndEdit.RemoveListener(ChangeMaxPlayer);
@@ -156,27 +163,6 @@ namespace Game.UI
             NetworkClient.Send(new PlayerStartGameRequest() { PlayerName = SelfName, RoomId = _roomInfo.Id });
         }
 
-        private void ChangeInitialChip(string value)
-        {
-            if (!System.Int32.TryParse(value, out var result) || result <= 0)
-            {
-                _initialChips.text = _roomInfo.InitialChips.ToString();
-                return;
-            }
-            // 防止筹码量过大时溢出
-            else if(result >= 10000000)
-            {
-                _initialChips.text = "10000000";
-                _roomInfo.InitialChips = 10000000;
-                return;
-            }
-            else
-            {
-                SendChangeRequest(result, _roomInfo.SmallBlindChips, _roomInfo.ThinkingTime, _roomInfo.MaxPlayerCount);
-            }
-
-        }
-
         private void ChangeSmallBlindChip(string value)
         {
             if (!System.Int32.TryParse(value, out var result) || result <= 0)
@@ -193,7 +179,7 @@ namespace Game.UI
             }
             else
             {
-                SendChangeRequest(_roomInfo.InitialChips, result,  _roomInfo.ThinkingTime, _roomInfo.MaxPlayerCount);
+                SendChangeRequest(result, _roomInfo.ThinkingTime, _roomInfo.MaxPlayerCount);
             }
 
         }
@@ -202,12 +188,12 @@ namespace Game.UI
         {
             if (!System.Single.TryParse(value, out var result) || result < 0)
             {
-                _initialChips.text = _roomInfo.ThinkingTime.ToString();
+                _thinkingTime.text = _roomInfo.ThinkingTime.ToString();
                 return;
             }
             else
             {
-                SendChangeRequest(_roomInfo.InitialChips, _roomInfo.SmallBlindChips, result, _roomInfo.MaxPlayerCount);
+                SendChangeRequest(_roomInfo.SmallBlindChips, result, _roomInfo.MaxPlayerCount);
             }
         }
 
@@ -215,34 +201,53 @@ namespace Game.UI
         {
             if (!System.Int32.TryParse(value, out var result) || result < 2 || result > 16)
             {
-                _maxPlayer.text = _roomInfo.InitialChips.ToString();
+                _maxPlayer.text = _roomInfo.MaxPlayerCount.ToString();
                 return;
             }
             else
             {
-                SendChangeRequest(_roomInfo.InitialChips, _roomInfo.SmallBlindChips, _roomInfo.ThinkingTime, result);
+                SendChangeRequest(_roomInfo.SmallBlindChips, _roomInfo.ThinkingTime, result);
             }
         }
 
         private void Refresh()
         {
             bool interactable = IsOwner;
-            _initialChips.interactable = interactable;
             _smallBlindChips.interactable = interactable;
             _thinkingTime.interactable = interactable;
             _maxPlayer.interactable = interactable;
 
             _title.text = $"房间{_roomInfo.Id}";
-            _initialChips.text = _roomInfo.InitialChips.ToString();
             _smallBlindChips.text = _roomInfo.SmallBlindChips.ToString();
             _thinkingTime.text = _roomInfo.ThinkingTime.ToString();
             _maxPlayer.text = _roomInfo.MaxPlayerCount.ToString();
+
+            if (_accountStatus != null && GameController.Available)
+            {
+                var state = GameController.Instance.State;
+                _accountStatus.text = $"{state.UserName}  ·  ${state.Chips:N0}";
+            }
+            if (_roomStatus != null)
+            {
+                var bigBlind = checked((uint)_roomInfo.SmallBlindChips * 2U);
+                _roomStatus.text = IsSpectator
+                    ? GameController.Instance.State.Chips < bigBlind
+                        ? $"旁观中 · 至少需要 ${bigBlind:N0} 才能入局"
+                        : "旁观中 · 等待空座"
+                    : _roomInfo.IsWaiting ? "等待房主开始" : "牌局进行中";
+            }
 
             if (IsOwner)
             {
                 _ready.gameObject.SetActive(false);
                 _cancelReady.gameObject.SetActive(false);
                 _start.gameObject.SetActive(true);
+            }
+            else if (IsSpectator)
+            {
+                _ready.gameObject.SetActive(false);
+                _cancelReady.gameObject.SetActive(false);
+                _start.gameObject.SetActive(false);
             }
             else
             {
@@ -264,15 +269,24 @@ namespace Game.UI
                 component.IsReady = component.IsOwner ? false : RoomInfo.ReadyStatus[i];
                 _tmpPlayerItems.Add(component);
             }
+            foreach (var spectatorName in RoomInfo.Spectators)
+            {
+                GameObject obj = Instantiate(_player, parent: _playerList);
+                var component = obj.GetComponent<PlayerListItem>();
+                component.PlayerName = spectatorName + "（旁观）";
+                component.IsOwner = _roomInfo.OwnerName == spectatorName;
+                component.IsReady = false;
+                _tmpPlayerItems.Add(component);
+            }
         }
 
-        private void SendChangeRequest(int initialChips, int smallBlindChips, float thinkingTime, int maxPlayer)
+        private void SendChangeRequest(int smallBlindChips, float thinkingTime, int maxPlayer)
         {
             NetworkClient.Send(new RoomInfoChange()
             {
                 RoomId = _roomInfo.Id,
                 PlayerName = SelfName,
-                InitialChips = initialChips,
+                InitialChips = _roomInfo.InitialChips,
                 SmallBlindChips = smallBlindChips,
                 ThinkingTime = thinkingTime,
                 MaxPlayer = maxPlayer,

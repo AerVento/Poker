@@ -40,6 +40,8 @@ namespace Game.Network
 
         private bool _declineRoomRecoveryOnNextLogin;
 
+        private TableParticipationStatus? _lastParticipationStatus;
+
         #endregion
 
         public override void Awake()
@@ -152,6 +154,8 @@ namespace Game.Network
             NetworkClient.RegisterHandler<RoomInfoSync>(RoomInfoSyncHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<RoomListResponse>(RoomListResponseHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<RoundResultNotification>(RoundResultNotificationHandler, requireAuthentication: false);
+            NetworkClient.RegisterHandler<InterHandCountdownSync>(InterHandCountdownSyncHandler, requireAuthentication: false);
+            NetworkClient.RegisterHandler<AccountBalanceSync>(AccountBalanceSyncHandler, requireAuthentication: false);
             
             MsgBox.Create("ConnectingServer", (setting) =>
             {
@@ -262,6 +266,7 @@ namespace Game.Network
             }
             bool oldConnectedStatus = _isConnected;
             _isConnected = false;
+            _lastParticipationStatus = null;
 
             foreach (var identifier in UIManager.Instance.ShowingPanelIdentifiers.ToList())
             {
@@ -345,10 +350,59 @@ namespace Game.Network
 
         private void GameInfoSyncHandler(GameInfoSync message)
         {
+            if (GameController.Available)
+                GameController.Instance.State.SetChips(message.AccountChips);
             if (GamePanel.Instance == null)
                 UIManager.Instance.ShowPanel<GamePanel>();
-            GamePanel.Instance.Info = message.Info;
+            GamePanel.Instance.ApplySync(message);
+
+            if (message.ParticipationStatus == TableParticipationStatus.InsufficientChips &&
+                _lastParticipationStatus != TableParticipationStatus.InsufficientChips)
+            {
+                ShowInsufficientChipsPrompt(message);
+            }
+            _lastParticipationStatus = message.ParticipationStatus;
             Log.WriteInfo("Game Sync:" + JsonSerializer.Serialize(message.Info, new JsonSerializerOptions() { WriteIndented = true }));
+        }
+
+        private void InterHandCountdownSyncHandler(InterHandCountdownSync message)
+        {
+            GamePanel.Instance?.SetInterHandCountdown(message.IsActive, message.SecondsRemaining);
+        }
+
+        private void AccountBalanceSyncHandler(AccountBalanceSync message)
+        {
+            if (!GameController.Available)
+                return;
+
+            GameController.Instance.State.SetChips(message.Chips);
+            RoomListPanel.Instance?.RefreshAccountStatus();
+        }
+
+        private void ShowInsufficientChipsPrompt(GameInfoSync message)
+        {
+            MsgBox.Create("InsufficientChips", msgbox =>
+            {
+                msgbox.Type = MsgboxType.ConfirmAndCancel;
+                msgbox.ShowCloseButton = false;
+                msgbox.Title = "筹码不足";
+                msgbox.Message = $"当前余额为 ${message.AccountChips:N0}，少于本桌大盲 ${message.BigBlind:N0}。你可以继续旁观，或离开房间。";
+                msgbox.ConfirmButtonText = "继续旁观";
+                msgbox.CancelButtonText = "离开房间";
+                msgbox.OnCancel += () => LeaveRoomAfterHand(message.Info.RoomInfo.Id);
+            });
+        }
+
+        private static void LeaveRoomAfterHand(int roomId)
+        {
+            NetworkClient.Send(new PlayerLeaveRoomRequest
+            {
+                RoomId = roomId,
+                PlayerName = GameController.Instance.State.Nickname,
+            });
+            GameController.Instance.State.SetLastRoom(null);
+            UIManager.Instance.HidePanel<GamePanel>();
+            UIManager.Instance.ShowPanel<RoomListPanel>();
         }
 
         private void GameResultNotificationHandler(GameResultNotification message)
@@ -452,7 +506,7 @@ namespace Game.Network
                     var playerIndex = _gameManager.FindPlayerSeat(request.RoomId, playerName);
                     var gameInfo = _gameManager.GetGameInfo(request.RoomId);
                     conn.Send(new PlayerStartGameResponse { SuccessCode = 0 });
-                    conn.Send(new GameInfoSync { Info = new ClientGameInfo(gameInfo, playerIndex) });
+                    conn.Send(CreateGameInfoSync(gameInfo, playerIndex, playerName));
                 }
 
                 BroadcastRoomInfo(room, playerName);
@@ -565,10 +619,7 @@ namespace Game.Network
                 return;
 
             conn.Send(new PlayerStartGameResponse { SuccessCode = 0 });
-            conn.Send(new GameInfoSync
-            {
-                Info = new ClientGameInfo(gameInfo, playerIndex),
-            });
+            conn.Send(CreateGameInfoSync(gameInfo, playerIndex, playerName));
         }
 
         private void PlayerJoinRoomResponseHandler(PlayerJoinRoomResponse response)
@@ -712,6 +763,35 @@ namespace Game.Network
         }
         private void PlayerOperationResponseHandler(PlayerOperationResponse response)
         {
+            if (response.SuccessCode != 0)
+            {
+                var message = response.SuccessCode switch
+                {
+                    -1 => "房间或牌局已经不存在。",
+                    -2 => "服务器无法确认你在本手中的座位。",
+                    -3 => "当前还没有轮到你操作。",
+                    -7 => "服务器暂时无法保存这次筹码操作，请稍后重试。",
+                    _ => response.Type switch
+                    {
+                        PlayerOperationType.Check => "当前不能过牌，请跟注或弃牌。",
+                        PlayerOperationType.Bet when response.SuccessCode == -5 => "下注额没有达到最小加注要求。",
+                        PlayerOperationType.Bet when response.SuccessCode == -6 => "之前的短码 all-in 没有重新开放你的加注权。",
+                        PlayerOperationType.Bet => "当前筹码或行动状态不允许下注。",
+                        PlayerOperationType.Call => "当前不能跟注。",
+                        PlayerOperationType.AllIn when response.SuccessCode == -5 => "之前的短码 all-in 没有重新开放你的加注权。",
+                        PlayerOperationType.AllIn => "当前不能 all-in。",
+                        PlayerOperationType.Fold => "当前不能弃牌。",
+                        _ => "服务器拒绝了这次操作。",
+                    },
+                };
+                MsgBox.Create(msgbox =>
+                {
+                    msgbox.Title = "操作失败";
+                    msgbox.Message = message;
+                });
+                return;
+            }
+
             switch (response.Type)
             {
                 case PlayerOperationType.Check:
@@ -850,11 +930,17 @@ namespace Game.Network
                 return;
             }
 
-            response.SuccessCode = _gameManager.CreateGame(room);
-            if (response.SuccessCode == 0)
-                response.SuccessCode = _gameManager.StartNew(room.Id);
-            if (response.SuccessCode != 0)
+            var gameResult = _gameManager.CreateGame(room);
+            if (gameResult == 0)
+                gameResult = _gameManager.StartNew(room.Id);
+            if (gameResult != 0)
             {
+                response.SuccessCode = gameResult switch
+                {
+                    -2 => -7,
+                    -8 => -9,
+                    _ => -8,
+                };
                 _gameManager.CancelGame(room.Id, "StartFailed");
                 _roomManager.ReturnToWaiting(room.Id);
                 conn.Send(response);
@@ -923,6 +1009,27 @@ namespace Game.Network
                         msgbox.Message = "该房间的游戏已经开始";
                     });
                     break;
+                case -7:
+                    MsgBox.Create((msgbox) =>
+                    {
+                        msgbox.Title = "无法开始游戏";
+                        msgbox.Message = "至少需要两名在线且拥有一个大盲筹码的玩家";
+                    });
+                    break;
+                case -8:
+                    MsgBox.Create((msgbox) =>
+                    {
+                        msgbox.Title = "无法开始游戏";
+                        msgbox.Message = "账户或牌局存储暂时不可用，请稍后重试";
+                    });
+                    break;
+                case -9:
+                    MsgBox.Create((msgbox) =>
+                    {
+                        msgbox.Title = "无法开始游戏";
+                        msgbox.Message = "本桌玩家筹码总额超过当前牌局协议可安全处理的上限";
+                    });
+                    break;
             }
         }
 
@@ -979,6 +1086,16 @@ namespace Game.Network
                 message.RoomInfo.ContainsMember(GameController.Instance.State.UserName))
             {
                 GameController.Instance.State.SetLastRoom(message.RoomInfo.Id);
+            }
+            if (message.RoomInfo.IsWaiting)
+            {
+                UIManager.Instance.HidePanel<GamePanel>();
+                UIManager.Instance.ShowPanel<RoomPanel>();
+                _lastParticipationStatus = null;
+            }
+            else if (RoomPanel.Instance == null)
+            {
+                UIManager.Instance.ShowPanel<RoomPanel>();
             }
             RoomPanel.Instance.RoomInfo = message.RoomInfo;
         }
@@ -1045,6 +1162,7 @@ namespace Game.Network
                     RoundResult = result
                 };
                 conn?.Send(roundResult);
+                SendAccountBalance(conn, name);
             }
 
             gameInfo.Timer.Stop();
@@ -1062,13 +1180,23 @@ namespace Game.Network
                 return;
             }
             BroadcastRoomInfo(room);
+            BroadcastGameInfo(roomId);
             if (_gameManager.CountEligiblePlayers(roomId) < 2)
             {
                 ReturnRoomToLobby(roomId);
                 return;
             }
 
-            await UniTask.WaitForSeconds(10);
+            for (int secondsRemaining = 10; secondsRemaining > 0; secondsRemaining--)
+            {
+                room = _roomManager.FindRoom(roomId);
+                gameInfo = _gameManager.GetGameInfo(roomId);
+                if (room == null || gameInfo == null || room.IsWaiting || gameInfo.Stage != GameStage.RoundOver)
+                    return;
+
+                BroadcastInterHandCountdown(roomId, true, secondsRemaining);
+                await UniTask.WaitForSeconds(1);
+            }
 
             room = _roomManager.FindRoom(roomId);
             gameInfo = _gameManager.GetGameInfo(roomId);
@@ -1083,6 +1211,7 @@ namespace Game.Network
                 return;
             }
 
+            BroadcastInterHandCountdown(roomId, false, 0);
             BroadcastGameInfo(roomId);
         }
         private void OnGameOver(int roomId, GameResult result)
@@ -1122,10 +1251,7 @@ namespace Game.Network
                     continue;
 
                 var conn = _playerManager.GetConnection(player.PlayerName);
-                conn?.Send(new GameInfoSync
-                {
-                    Info = new ClientGameInfo(gameInfo, seatIndex),
-                });
+                conn?.Send(CreateGameInfoSync(gameInfo, seatIndex, player.PlayerName));
             }
 
             var room = _roomManager.FindRoom(roomId);
@@ -1133,10 +1259,90 @@ namespace Game.Network
                 return;
             foreach (var spectatorName in room.Spectators)
             {
-                _playerManager.GetConnection(spectatorName)?.Send(new GameInfoSync
+                _playerManager.GetConnection(spectatorName)?
+                    .Send(CreateGameInfoSync(gameInfo, -1, spectatorName));
+            }
+        }
+
+        private GameInfoSync CreateGameInfoSync(
+            ServerGameInfo gameInfo,
+            int playerIndex,
+            string playerName)
+        {
+            var bigBlind = checked((uint)gameInfo.RoomInfo.SmallBlindChips * 2U);
+            uint accountChips = 0;
+            var participationStatus = TableParticipationStatus.Spectating;
+            if (playerIndex >= 0 && playerIndex < gameInfo.PlayersCount)
+            {
+                var player = gameInfo.Players[playerIndex];
+                accountChips = player.Chips;
+                participationStatus = player.IsWaitingForNextHand || !player.ParticipatedThisHand
+                    ? TableParticipationStatus.WaitingForNextHand
+                    : TableParticipationStatus.Playing;
+            }
+            else
+            {
+                var balanceLoaded = false;
+                try
                 {
-                    Info = new ClientGameInfo(gameInfo, -1),
-                });
+                    var accountRepository = (authenticator as AccountAuthenticator)?.AccountRepository;
+                    var account = accountRepository?.FindByUserName(playerName);
+                    if (account != null)
+                    {
+                        accountChips = account.Chips;
+                        balanceLoaded = true;
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Log.WriteError($"Unable to load spectator balance for {playerName}: {exception}");
+                }
+
+                participationStatus = balanceLoaded && accountChips < bigBlind
+                    ? TableParticipationStatus.InsufficientChips
+                    : TableParticipationStatus.Spectating;
+            }
+
+            return new GameInfoSync
+            {
+                Info = new ClientGameInfo(gameInfo, playerIndex),
+                AccountChips = accountChips,
+                BigBlind = bigBlind,
+                ParticipationStatus = participationStatus,
+            };
+        }
+
+        private void BroadcastInterHandCountdown(int roomId, bool isActive, int secondsRemaining)
+        {
+            var room = _roomManager.FindRoom(roomId);
+            if (room == null)
+                return;
+
+            var message = new InterHandCountdownSync
+            {
+                RoomId = roomId,
+                IsActive = isActive,
+                SecondsRemaining = secondsRemaining,
+            };
+            foreach (var playerName in room.MemberNames)
+                _playerManager.GetConnection(playerName)?.Send(message);
+        }
+
+        private void SendAccountBalance(NetworkConnectionToClient conn, string playerName)
+        {
+            if (conn == null)
+                return;
+
+            try
+            {
+                var accountRepository = (authenticator as AccountAuthenticator)?.AccountRepository;
+                var account = accountRepository?.FindByUserName(playerName);
+                if (account != null)
+                    conn.Send(new AccountBalanceSync { Chips = account.Chips });
+            }
+            catch (Exception exception)
+            {
+                Log.WriteError($"Unable to synchronize account balance for {playerName}: {exception}");
             }
         }
 
@@ -1149,6 +1355,7 @@ namespace Game.Network
                 return;
             }
 
+            BroadcastInterHandCountdown(roomId, false, 0);
             _roomManager.ReturnToWaiting(roomId);
             _gameManager.CancelGame(roomId, "ReturnedToLobby");
             BroadcastRoomInfo(room);

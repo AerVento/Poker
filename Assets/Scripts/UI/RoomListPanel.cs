@@ -31,6 +31,9 @@ namespace Game.UI
         [SerializeField]
         private GameObject _roomItem;
 
+        [SerializeField]
+        private TextMeshProUGUI _accountStatus;
+
         /// <summary>
         /// 持续刷新
         /// </summary>
@@ -61,10 +64,6 @@ namespace Game.UI
                 // 添加新的
                 foreach (var room in _roomList.Rooms)
                 {
-                    // 只显示正在等待开始的房间
-                    if (!room.IsWaiting)
-                        continue;
-
                     GameObject obj = Instantiate(_roomItem, _list);
                     var component = obj.GetComponent<RoomListItem>();
                     component.SetRoomInfo(room);
@@ -82,6 +81,7 @@ namespace Game.UI
 
         private void OnEnable()
         {
+            RefreshAccountStatus();
             NetworkClient.Send(new RoomListRequest());
             _back.onClick.AddListener(Back);
             _refresh.onClick.AddListener(RefreshRoomList);
@@ -124,6 +124,15 @@ namespace Game.UI
         public void RefreshRoomList()
         {
             NetworkClient.Send(new RoomListRequest());
+        }
+
+        public void RefreshAccountStatus()
+        {
+            if (_accountStatus == null || !GameController.Available)
+                return;
+
+            var state = GameController.Instance.State;
+            _accountStatus.text = $"{state.UserName}  ·  ${state.Chips:N0}";
         }
 
         private void CreateRoom()

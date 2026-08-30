@@ -34,7 +34,7 @@ namespace Game.UI.RoomListPanelElement
         public void SetRoomInfo(RoomInfo info)
         {
             _id.text = info.Id.ToString();
-            _owner.text = info.OwnerName;
+            _owner.text = info.OwnerName + (info.IsWaiting ? " · 等待" : " · 牌局中");
             _capacity.text = $"{info.PlayerCount}/{info.MaxPlayerCount}";
         }
 

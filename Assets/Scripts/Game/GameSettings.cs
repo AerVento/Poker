@@ -30,5 +30,10 @@ namespace Game
         {
             LastRoomId = roomId;
         }
+
+        public void SetChips(uint chips)
+        {
+            Chips = chips;
+        }
     }
 }
