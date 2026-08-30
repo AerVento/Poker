@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using Framework.Log;
 using Game.Network.Accounts;
 using Mirror;
@@ -22,7 +23,10 @@ namespace Game.Network
         private AccountAuthenticationOperation? _pendingOperation;
         private string _pendingUserName;
         private string _pendingPassword;
+        private string _pendingSessionToken;
         private bool _pendingRequestSent;
+        private bool _logoutPending;
+        private string _logoutSessionToken;
 
         public event Action<AccountAuthenticationResponse> AuthenticationResponseReceived;
 
@@ -72,12 +76,16 @@ namespace Game.Network
 
             NetworkServer.RegisterHandler<AccountRegisterRequest>(OnRegisterRequest, requireAuthentication: false);
             NetworkServer.RegisterHandler<AccountLoginRequest>(OnLoginRequest, requireAuthentication: false);
+            NetworkServer.RegisterHandler<AccountTokenLoginRequest>(OnTokenLoginRequest, requireAuthentication: false);
+            NetworkServer.RegisterHandler<AccountLogoutRequest>(OnLogoutRequest, requireAuthentication: true);
         }
 
         public override void OnStopServer()
         {
             NetworkServer.UnregisterHandler<AccountRegisterRequest>();
             NetworkServer.UnregisterHandler<AccountLoginRequest>();
+            NetworkServer.UnregisterHandler<AccountTokenLoginRequest>();
+            NetworkServer.UnregisterHandler<AccountLogoutRequest>();
             _accountService = null;
             AccountRepository = null;
         }
@@ -92,12 +100,16 @@ namespace Game.Network
             NetworkClient.RegisterHandler<AccountAuthenticationResponse>(
                 OnAuthenticationResponse,
                 requireAuthentication: false);
+            NetworkClient.RegisterHandler<AccountLogoutResponse>(OnLogoutResponse, requireAuthentication: false);
         }
 
         public override void OnStopClient()
         {
             NetworkClient.UnregisterHandler<AccountAuthenticationResponse>();
+            NetworkClient.UnregisterHandler<AccountLogoutResponse>();
             ClearPendingAuthentication();
+            _logoutPending = false;
+            _logoutSessionToken = null;
         }
 
         public override void OnClientAuthenticate()
@@ -115,6 +127,55 @@ namespace Game.Network
             BeginAuthentication(AccountAuthenticationOperation.Login, userName, password);
         }
 
+        public bool LoginWithSavedCredentials()
+        {
+            if (!LoginCredentialStore.TryLoad(out _, out var sessionToken))
+                return false;
+
+            BeginAuthentication(
+                AccountAuthenticationOperation.TokenLogin,
+                null,
+                null,
+                sessionToken);
+            return true;
+        }
+
+        public void Logout()
+        {
+            if (_logoutPending)
+                return;
+
+            var sessionToken = GameController.Available
+                ? GameController.Instance.State.SessionToken
+                : null;
+            if (string.IsNullOrEmpty(sessionToken) &&
+                LoginCredentialStore.TryLoad(out _, out var savedSessionToken))
+            {
+                sessionToken = savedSessionToken;
+            }
+
+            if (NetworkClient.connection == null ||
+                !NetworkClient.connection.isAuthenticated ||
+                string.IsNullOrEmpty(sessionToken))
+            {
+                CompleteLocalLogout();
+                return;
+            }
+
+            _logoutPending = true;
+            _logoutSessionToken = sessionToken;
+            LoginCredentialStore.ClearIfMatches(sessionToken);
+            if (GameController.Available)
+                GameController.Instance.State.ClearAuthenticatedAccount();
+            NetworkClient.Send(new AccountLogoutRequest { SessionToken = sessionToken });
+            UniTask.Void(async () =>
+            {
+                await UniTask.Delay(2000);
+                if (_logoutPending)
+                    CompleteLocalLogout();
+            });
+        }
+
         public void CancelPendingAuthentication()
         {
             ClearPendingAuthentication();
@@ -123,7 +184,8 @@ namespace Game.Network
         private void BeginAuthentication(
             AccountAuthenticationOperation operation,
             string userName,
-            string password)
+            string password,
+            string sessionToken = null)
         {
             if (NetworkClient.connection != null && NetworkClient.connection.isAuthenticated)
                 return;
@@ -131,6 +193,7 @@ namespace Game.Network
             _pendingOperation = operation;
             _pendingUserName = userName;
             _pendingPassword = password;
+            _pendingSessionToken = sessionToken;
             _pendingRequestSent = false;
 
             if (NetworkClient.isConnected)
@@ -163,12 +226,19 @@ namespace Game.Network
                     Password = _pendingPassword,
                 });
             }
-            else
+            else if (_pendingOperation.Value == AccountAuthenticationOperation.Login)
             {
                 NetworkClient.Send(new AccountLoginRequest
                 {
                     UserName = _pendingUserName,
                     Password = _pendingPassword,
+                });
+            }
+            else
+            {
+                NetworkClient.Send(new AccountTokenLoginRequest
+                {
+                    SessionToken = _pendingSessionToken,
                 });
             }
         }
@@ -187,6 +257,29 @@ namespace Game.Network
                 conn,
                 AccountAuthenticationOperation.Login,
                 () => _accountService?.Login(request.UserName, request.Password));
+        }
+
+        private void OnTokenLoginRequest(NetworkConnectionToClient conn, AccountTokenLoginRequest request)
+        {
+            Authenticate(
+                conn,
+                AccountAuthenticationOperation.TokenLogin,
+                () => _accountService?.LoginWithToken(request.SessionToken));
+        }
+
+        private void OnLogoutRequest(NetworkConnectionToClient conn, AccountLogoutRequest request)
+        {
+            var revoked = false;
+            try
+            {
+                revoked = _accountService?.Logout(request.SessionToken) == true;
+            }
+            catch (Exception exception)
+            {
+                Log.WriteError($"Unable to revoke account session: {exception}");
+            }
+
+            conn.Send(new AccountLogoutResponse { Revoked = revoked });
         }
 
         private void Authenticate(
@@ -244,12 +337,21 @@ namespace Game.Network
             if (!_pendingOperation.HasValue || response.Operation != _pendingOperation.Value)
                 return;
 
+            var attemptedSessionToken = _pendingSessionToken;
             ClearPendingAuthentication();
             if (response.Code != AccountAuthenticationCode.Success)
             {
+                if (response.Operation == AccountAuthenticationOperation.TokenLogin)
+                {
+                    LoginCredentialStore.ClearIfMatches(attemptedSessionToken);
+                    if (GameController.Available)
+                        GameController.Instance.State.ClearAuthenticatedAccount();
+                }
                 AuthenticationResponseReceived?.Invoke(response);
                 return;
             }
+
+            LoginCredentialStore.Save(response.UserName, response.SessionToken);
 
             if (GameController.Available)
             {
@@ -257,7 +359,8 @@ namespace Game.Network
                     response.AccountId,
                     response.UserName,
                     response.Chips,
-                    response.HasLastRoom ? (int?)response.LastRoomId : null);
+                    response.HasLastRoom ? (int?)response.LastRoomId : null,
+                    response.SessionToken);
             }
 
             AuthenticationResponseReceived?.Invoke(response);
@@ -265,11 +368,30 @@ namespace Game.Network
             _networkRoom.HandleClientAuthentication(response);
         }
 
+        private void OnLogoutResponse(AccountLogoutResponse response)
+        {
+            CompleteLocalLogout();
+        }
+
+        private void CompleteLocalLogout()
+        {
+            _logoutPending = false;
+            if (string.IsNullOrEmpty(_logoutSessionToken))
+                LoginCredentialStore.Clear();
+            else
+                LoginCredentialStore.ClearIfMatches(_logoutSessionToken);
+            _logoutSessionToken = null;
+            if (GameController.Available)
+                GameController.Instance.State.ClearAuthenticatedAccount();
+            _networkRoom.HandleClientLogout();
+        }
+
         private void ClearPendingAuthentication()
         {
             _pendingOperation = null;
             _pendingUserName = null;
             _pendingPassword = null;
+            _pendingSessionToken = null;
             _pendingRequestSent = false;
         }
 
@@ -293,6 +415,7 @@ namespace Game.Network
             response.HasLastRoom = result.Account.LastRoomId.HasValue;
             response.LastRoomId = result.Account.LastRoomId.GetValueOrDefault();
             response.RequiresRoomRecovery = requireRoomRecovery && response.HasLastRoom;
+            response.SessionToken = result.SessionToken;
             return response;
         }
     }

@@ -8,9 +8,9 @@ using System.Linq;
 
 namespace Game.Network.Accounts
 {
-    public sealed class SqliteAccountRepository : IHandAccountRepository
+    public sealed class SqliteAccountRepository : IHandAccountRepository, ISessionAccountRepository
     {
-        public const int SchemaVersion = 2;
+        public const int SchemaVersion = 3;
 
         private static readonly object RuntimeInitializationLock = new object();
         private static bool _runtimeInitialized;
@@ -61,6 +61,9 @@ namespace Game.Network.Accounts
 
                     if (version < 2)
                         CreateHandSchema(connection, transaction);
+
+                    if (version < 3)
+                        CreateSessionSchema(connection, transaction);
 
                     SetSchemaVersion(connection, transaction, SchemaVersion);
 
@@ -182,6 +185,126 @@ WHERE account_id = $accountId;";
                     command.Parameters.AddWithValue("$accountId", accountId);
                     command.Parameters.AddWithValue("$lastRoomId", roomId.HasValue ? (object)roomId.Value : DBNull.Value);
                     command.Parameters.AddWithValue("$updatedAtUtc", FormatDateTime(DateTime.UtcNow));
+                    return command.ExecuteNonQuery() == 1;
+                }
+            }
+        }
+
+        public bool CreateSessionToken(
+            string accountId,
+            byte[] tokenHash,
+            DateTime createdAtUtc,
+            DateTime expiresAtUtc)
+        {
+            if (string.IsNullOrEmpty(accountId))
+                throw new ArgumentException("An account id is required.", nameof(accountId));
+            ValidateTokenHash(tokenHash);
+
+            lock (_syncRoot)
+            {
+                using (var connection = OpenConnection())
+                using (var transaction = connection.BeginTransaction())
+                {
+                    if (FindById(connection, transaction, accountId) == null)
+                    {
+                        transaction.Rollback();
+                        return false;
+                    }
+
+                    InsertSessionToken(
+                        connection,
+                        transaction,
+                        accountId,
+                        tokenHash,
+                        createdAtUtc,
+                        expiresAtUtc);
+                    transaction.Commit();
+                    return true;
+                }
+            }
+        }
+
+        public SessionTokenRotationResult RotateSessionToken(
+            byte[] currentTokenHash,
+            byte[] replacementTokenHash,
+            DateTime usedAtUtc,
+            DateTime replacementExpiresAtUtc,
+            out PlayerAccount account)
+        {
+            ValidateTokenHash(currentTokenHash);
+            ValidateTokenHash(replacementTokenHash);
+            account = null;
+
+            lock (_syncRoot)
+            {
+                using (var connection = OpenConnection())
+                using (var transaction = connection.BeginTransaction())
+                {
+                    string sessionId = null;
+                    string accountId = null;
+                    DateTime expiresAtUtc = default;
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.Transaction = transaction;
+                        command.CommandText = @"
+SELECT session_id, account_id, expires_at_utc
+FROM account_sessions
+WHERE token_hash = $tokenHash AND revoked_at_utc IS NULL;";
+                        command.Parameters.AddWithValue("$tokenHash", currentTokenHash);
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                sessionId = reader.GetString(0);
+                                accountId = reader.GetString(1);
+                                expiresAtUtc = ParseDateTime(reader.GetString(2));
+                            }
+                        }
+                    }
+
+                    if (sessionId == null || expiresAtUtc <= usedAtUtc.ToUniversalTime())
+                    {
+                        if (sessionId != null)
+                            RevokeSession(connection, transaction, sessionId, usedAtUtc);
+                        transaction.Commit();
+                        return SessionTokenRotationResult.InvalidToken;
+                    }
+
+                    account = FindById(connection, transaction, accountId);
+                    if (account == null)
+                    {
+                        transaction.Rollback();
+                        return SessionTokenRotationResult.AccountNotFound;
+                    }
+
+                    RevokeSession(connection, transaction, sessionId, usedAtUtc);
+                    InsertSessionToken(
+                        connection,
+                        transaction,
+                        accountId,
+                        replacementTokenHash,
+                        usedAtUtc,
+                        replacementExpiresAtUtc);
+                    transaction.Commit();
+                    return SessionTokenRotationResult.Rotated;
+                }
+            }
+        }
+
+        public bool RevokeSessionToken(byte[] tokenHash, DateTime revokedAtUtc)
+        {
+            ValidateTokenHash(tokenHash);
+            lock (_syncRoot)
+            {
+                using (var connection = OpenConnection())
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+UPDATE account_sessions
+SET revoked_at_utc = $revokedAtUtc
+WHERE token_hash = $tokenHash AND revoked_at_utc IS NULL;";
+                    command.Parameters.AddWithValue("$revokedAtUtc", revokedAtUtc.ToUniversalTime().ToString("O"));
+                    command.Parameters.AddWithValue("$tokenHash", tokenHash);
                     return command.ExecuteNonQuery() == 1;
                 }
             }
@@ -776,6 +899,81 @@ CREATE TABLE hand_requests (
 CREATE INDEX ix_poker_hands_status ON poker_hands(status);";
                 command.ExecuteNonQuery();
             }
+        }
+
+        private static void CreateSessionSchema(SqliteConnection connection, SqliteTransaction transaction)
+        {
+            using (var command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+CREATE TABLE account_sessions (
+    session_id TEXT NOT NULL PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    token_hash BLOB NOT NULL UNIQUE,
+    expires_at_utc TEXT NOT NULL,
+    created_at_utc TEXT NOT NULL,
+    last_used_at_utc TEXT NOT NULL,
+    revoked_at_utc TEXT NULL,
+    FOREIGN KEY (account_id) REFERENCES player_accounts(account_id)
+);
+
+CREATE INDEX ix_account_sessions_account
+ON account_sessions(account_id, revoked_at_utc, expires_at_utc);";
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void InsertSessionToken(
+            SqliteConnection connection,
+            SqliteTransaction transaction,
+            string accountId,
+            byte[] tokenHash,
+            DateTime createdAtUtc,
+            DateTime expiresAtUtc)
+        {
+            using (var command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+INSERT INTO account_sessions (
+    session_id, account_id, token_hash, expires_at_utc,
+    created_at_utc, last_used_at_utc, revoked_at_utc)
+VALUES (
+    $sessionId, $accountId, $tokenHash, $expiresAtUtc,
+    $createdAtUtc, $createdAtUtc, NULL);";
+                command.Parameters.AddWithValue("$sessionId", Guid.NewGuid().ToString("N"));
+                command.Parameters.AddWithValue("$accountId", accountId);
+                command.Parameters.AddWithValue("$tokenHash", tokenHash);
+                command.Parameters.AddWithValue("$expiresAtUtc", expiresAtUtc.ToUniversalTime().ToString("O"));
+                command.Parameters.AddWithValue("$createdAtUtc", createdAtUtc.ToUniversalTime().ToString("O"));
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void RevokeSession(
+            SqliteConnection connection,
+            SqliteTransaction transaction,
+            string sessionId,
+            DateTime revokedAtUtc)
+        {
+            using (var command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+UPDATE account_sessions
+SET revoked_at_utc = $revokedAtUtc, last_used_at_utc = $revokedAtUtc
+WHERE session_id = $sessionId AND revoked_at_utc IS NULL;";
+                command.Parameters.AddWithValue("$revokedAtUtc", revokedAtUtc.ToUniversalTime().ToString("O"));
+                command.Parameters.AddWithValue("$sessionId", sessionId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void ValidateTokenHash(byte[] tokenHash)
+        {
+            if (tokenHash == null || tokenHash.Length != 32)
+                throw new ArgumentException("A SHA-256 session token hash is required.", nameof(tokenHash));
         }
 
         private static void AddAccountParameters(SqliteCommand command, PlayerAccount account)

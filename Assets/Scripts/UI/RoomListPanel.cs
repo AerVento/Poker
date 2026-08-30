@@ -23,6 +23,9 @@ namespace Game.UI
         private Button _createRoom;
 
         [SerializeField]
+        private Button _settings;
+
+        [SerializeField]
         private ScrollRect _scroll;
 
         [SerializeField]
@@ -86,6 +89,7 @@ namespace Game.UI
             _back.onClick.AddListener(Back);
             _refresh.onClick.AddListener(RefreshRoomList);
             _createRoom.onClick.AddListener(CreateRoom);
+            _settings.onClick.AddListener(Settings);
 
             _refreshRoutineFlag = true;
             if (_refreshRoutine == null)
@@ -107,6 +111,7 @@ namespace Game.UI
             _back.onClick.RemoveListener(Back);
             _refresh.onClick.RemoveListener(RefreshRoomList);
             _createRoom.onClick.RemoveListener(CreateRoom);
+            _settings.onClick.RemoveListener(Settings);
             _refreshRoutineFlag = false;
         }
 
@@ -119,6 +124,12 @@ namespace Game.UI
         {
             UIManager.Instance.HidePanel<RoomListPanel>();
             UIManager.Instance.ShowPanel<TitlePanel>();
+        }
+
+        private void Settings()
+        {
+            UIManager.Instance.HidePanel<RoomListPanel>();
+            UIManager.Instance.ShowPanel<OptionPanel>();
         }
 
         public void RefreshRoomList()

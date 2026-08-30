@@ -12,18 +12,31 @@ namespace Game
 
         public int? LastRoomId { get; private set; }
 
+        public string SessionToken { get; private set; }
+
         public bool IsAuthenticated => !string.IsNullOrEmpty(AccountId);
 
         public void SetAuthenticatedAccount(
             string accountId,
             string userName,
             uint chips,
-            int? lastRoomId)
+            int? lastRoomId,
+            string sessionToken)
         {
             AccountId = accountId;
             UserName = userName;
             Chips = chips;
             LastRoomId = lastRoomId;
+            SessionToken = sessionToken;
+        }
+
+        public void ClearAuthenticatedAccount()
+        {
+            AccountId = null;
+            UserName = null;
+            Chips = 0;
+            LastRoomId = null;
+            SessionToken = null;
         }
 
         public void SetLastRoom(int? roomId)

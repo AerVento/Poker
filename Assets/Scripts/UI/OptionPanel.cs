@@ -4,6 +4,8 @@ using UnityEngine;
 using Framework.UI;
 using UnityEngine.UI;
 using TMPro;
+using Game.Network;
+using Mirror;
 namespace Game.UI
 {
     public class OptionPanel : SingletonPanel<OptionPanel>
@@ -18,7 +20,10 @@ namespace Game.UI
         private TMP_Dropdown _resolution;
 
         [SerializeField]
-        private TMP_InputField _nickname;
+        private TextMeshProUGUI _userName;
+
+        [SerializeField]
+        private Button _logout;
 
         private List<Resolution> _availableResolutions = new List<Resolution>();
 
@@ -53,9 +58,10 @@ namespace Game.UI
         private void OnEnable()
         {
             _back.onClick.AddListener(Back);
+            _logout.onClick.AddListener(Logout);
 
-            _nickname.text = GameController.Instance.State.Nickname;
-            _nickname.interactable = false;
+            _userName.text = GameController.Instance.State.UserName;
+            _logout.interactable = true;
 
             var resolutions = Screen.resolutions;
             for (int i = 0; i < resolutions.Length; i++)
@@ -75,12 +81,25 @@ namespace Game.UI
         private void OnDisable()
         {
             _back.onClick.RemoveListener(Back);
+            _logout.onClick.RemoveListener(Logout);
+            _resolution.onValueChanged.RemoveListener(ChangeResolution);
+            _fullscreen.onValueChanged.RemoveListener(ChangeFullscreen);
         }
 
         private void Back()
         {
             UIManager.Instance.HidePanel<OptionPanel>();
-            UIManager.Instance.ShowPanel<TitlePanel>();
+            UIManager.Instance.ShowPanel<RoomListPanel>();
+        }
+
+        private void Logout()
+        {
+            _logout.interactable = false;
+            if (NetworkManager.singleton != null &&
+                NetworkManager.singleton.TryGetComponent<AccountAuthenticator>(out var authenticator))
+            {
+                authenticator.Logout();
+            }
         }
 
         private void ChangeResolution(int option)
@@ -90,7 +109,7 @@ namespace Game.UI
             PlayerPrefs.SetInt("Screen_Width", resolution.width);
             PlayerPrefs.SetInt("Screen_Height", resolution.height);
         }
-        
+
         private void ChangeFullscreen(bool value)
         {
             Screen.SetResolution(Screen.width, Screen.height, value);

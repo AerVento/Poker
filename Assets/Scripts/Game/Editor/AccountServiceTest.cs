@@ -75,6 +75,49 @@ WHERE account_id = $accountId
         }
 
         [Test]
+        public void SessionTokenRotatesAndLogoutRevokesReplacement()
+        {
+            var service = CreateService();
+            var registration = service.Register("RememberedUser", "password123");
+
+            Assert.AreEqual(AccountAuthenticationCode.Success, registration.Code);
+            Assert.IsNotEmpty(registration.SessionToken);
+
+            var resumed = service.LoginWithToken(registration.SessionToken);
+            Assert.AreEqual(AccountAuthenticationCode.Success, resumed.Code);
+            Assert.AreEqual(registration.Account.AccountId, resumed.Account.AccountId);
+            Assert.IsNotEmpty(resumed.SessionToken);
+            Assert.AreNotEqual(registration.SessionToken, resumed.SessionToken);
+            Assert.AreEqual(
+                AccountAuthenticationCode.SessionExpired,
+                service.LoginWithToken(registration.SessionToken).Code);
+
+            Assert.IsTrue(service.Logout(resumed.SessionToken));
+            Assert.AreEqual(
+                AccountAuthenticationCode.SessionExpired,
+                service.LoginWithToken(resumed.SessionToken).Code);
+        }
+
+        [Test]
+        public void SessionTokenExpiresAfterConfiguredLifetime()
+        {
+            var now = new DateTime(2026, 8, 30, 12, 0, 0, DateTimeKind.Utc);
+            var service = new AccountService(
+                new SqliteAccountRepository(_databasePath),
+                new PasswordHasher(iterations: 1000),
+                sessionLifetime: TimeSpan.FromDays(30),
+                utcNow: () => now);
+            service.Initialize();
+            var registration = service.Register("ExpiringUser", "password123");
+
+            now = now.AddDays(31);
+
+            Assert.AreEqual(
+                AccountAuthenticationCode.SessionExpired,
+                service.LoginWithToken(registration.SessionToken).Code);
+        }
+
+        [Test]
         public void UserNamesAreCaseSensitiveAndExactDuplicatesAreRejected()
         {
             var service = CreateService();

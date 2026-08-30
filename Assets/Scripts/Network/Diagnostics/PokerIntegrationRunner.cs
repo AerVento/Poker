@@ -129,6 +129,7 @@ namespace Game.Network.Diagnostics
                 yield break;
             }
 
+            LoginCredentialStore.Clear();
             var userNameRunId = _runId.Length <= 8 ? _runId : _runId.Substring(0, 8);
             _userName = $"Smoke{userNameRunId}_{_clientIndex}";
             _networkRoom.networkAddress = "127.0.0.1";
@@ -331,6 +332,7 @@ namespace Game.Network.Diagnostics
                 RoomId = _roomId,
             });
             yield return new WaitForSecondsRealtime(0.5f);
+            LoginCredentialStore.Clear();
             _networkRoom.StopClient();
             WriteResult(ResultPath(_clientIndex, "pass"), JsonSerializer.Serialize(new
             {
@@ -380,6 +382,8 @@ namespace Game.Network.Diagnostics
                 return;
 
             _finishing = true;
+            if (_role == "client")
+                LoginCredentialStore.Clear();
             var fileName = _role == "server" ? "server.fail" : $"client-{_clientIndex}.fail";
             WriteResult(fileName, reason);
             Debug.LogError("Poker integration failure: " + reason);

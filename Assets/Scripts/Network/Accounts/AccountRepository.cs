@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Game.Network.Accounts
@@ -43,6 +44,13 @@ namespace Game.Network.Accounts
         AlreadyApplied,
         HandNotActive,
         InvalidDistribution,
+    }
+
+    public enum SessionTokenRotationResult
+    {
+        Rotated,
+        InvalidToken,
+        AccountNotFound,
     }
 
     public sealed class HandChipDebit
@@ -131,5 +139,23 @@ namespace Game.Network.Accounts
             out IReadOnlyDictionary<string, PlayerAccount> accounts);
 
         bool AbortHand(string handId, string reason);
+    }
+
+    public interface ISessionAccountRepository
+    {
+        bool CreateSessionToken(
+            string accountId,
+            byte[] tokenHash,
+            DateTime createdAtUtc,
+            DateTime expiresAtUtc);
+
+        SessionTokenRotationResult RotateSessionToken(
+            byte[] currentTokenHash,
+            byte[] replacementTokenHash,
+            DateTime usedAtUtc,
+            DateTime replacementExpiresAtUtc,
+            out PlayerAccount account);
+
+        bool RevokeSessionToken(byte[] tokenHash, DateTime revokedAtUtc);
     }
 }

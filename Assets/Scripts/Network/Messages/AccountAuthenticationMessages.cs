@@ -7,6 +7,7 @@ namespace Game.Network
     {
         Register,
         Login,
+        TokenLogin,
     }
 
     public struct AccountRegisterRequest : NetworkMessage
@@ -21,6 +22,11 @@ namespace Game.Network
         public string Password;
     }
 
+    public struct AccountTokenLoginRequest : NetworkMessage
+    {
+        public string SessionToken;
+    }
+
     public struct AccountAuthenticationResponse : NetworkMessage
     {
         public AccountAuthenticationOperation Operation;
@@ -31,6 +37,17 @@ namespace Game.Network
         public bool HasLastRoom;
         public int LastRoomId;
         public bool RequiresRoomRecovery;
+        public string SessionToken;
+    }
+
+    public struct AccountLogoutRequest : NetworkMessage
+    {
+        public string SessionToken;
+    }
+
+    public struct AccountLogoutResponse : NetworkMessage
+    {
+        public bool Revoked;
     }
 
     public struct PlayerRoomRecoveryRequest : NetworkMessage

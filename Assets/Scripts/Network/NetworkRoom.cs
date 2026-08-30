@@ -40,6 +40,8 @@ namespace Game.Network
 
         private bool _declineRoomRecoveryOnNextLogin;
 
+        private bool _intentionalLogout;
+
         private TableParticipationStatus? _lastParticipationStatus;
 
         #endregion
@@ -183,14 +185,18 @@ namespace Game.Network
             }
 
             _isConnected = true;
-
-            UIManager.Instance.HidePanel<TitlePanel>();
-            UIManager.Instance.ShowPanel<RoomListPanel>();
         }
 
         internal void HandleClientAuthentication(AccountAuthenticationResponse response)
         {
-            if (response.Code != AccountAuthenticationCode.Success || !response.HasLastRoom)
+            if (response.Code != AccountAuthenticationCode.Success)
+                return;
+
+            UIManager.Instance.HidePanel<TitlePanel>();
+            UIManager.Instance.HidePanel<LoginPanel>();
+            UIManager.Instance.ShowPanel<RoomListPanel>();
+
+            if (!response.HasLastRoom)
             {
                 _declineRoomRecoveryOnNextLogin = false;
                 return;
@@ -219,6 +225,31 @@ namespace Game.Network
                 msgbox.CancelButtonText = "Àë¿ª·¿¼ä";
                 msgbox.OnConfirm += () => SendRoomRecoveryDecision(response.LastRoomId, true);
                 msgbox.OnCancel += () => SendRoomRecoveryDecision(response.LastRoomId, false);
+            });
+        }
+
+        internal void HandleClientLogout()
+        {
+            _intentionalLogout = true;
+            _declineRoomRecoveryOnNextLogin = false;
+            if (NetworkClient.active)
+                StopClient();
+            else
+                ShowTitleAfterLogout();
+        }
+
+        private static void ShowTitleAfterLogout()
+        {
+            if (!UIManager.Available)
+                return;
+
+            foreach (var identifier in UIManager.Instance.ShowingPanelIdentifiers.ToList())
+                UIManager.Instance.DestroyPanel(identifier);
+            UniTask.Void(async () =>
+            {
+                await UniTask.NextFrame();
+                if (UIManager.Available)
+                    UIManager.Instance.ShowPanel<TitlePanel>();
             });
         }
 
@@ -265,6 +296,8 @@ namespace Game.Network
                 _connectingMsgbox = null;
             }
             bool oldConnectedStatus = _isConnected;
+            bool intentionalLogout = _intentionalLogout;
+            _intentionalLogout = false;
             _isConnected = false;
             _lastParticipationStatus = null;
 
@@ -281,6 +314,9 @@ namespace Game.Network
                 if (UIManager.Available)
                 {
                     UIManager.Instance.ShowPanel<TitlePanel>();
+                    if (intentionalLogout)
+                        return;
+
                     MsgBox.Create((msgbox) =>
                     {
 
