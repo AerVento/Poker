@@ -141,6 +141,7 @@ namespace Game.UI
                 PlayerName = GameController.Instance.State.Nickname,
                 RoomId = _roomInfo.Id
             });
+            GameController.Instance.State.SetLastRoom(null);
             UIManager.Instance.HidePanel<RoomPanel>();
             UIManager.Instance.ShowPanel<RoomListPanel>();
         }

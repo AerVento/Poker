@@ -38,6 +38,8 @@ namespace Game.Network
         /// </summary>
         private MsgBox _connectingMsgbox;
 
+        private bool _declineRoomRecoveryOnNextLogin;
+
         #endregion
 
         public override void Awake()
@@ -66,6 +68,7 @@ namespace Game.Network
             NetworkServer.RegisterHandler<PlayerStartGameRequest>(PlayerStartGameRequestHandler, requireAuthentication: true);
             NetworkServer.RegisterHandler<RoomInfoChange>(RoomInfoChangeHandler, requireAuthentication: true);
             NetworkServer.RegisterHandler<RoomListRequest>(RoomListRequestHandler, requireAuthentication: true);
+            NetworkServer.RegisterHandler<PlayerRoomRecoveryRequest>(PlayerRoomRecoveryRequestHandler, requireAuthentication: true);
         }
 
         internal NetworkConnectionToClient BindAuthenticatedAccount(
@@ -75,35 +78,40 @@ namespace Game.Network
             return _playerManager.BindAccount(account, conn);
         }
 
+        internal void ValidateLastRoom(PlayerAccount account)
+        {
+            if (account == null || !account.LastRoomId.HasValue)
+                return;
+
+            if (_roomManager.FindRoom(account.LastRoomId.Value) != null)
+                return;
+
+            if (authenticator is AccountAuthenticator accountAuthenticator &&
+                accountAuthenticator.AccountRepository?.SetLastRoom(account.AccountId, null) == true)
+            {
+                account.LastRoomId = null;
+            }
+        }
+
+        internal void RestoreReplacedSession(string playerName, NetworkConnectionToClient conn)
+        {
+            if (!_roomManager.WhichRoom(playerName, out var roomId))
+                return;
+
+            SendCurrentRoomState(conn, roomId, playerName, reconnectCurrentHand: true);
+        }
+
+        internal bool CanRestoreReplacedSession(PlayerAccount account)
+        {
+            return account != null &&
+                account.LastRoomId.HasValue &&
+                _roomManager.WhichRoom(account.UserName, out var roomId) &&
+                roomId == account.LastRoomId.Value;
+        }
+
         public override void OnServerConnect(NetworkConnectionToClient conn)
         {
-            if (!_playerManager.TryGetPlayerName(conn, out var playerName) ||
-                !_roomManager.WhichRoom(playerName, out var roomId))
-            {
-                return;
-            }
-
-            var room = _roomManager.FindRoom(roomId);
-            if (room == null)
-                return;
-
-            if (room.IsWaiting)
-            {
-                conn.Send(new PlayerJoinRoomResponse
-                {
-                    SuccessCode = 0,
-                    RoomInfo = room,
-                });
-                return;
-            }
-
-            var playerIndex = _gameManager.SetConnected(roomId, playerName);
-            var gameInfo = _gameManager.GetGameInfo(roomId);
-            if (playerIndex < 0 || gameInfo == null)
-                return;
-
-            conn.Send(new PlayerStartGameResponse { SuccessCode = 0 });
-            conn.Send(new GameInfoSync { Info = new ClientGameInfo(gameInfo, playerIndex) });
+            base.OnServerConnect(conn);
         }
 
         public override void OnServerDisconnect(NetworkConnectionToClient conn)
@@ -115,21 +123,11 @@ namespace Game.Network
                 if (_roomManager.WhichRoom(name, out var roomId))
                 {
                     var room = _roomManager.FindRoom(roomId);
-                    // 还在大厅中等待
+                    // 等待大厅中断线时立即释放参赛座位，但保留旁观成员和 LastRoomId。
                     if (room.IsWaiting)
                     {
-                        int result = _roomManager.Leave(roomId, name);
-                        switch (result)
-                        {
-                            case 0:
-                                var sync = new RoomInfoSync() { RoomInfo = room };
-                                foreach (var player in room.Players)
-                                {
-                                    var playerConn = _playerManager.GetConnection(player);
-                                    playerConn?.Send(sync);
-                                }
-                                break;
-                        }
+                        _roomManager.MoveToSpectator(roomId, name);
+                        BroadcastRoomInfo(room);
                     }
                     else // 游戏已经开始
                     {
@@ -186,6 +184,52 @@ namespace Game.Network
             UIManager.Instance.ShowPanel<RoomListPanel>();
         }
 
+        internal void HandleClientAuthentication(AccountAuthenticationResponse response)
+        {
+            if (response.Code != AccountAuthenticationCode.Success || !response.HasLastRoom)
+            {
+                _declineRoomRecoveryOnNextLogin = false;
+                return;
+            }
+
+            if (!response.RequiresRoomRecovery)
+            {
+                _declineRoomRecoveryOnNextLogin = false;
+                return;
+            }
+
+            if (_declineRoomRecoveryOnNextLogin)
+            {
+                _declineRoomRecoveryOnNextLogin = false;
+                SendRoomRecoveryDecision(response.LastRoomId, false);
+                return;
+            }
+
+            MsgBox.Create("RoomRecovery", msgbox =>
+            {
+                msgbox.Type = MsgboxType.ConfirmAndCancel;
+                msgbox.ShowCloseButton = false;
+                msgbox.Title = "返回上次房间";
+                msgbox.Message = $"上次所在的房间 {response.LastRoomId} 仍然存在，是否返回？";
+                msgbox.ConfirmButtonText = "返回房间";
+                msgbox.CancelButtonText = "离开房间";
+                msgbox.OnConfirm += () => SendRoomRecoveryDecision(response.LastRoomId, true);
+                msgbox.OnCancel += () => SendRoomRecoveryDecision(response.LastRoomId, false);
+            });
+        }
+
+        private static void SendRoomRecoveryDecision(int roomId, bool returnToRoom)
+        {
+            if (GameController.Available && !returnToRoom)
+                GameController.Instance.State.SetLastRoom(null);
+
+            NetworkClient.Send(new PlayerRoomRecoveryRequest
+            {
+                RoomId = roomId,
+                ReturnToRoom = returnToRoom,
+            });
+        }
+
         public override void OnClientError(TransportError error, string reason)
         {
             // base.OnClientError(error, reason);
@@ -235,10 +279,23 @@ namespace Game.Network
                     MsgBox.Create((msgbox) =>
                     {
 
-                        if (oldConnectedStatus)
+                        var hadRoomAssociation = GameController.Available &&
+                            GameController.Instance.State.LastRoomId.HasValue;
+                        if (oldConnectedStatus && hadRoomAssociation)
                         {
                             msgbox.Title = "与服务器断开连接";
-                            msgbox.Message = "请检查网络连接；如果此账号在其他设备登录，原连接也会被替换";
+                            msgbox.Message = "可以重新登录并恢复状态；选择离开房间后，将在下次登录时清除上次房间关联。";
+                            msgbox.Type = MsgboxType.ConfirmAndCancel;
+                            msgbox.ShowCloseButton = false;
+                            msgbox.ConfirmButtonText = "重新登录";
+                            msgbox.CancelButtonText = "离开房间";
+                            msgbox.OnConfirm += () => _declineRoomRecoveryOnNextLogin = false;
+                            msgbox.OnCancel += () => _declineRoomRecoveryOnNextLogin = true;
+                        }
+                        else if (oldConnectedStatus)
+                        {
+                            msgbox.Title = "与服务器断开连接";
+                            msgbox.Message = "请检查网络连接；如果此账号在其他设备登录，原连接也会被替换。";
                         }
                         else
                         {
@@ -261,6 +318,29 @@ namespace Game.Network
             out string playerName)
         {
             return _playerManager.TryGetPlayerName(conn, out playerName);
+        }
+
+        private bool PersistLastRoom(string playerName, int? roomId)
+        {
+            if (!_playerManager.TryGetAccount(playerName, out var account) ||
+                !(authenticator is AccountAuthenticator accountAuthenticator) ||
+                accountAuthenticator.AccountRepository == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (!accountAuthenticator.AccountRepository.SetLastRoom(account.AccountId, roomId))
+                    return false;
+                _playerManager.SetLastRoom(playerName, roomId);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                Log.WriteError($"Unable to persist LastRoomId for {playerName}: {exception}");
+                return false;
+            }
         }
 
         private void GameInfoSyncHandler(GameInfoSync message)
@@ -287,7 +367,7 @@ namespace Game.Network
             {
                 var room = _roomManager.FindRoom(message.RoomId);
                 var sync = new RoomInfoSync() { RoomInfo = room };
-                foreach(var player in room.Players)
+                foreach(var player in room.MemberNames)
                 {
                     var playerConn = _playerManager.GetConnection(player);
                     playerConn?.Send(sync);
@@ -306,6 +386,12 @@ namespace Game.Network
                 Log.WriteWarn($"Player {playerName} attempted to create a room while already in one.");
                 return;
             }
+            if (!PersistLastRoom(playerName, room.Id))
+            {
+                _roomManager.Leave(room.Id, playerName);
+                Log.WriteError($"Unable to associate player {playerName} with newly created room {room.Id}.");
+                return;
+            }
             var sync = new RoomInfoSync() { RoomInfo = room };
             conn.Send(sync);
         }
@@ -315,7 +401,27 @@ namespace Game.Network
             if (!TryGetAuthenticatedPlayer(conn, out var playerName))
                 return;
 
-            int result = _roomManager.Join(request.RoomId, playerName);
+            var targetRoom = _roomManager.FindRoom(request.RoomId);
+            var accountRepository = (authenticator as AccountAuthenticator)?.AccountRepository;
+            PlayerAccount account = null;
+            try
+            {
+                if (_playerManager.TryGetAccount(conn, out var sessionAccount))
+                    account = accountRepository?.FindById(sessionAccount.AccountId);
+            }
+            catch (Exception exception)
+            {
+                Log.WriteError($"Unable to load account for {playerName} while joining room: {exception}");
+            }
+            int result;
+            if (targetRoom == null)
+                result = -1;
+            else if (account == null)
+                result = -5;
+            else if (account.Chips < checked((uint)targetRoom.SmallBlindChips * 2U))
+                result = -6;
+            else
+                result = _roomManager.Join(request.RoomId, playerName);
             var response = new PlayerJoinRoomResponse()
             {
                 SuccessCode = result,
@@ -323,9 +429,17 @@ namespace Game.Network
             if (result == 0)
             {
                 var room = _roomManager.FindRoom(request.RoomId);
+                if (!PersistLastRoom(playerName, request.RoomId))
+                {
+                    _roomManager.Leave(request.RoomId, playerName);
+                    response.SuccessCode = -5;
+                    conn.Send(response);
+                    return;
+                }
                 if (!room.IsWaiting && _gameManager.SynchronizeRoomSeats(request.RoomId) != 0)
                 {
                     _roomManager.Leave(request.RoomId, playerName);
+                    PersistLastRoom(playerName, null);
                     response.SuccessCode = -5;
                     conn.Send(response);
                     return;
@@ -348,12 +462,123 @@ namespace Game.Network
                 conn.Send(response);
         }
 
+        private void PlayerRoomRecoveryRequestHandler(
+            NetworkConnectionToClient conn,
+            PlayerRoomRecoveryRequest request)
+        {
+            if (!_playerManager.TryGetAccount(conn, out var sessionAccount))
+                return;
+
+            PlayerAccount account;
+            try
+            {
+                account = (authenticator as AccountAuthenticator)?.AccountRepository?
+                    .FindById(sessionAccount.AccountId);
+            }
+            catch (Exception exception)
+            {
+                Log.WriteError($"Unable to load account {sessionAccount.AccountId} during room recovery: {exception}");
+                return;
+            }
+
+            if (account == null || account.LastRoomId != request.RoomId)
+                return;
+
+            var playerName = account.UserName;
+            if (!request.ReturnToRoom)
+            {
+                if (_roomManager.WhichRoom(playerName, out var associatedRoomId) &&
+                    associatedRoomId == request.RoomId)
+                {
+                    var deferRemoval = _gameManager.IsHandInProgress(request.RoomId);
+                    if (_roomManager.Leave(request.RoomId, playerName, deferRemoval) == 0)
+                    {
+                        if (deferRemoval)
+                            _gameManager.SetLeaving(request.RoomId, playerName);
+                        else
+                            _gameManager.SynchronizeRoomSeats(request.RoomId);
+
+                        var remainingRoom = _roomManager.FindRoom(request.RoomId);
+                        if (remainingRoom == null)
+                            _gameManager.CancelGame(request.RoomId, "RoomEmpty");
+                        else
+                        {
+                            BroadcastRoomInfo(remainingRoom);
+                            BroadcastGameInfo(request.RoomId);
+                        }
+                    }
+                }
+
+                PersistLastRoom(playerName, null);
+                conn.Send(new RoomListResponse { RoomList = _roomManager.RoomList });
+                return;
+            }
+
+            var room = _roomManager.FindRoom(request.RoomId);
+            if (room == null)
+            {
+                PersistLastRoom(playerName, null);
+                conn.Send(new PlayerJoinRoomResponse { SuccessCode = -1 });
+                return;
+            }
+
+            var bigBlind = checked((uint)room.SmallBlindChips * 2U);
+            var restoreResult = _roomManager.Restore(request.RoomId, playerName, account.Chips >= bigBlind);
+            if (restoreResult < 0)
+            {
+                conn.Send(new PlayerJoinRoomResponse { SuccessCode = restoreResult });
+                return;
+            }
+
+            SendCurrentRoomState(conn, request.RoomId, playerName, reconnectCurrentHand: true);
+            BroadcastRoomInfo(room, playerName);
+            BroadcastGameInfo(request.RoomId);
+        }
+
+        private void SendCurrentRoomState(
+            NetworkConnectionToClient conn,
+            int roomId,
+            string playerName,
+            bool reconnectCurrentHand)
+        {
+            var room = _roomManager.FindRoom(roomId);
+            if (room == null)
+                return;
+
+            conn.Send(new PlayerJoinRoomResponse
+            {
+                SuccessCode = 0,
+                RoomInfo = room,
+            });
+            if (room.IsWaiting)
+                return;
+
+            if (_gameManager.SynchronizeRoomSeats(roomId) != 0)
+                return;
+
+            var playerIndex = _gameManager.FindPlayerSeat(roomId, playerName);
+            if (reconnectCurrentHand && playerIndex >= 0)
+                playerIndex = _gameManager.SetConnected(roomId, playerName);
+
+            var gameInfo = _gameManager.GetGameInfo(roomId);
+            if (gameInfo == null)
+                return;
+
+            conn.Send(new PlayerStartGameResponse { SuccessCode = 0 });
+            conn.Send(new GameInfoSync
+            {
+                Info = new ClientGameInfo(gameInfo, playerIndex),
+            });
+        }
+
         private void PlayerJoinRoomResponseHandler(PlayerJoinRoomResponse response)
         {
             int result = response.SuccessCode;
             switch (result)
             {
                 case 0:
+                    if (GameController.Available)
+                        GameController.Instance.State.SetLastRoom(response.RoomInfo.Id);
                     UIManager.Instance.HidePanel<RoomListPanel>();
                     UIManager.Instance.ShowPanel<RoomPanel>();
                     RoomPanel.Instance.RoomInfo = response.RoomInfo;
@@ -389,6 +614,20 @@ namespace Game.Network
                     });
                     RoomListPanel.Instance.RefreshRoomList();
                     return;
+                case -5:
+                    MsgBox.Create((msgbox) =>
+                    {
+                        msgbox.Title = "加入房间时出错";
+                        msgbox.Message = "账户或牌局状态暂时不可用";
+                    });
+                    return;
+                case -6:
+                    MsgBox.Create((msgbox) =>
+                    {
+                        msgbox.Title = "筹码不足";
+                        msgbox.Message = "至少拥有一个大盲的筹码才能加入牌局";
+                    });
+                    return;
                 default:
                     Log.WriteError($"Unknown success code: {result}.");
                     Log.WriteError(new System.Diagnostics.StackTrace().ToString());
@@ -406,6 +645,7 @@ namespace Game.Network
             switch (result)
             {
                 case 0:
+                    PersistLastRoom(playerName, null);
                     var room = _roomManager.FindRoom(message.RoomId);
                     if (room == null)
                     {
@@ -622,7 +862,7 @@ namespace Game.Network
             }
 
             // 如果成功开启游戏，还向其他所有玩家广播游戏开始的信息
-            foreach (var name in room.Players)
+            foreach (var name in room.MemberNames)
                 _playerManager.GetConnection(name)?.Send(response);
             BroadcastGameInfo(room.Id);
 
@@ -726,7 +966,7 @@ namespace Game.Network
             RoomInfoSync sync = new RoomInfoSync();
             sync.RoomInfo = room;
             
-            foreach(var player in room.Players)
+            foreach(var player in room.MemberNames)
             {
                 var playerConn = _playerManager.GetConnection(player);
                 playerConn?.Send(sync);
@@ -735,6 +975,11 @@ namespace Game.Network
 
         private void RoomInfoSyncHandler(RoomInfoSync message)
         {
+            if (GameController.Available &&
+                message.RoomInfo.ContainsMember(GameController.Instance.State.UserName))
+            {
+                GameController.Instance.State.SetLastRoom(message.RoomInfo.Id);
+            }
             RoomPanel.Instance.RoomInfo = message.RoomInfo;
         }
 
@@ -792,7 +1037,7 @@ namespace Game.Network
             var room = _roomManager.FindRoom(roomId);
             if (room == null)
                 return;
-            foreach (var name in room.Players)
+            foreach (var name in room.MemberNames)
             {
                 var conn = _playerManager.GetConnection(name);
                 var roundResult = new RoundResultNotification()
@@ -803,6 +1048,7 @@ namespace Game.Network
             }
 
             gameInfo.Timer.Stop();
+            _roomManager.ReleaseWatchingSeats(roomId);
             if (!_roomManager.FinalizeDepartures(roomId))
             {
                 _gameManager.CancelGame(roomId, "RoomEmpty");
@@ -855,7 +1101,7 @@ namespace Game.Network
                 return;
 
             var sync = new RoomInfoSync { RoomInfo = room };
-            foreach (var playerName in room.Players)
+            foreach (var playerName in room.MemberNames)
             {
                 if (playerName == exceptPlayer)
                     continue;
@@ -879,6 +1125,17 @@ namespace Game.Network
                 conn?.Send(new GameInfoSync
                 {
                     Info = new ClientGameInfo(gameInfo, seatIndex),
+                });
+            }
+
+            var room = _roomManager.FindRoom(roomId);
+            if (room == null)
+                return;
+            foreach (var spectatorName in room.Spectators)
+            {
+                _playerManager.GetConnection(spectatorName)?.Send(new GameInfoSync
+                {
+                    Info = new ClientGameInfo(gameInfo, -1),
                 });
             }
         }

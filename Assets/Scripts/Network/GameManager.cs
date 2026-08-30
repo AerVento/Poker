@@ -932,6 +932,14 @@ namespace Game.Network
                 return;
 
             info.Players[playerIndex].IsDisconnected = true;
+            var roomSeat = info.RoomInfo.FindSeat(playerIndex);
+            if (roomSeat != null && roomSeat.State != RoomSeatState.Leaving)
+            {
+                roomSeat.State = IsHandInProgress(roomId) && info.Players[playerIndex].ParticipatedThisHand
+                    ? RoomSeatState.DisconnectedInHand
+                    : RoomSeatState.Watching;
+                info.RoomInfo.SynchronizeLegacyLists();
+            }
             if (playerIndex == info.OperatingPlayer && !info.Players[playerIndex].IsAllIn)
                 AutoOperation(info);
             else
@@ -948,6 +956,14 @@ namespace Game.Network
                 return -1;
 
             info.Players[playerIndex].IsDisconnected = false;
+            var roomSeat = info.RoomInfo.FindSeat(playerIndex);
+            if (roomSeat != null && roomSeat.State != RoomSeatState.Leaving)
+            {
+                roomSeat.State = IsHandInProgress(roomId) && info.Players[playerIndex].ParticipatedThisHand
+                    ? RoomSeatState.Playing
+                    : RoomSeatState.WaitingForNextHand;
+                info.RoomInfo.SynchronizeLegacyLists();
+            }
             OnGameInfoChanged?.Invoke(roomId);
             return playerIndex;
         }

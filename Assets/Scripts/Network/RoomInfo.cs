@@ -11,6 +11,7 @@ namespace Game.Network
         Waiting,
         WaitingForNextHand,
         Playing,
+        DisconnectedInHand,
         Watching,
         Leaving,
     }
@@ -64,6 +65,11 @@ namespace Game.Network
         public List<RoomSeatInfo> Seats { get; set; } = new List<RoomSeatInfo>();
 
         /// <summary>
+        /// 房间旁观成员不占用参赛座位，但仍保留房间关联并接收公开牌局状态。
+        /// </summary>
+        public List<string> Spectators { get; set; } = new List<string>();
+
+        /// <summary>
         /// 初始筹码
         /// </summary>
         public int InitialChips { get; set; } = 300;
@@ -89,10 +95,18 @@ namespace Game.Network
         [JsonIgnore]
         public int PlayerCount => Players.Count;
 
+        [JsonIgnore]
+        public int MemberCount => PlayerCount + (Spectators?.Count ?? 0);
+
+        [JsonIgnore]
+        public IEnumerable<string> MemberNames => Players.Concat(Spectators ?? Enumerable.Empty<string>());
+
         public void EnsureSeatModel()
         {
             if (Seats == null)
                 Seats = new List<RoomSeatInfo>();
+            if (Spectators == null)
+                Spectators = new List<string>();
 
             if (Seats.Count == 0 && Players != null)
             {
@@ -115,6 +129,12 @@ namespace Game.Network
         {
             EnsureSeatModel();
             return Seats.Find(seat => seat.PlayerName == playerName);
+        }
+
+        public bool ContainsMember(string playerName)
+        {
+            EnsureSeatModel();
+            return Seats.Any(seat => seat.PlayerName == playerName) || Spectators.Contains(playerName);
         }
 
         public RoomSeatInfo FindSeat(int seatIndex)

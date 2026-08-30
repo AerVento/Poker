@@ -91,6 +91,18 @@ namespace Game.UI
             set => _message.text = value;
         }
 
+        public string ConfirmButtonText
+        {
+            get => _confirmButton.GetComponentInChildren<TextMeshProUGUI>().text;
+            set => _confirmButton.GetComponentInChildren<TextMeshProUGUI>().text = value;
+        }
+
+        public string CancelButtonText
+        {
+            get => _cancelButton.GetComponentInChildren<TextMeshProUGUI>().text;
+            set => _cancelButton.GetComponentInChildren<TextMeshProUGUI>().text = value;
+        }
+
         private void Start()
         {
             _closeButton.onClick.AddListener(Hide);

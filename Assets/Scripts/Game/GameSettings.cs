@@ -25,5 +25,10 @@ namespace Game
             Chips = chips;
             LastRoomId = lastRoomId;
         }
+
+        public void SetLastRoom(int? roomId)
+        {
+            LastRoomId = roomId;
+        }
     }
 }

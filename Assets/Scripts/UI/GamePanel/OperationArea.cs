@@ -148,8 +148,12 @@ namespace Game.UI.GamePanelElement
         public void Refresh()
         {
             // 基本信息
-            _playerNameText.text = _info.CurrentPlayer.PlayerName;
-            _playerChipsText.text = "$" + BigNumberToString(_info.CurrentPlayer.Chips);
+            _playerNameText.text = _info.IsSpectator
+                ? "旁观中"
+                : _info.CurrentPlayer.PlayerName;
+            _playerChipsText.text = _info.IsSpectator
+                ? string.Empty
+                : "$" + BigNumberToString(_info.CurrentPlayer.Chips);
 
             // 卡牌信息
             _hole.ForEach(poker => poker.IsShowing = false);
@@ -163,6 +167,16 @@ namespace Game.UI.GamePanelElement
             {
                 _community[i].IsShowing = true;
                 _community[i].Poker = _info.Community[i];
+            }
+
+            if (_info.IsSpectator)
+            {
+                _checkButton.gameObject.SetActive(false);
+                _betOrRaiseButton.gameObject.SetActive(false);
+                _callButton.gameObject.SetActive(false);
+                _allInButton.gameObject.SetActive(false);
+                _foldButton.gameObject.SetActive(false);
+                return;
             }
 
 

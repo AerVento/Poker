@@ -204,20 +204,27 @@ namespace Game.Network
                 };
             }
 
-            var response = CreateResponse(operation, result);
             if (!result.IsSuccess)
             {
-                conn.Send(response);
+                conn.Send(CreateResponse(operation, result, false));
                 return;
             }
 
+            _networkRoom.ValidateLastRoom(result.Account);
+            var canRestoreReplacedSession = _networkRoom.CanRestoreReplacedSession(result.Account);
             var oldConnection = _networkRoom.BindAuthenticatedAccount(result.Account, conn);
+            var response = CreateResponse(
+                operation,
+                result,
+                oldConnection == null || !canRestoreReplacedSession);
             conn.Send(response);
             ServerAccept(conn);
 
             if (oldConnection != null && oldConnection != conn)
             {
                 Log.WriteInfo($"Account {result.Account.UserName} logged in again; replacing the previous connection.");
+                if (canRestoreReplacedSession)
+                    _networkRoom.RestoreReplacedSession(result.Account.UserName, conn);
                 oldConnection.Disconnect();
             }
         }
@@ -245,6 +252,7 @@ namespace Game.Network
 
             AuthenticationResponseReceived?.Invoke(response);
             ClientAccept();
+            _networkRoom.HandleClientAuthentication(response);
         }
 
         private void ClearPendingAuthentication()
@@ -257,7 +265,8 @@ namespace Game.Network
 
         private static AccountAuthenticationResponse CreateResponse(
             AccountAuthenticationOperation operation,
-            AccountAuthenticationResult result)
+            AccountAuthenticationResult result,
+            bool requireRoomRecovery)
         {
             var response = new AccountAuthenticationResponse
             {
@@ -273,6 +282,7 @@ namespace Game.Network
             response.Chips = result.Account.Chips;
             response.HasLastRoom = result.Account.LastRoomId.HasValue;
             response.LastRoomId = result.Account.LastRoomId.GetValueOrDefault();
+            response.RequiresRoomRecovery = requireRoomRecovery && response.HasLastRoom;
             return response;
         }
     }

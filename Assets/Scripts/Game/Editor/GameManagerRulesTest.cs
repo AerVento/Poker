@@ -236,6 +236,42 @@ namespace Game.Tests
         }
 
         [Test]
+        public void DisconnectDuringHand_AutoActsAndCanRestoreSameSeat()
+        {
+            var manager = CreateManager(3, out var info);
+            info.Dealer = 2;
+            Assert.AreEqual(0, manager.StartNew(info.RoomInfo.Id));
+            var disconnectedSeat = info.OperatingPlayer;
+            var playerName = info.Players[disconnectedSeat].PlayerName;
+
+            manager.SetDisconnected(info.RoomInfo.Id, playerName);
+
+            Assert.IsTrue(info.Players[disconnectedSeat].IsDisconnected);
+            Assert.AreEqual(
+                RoomSeatState.DisconnectedInHand,
+                info.RoomInfo.FindSeat(disconnectedSeat).State);
+            Assert.IsNotNull(info.Players[disconnectedSeat].LastOperation);
+
+            Assert.AreEqual(disconnectedSeat, manager.SetConnected(info.RoomInfo.Id, playerName));
+            Assert.IsFalse(info.Players[disconnectedSeat].IsDisconnected);
+            Assert.AreEqual(RoomSeatState.Playing, info.RoomInfo.FindSeat(disconnectedSeat).State);
+        }
+
+        [Test]
+        public void SpectatorClientView_HasNoPrivateCardsOrOperationIdentity()
+        {
+            var manager = CreateManager(2, out var info);
+            Assert.AreEqual(0, manager.StartNew(info.RoomInfo.Id));
+
+            var clientInfo = new ClientGameInfo(info, -1);
+
+            Assert.IsTrue(clientInfo.IsSpectator);
+            Assert.AreEqual(-1, clientInfo.CurrentPlayerIndex);
+            Assert.AreEqual(0, clientInfo.Hole.Count);
+            Assert.IsFalse(clientInfo.CanRaise);
+        }
+
+        [Test]
         public void StartNew_WithSeatGapUsesStablePhysicalSeatIndices()
         {
             var manager = CreateManager(3, out var info, maxPlayerCount: 4);
@@ -527,6 +563,43 @@ namespace Game.Tests
 
             Assert.AreEqual(0, manager.Leave(room.Id, "OnlyPlayer"));
             Assert.IsNull(manager.FindRoom(room.Id));
+        }
+
+        [Test]
+        public void WatchingMember_ReleasesSeatAndRestoresAsNextHandPlayer()
+        {
+            var manager = new RoomManager();
+            var room = manager.CreateRoom("Owner");
+            room.MaxPlayerCount = 4;
+            Assert.AreEqual(0, manager.Join(room.Id, "Bob"));
+            Assert.AreEqual(0, manager.PlayerChangeReady(room.Id, "Bob"));
+            Assert.AreEqual(0, manager.StartGame(room.Id));
+            room.FindSeat("Bob").State = RoomSeatState.Watching;
+
+            Assert.AreEqual(1, manager.ReleaseWatchingSeats(room.Id));
+            Assert.IsNull(room.FindSeat("Bob"));
+            CollectionAssert.Contains(room.Spectators, "Bob");
+            Assert.IsTrue(manager.WhichRoom("Bob", out var associatedRoomId));
+            Assert.AreEqual(room.Id, associatedRoomId);
+
+            Assert.AreEqual(0, manager.Restore(room.Id, "Bob", canTakeSeat: true));
+            Assert.AreEqual(1, room.FindSeat("Bob").SeatIndex);
+            Assert.AreEqual(RoomSeatState.WaitingForNextHand, room.FindSeat("Bob").State);
+            CollectionAssert.DoesNotContain(room.Spectators, "Bob");
+        }
+
+        [Test]
+        public void SpectatorDecliningReturn_RemovesFinalRoomAssociation()
+        {
+            var manager = new RoomManager();
+            var room = manager.CreateRoom("OnlyPlayer");
+            Assert.IsTrue(manager.MoveToSpectator(room.Id, "OnlyPlayer"));
+            Assert.AreEqual(0, room.PlayerCount);
+            Assert.AreEqual(1, room.MemberCount);
+
+            Assert.AreEqual(0, manager.Leave(room.Id, "OnlyPlayer"));
+            Assert.IsNull(manager.FindRoom(room.Id));
+            Assert.IsFalse(manager.WhichRoom("OnlyPlayer", out _));
         }
     }
 }

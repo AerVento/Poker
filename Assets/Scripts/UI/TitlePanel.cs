@@ -19,7 +19,7 @@ namespace Game.UI
         [SerializeField]
         private Button _quit;
 
-        [Header("Account Authentication (optional until the prefab is updated)")]
+        [Header("Account Authentication")]
         [SerializeField]
         private TMP_InputField _userName;
         [SerializeField]
@@ -114,8 +114,8 @@ namespace Game.UI
             {
                 MsgBox.Create((msgbox) =>
                 {
-                    msgbox.Title = "登录界面尚未绑定";
-                    msgbox.Message = "请在 TitlePanel 预制体中绑定用户名、密码和注册按钮后再登录。";
+                    msgbox.Title = "登录界面配置错误";
+                    msgbox.Message = "TitlePanel 的账户输入控件没有正确绑定。";
                 });
                 return;
             }

@@ -79,11 +79,14 @@ namespace Game.Network
         /// </summary>
         public int CurrentPlayerIndex { get; set; }
 
+        [JsonIgnore]
+        public bool IsSpectator => CurrentPlayerIndex < 0 || CurrentPlayerIndex >= PlayersCount;
+
         /// <summary>
         /// 当前玩家信息
         /// </summary>
         [JsonIgnore]
-        public PlayerInfo CurrentPlayer => Players[CurrentPlayerIndex];
+        public PlayerInfo CurrentPlayer => IsSpectator ? default : Players[CurrentPlayerIndex];
 
         /// <summary>
         /// 此玩家底牌
@@ -128,10 +131,14 @@ namespace Game.Network
             Community = serverGameInfo.Community;
             CurrentHighestRaise = serverGameInfo.CurrentHighestRaise;
             CurrentHighestPlayerBet = serverGameInfo.CurrentHighestPlayerBet;
-            CanRaise = serverGameInfo.CanPlayerRaise(playerIndex);
+            CanRaise = playerIndex >= 0 &&
+                playerIndex < serverGameInfo.PlayersCount &&
+                serverGameInfo.CanPlayerRaise(playerIndex);
 
             CurrentPlayerIndex = playerIndex;
-            Hole = serverGameInfo.Players[playerIndex].Hole;
+            Hole = playerIndex < 0 || playerIndex >= serverGameInfo.PlayersCount
+                ? new List<Poker>()
+                : serverGameInfo.Players[playerIndex].Hole;
         }
 
 

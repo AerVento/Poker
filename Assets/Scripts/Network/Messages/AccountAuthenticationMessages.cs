@@ -30,5 +30,12 @@ namespace Game.Network
         public uint Chips;
         public bool HasLastRoom;
         public int LastRoomId;
+        public bool RequiresRoomRecovery;
+    }
+
+    public struct PlayerRoomRecoveryRequest : NetworkMessage
+    {
+        public int RoomId;
+        public bool ReturnToRoom;
     }
 }

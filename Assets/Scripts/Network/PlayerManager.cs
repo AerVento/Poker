@@ -104,6 +104,24 @@ namespace Game.Network
             return false;
         }
 
+        public bool TryGetAccount(string playerName, out PlayerAccount account)
+        {
+            if (playerName != null && _sessionsByUserName.TryGetValue(playerName, out var session))
+            {
+                account = session.Account;
+                return true;
+            }
+
+            account = null;
+            return false;
+        }
+
+        public void SetLastRoom(string playerName, int? roomId)
+        {
+            if (playerName != null && _sessionsByUserName.TryGetValue(playerName, out var session))
+                session.Account.LastRoomId = roomId;
+        }
+
         public bool TryGetPlayerName(NetworkConnectionToClient connection, out string playerName)
         {
             if (TryGetSession(connection, out var session))

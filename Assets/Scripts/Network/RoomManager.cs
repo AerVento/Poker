@@ -85,6 +85,86 @@ namespace Game.Network
         }
 
         /// <summary>
+        /// 恢复上次房间关联。返回 0 表示已入座，1 表示作为旁观成员返回。
+        /// </summary>
+        public int Restore(int roomId, string player, bool canTakeSeat)
+        {
+            var room = FindRoom(roomId);
+            if (room == null)
+                return -1;
+
+            room.EnsureSeatModel();
+            if (WhichRoom(player, out var associatedRoomId) && associatedRoomId != roomId)
+                return -2;
+
+            var existingSeat = room.FindSeat(player);
+            if (existingSeat != null)
+                return 0;
+
+            if (!room.Spectators.Contains(player))
+                room.Spectators.Add(player);
+
+            var seatIndex = canTakeSeat ? room.FindAvailableSeatIndex() : -1;
+            if (seatIndex < 0)
+            {
+                room.SynchronizeLegacyLists();
+                return 1;
+            }
+
+            room.Spectators.Remove(player);
+            room.Seats.Add(new RoomSeatInfo
+            {
+                SeatIndex = seatIndex,
+                PlayerName = player,
+                IsReady = false,
+                State = room.IsWaiting ? RoomSeatState.Waiting : RoomSeatState.WaitingForNextHand,
+            });
+            room.SynchronizeLegacyLists();
+            return 0;
+        }
+
+        public bool MoveToSpectator(int roomId, string player)
+        {
+            var room = FindRoom(roomId);
+            if (room == null)
+                return false;
+
+            room.EnsureSeatModel();
+            var seat = room.FindSeat(player);
+            if (seat == null)
+                return room.Spectators.Contains(player);
+
+            room.Seats.Remove(seat);
+            if (!room.Spectators.Contains(player))
+                room.Spectators.Add(player);
+            TransferOwnerIfNeeded(room, player);
+            room.SynchronizeLegacyLists();
+            return true;
+        }
+
+        public int ReleaseWatchingSeats(int roomId)
+        {
+            var room = FindRoom(roomId);
+            if (room == null)
+                return 0;
+
+            room.EnsureSeatModel();
+            var released = room.Seats
+                .Where(seat => seat.State == RoomSeatState.Watching)
+                .ToList();
+            foreach (var seat in released)
+            {
+                room.Seats.Remove(seat);
+                if (!room.Spectators.Contains(seat.PlayerName))
+                    room.Spectators.Add(seat.PlayerName);
+                TransferOwnerIfNeeded(room, seat.PlayerName);
+            }
+
+            room.SynchronizeLegacyLists();
+            return released.Count;
+        }
+
+        /// <summary>
         /// 
         /// </summary>
         /// <param name="roomId"></param>
@@ -101,18 +181,19 @@ namespace Game.Network
 
             room.EnsureSeatModel();
             var seat = room.Seats.Find(candidate => candidate.PlayerName == player);
-            if (seat == null)
+            var isSpectator = room.Spectators.Remove(player);
+            if (seat == null && !isSpectator)
             {
                 Log.WriteWarn($"The player {player} requested to leave the room but the player is not in the room {roomId}!");
                 return -2;
             }
 
-            if (deferRemoval && !room.IsWaiting)
+            if (seat != null && deferRemoval && !room.IsWaiting)
             {
                 seat.State = RoomSeatState.Leaving;
                 seat.IsReady = false;
             }
-            else
+            else if (seat != null)
             {
                 room.Seats.Remove(seat);
             }
@@ -120,7 +201,7 @@ namespace Game.Network
 
             TransferOwnerIfNeeded(room, player);
             room.SynchronizeLegacyLists();
-            if (room.PlayerCount == 0)
+            if (room.MemberCount == 0)
                 DeleteRoom(roomId);
             return 0;
         }
@@ -138,7 +219,7 @@ namespace Game.Network
             if (departingOwner)
                 TransferOwnerIfNeeded(room, room.OwnerName);
             room.SynchronizeLegacyLists();
-            if (room.PlayerCount > 0)
+            if (room.MemberCount > 0)
                 return true;
 
             DeleteRoom(roomId);
@@ -284,7 +365,7 @@ namespace Game.Network
             foreach(var room in RoomList.Rooms)
             {
                 room.EnsureSeatModel();
-                if (room.Seats.Any(seat => seat.PlayerName == playerName))
+                if (room.ContainsMember(playerName))
                 {
                     roomId = room.Id;
                     return true;
@@ -305,8 +386,7 @@ namespace Game.Network
 
         private static void TransferOwnerIfNeeded(RoomInfo room, string departingPlayer)
         {
-            if (room.OwnerName != departingPlayer && room.Seats.Any(seat =>
-                seat.PlayerName == room.OwnerName && seat.State != RoomSeatState.Leaving))
+            if (room.OwnerName != departingPlayer && room.ContainsMember(room.OwnerName))
             {
                 return;
             }
@@ -315,6 +395,7 @@ namespace Game.Network
                 .Where(seat => seat.State != RoomSeatState.Leaving)
                 .OrderBy(seat => seat.SeatIndex)
                 .Select(seat => seat.PlayerName)
+                .Concat(room.Spectators)
                 .FirstOrDefault();
         }
     }
