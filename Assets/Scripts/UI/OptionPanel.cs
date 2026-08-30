@@ -60,8 +60,13 @@ namespace Game.UI
             _back.onClick.AddListener(Back);
             _logout.onClick.AddListener(Logout);
 
-            _userName.text = GameController.Instance.State.UserName;
-            _logout.interactable = true;
+            var isAuthenticated = GameController.Available &&
+                GameController.Instance.State.IsAuthenticated;
+            _userName.text = isAuthenticated
+                ? GameController.Instance.State.UserName
+                : "未登录";
+            _logout.gameObject.SetActive(isAuthenticated);
+            _logout.interactable = isAuthenticated;
 
             var resolutions = Screen.resolutions;
             for (int i = 0; i < resolutions.Length; i++)
@@ -89,7 +94,10 @@ namespace Game.UI
         private void Back()
         {
             UIManager.Instance.HidePanel<OptionPanel>();
-            UIManager.Instance.ShowPanel<RoomListPanel>();
+            if (GameController.Available && GameController.Instance.State.IsAuthenticated)
+                UIManager.Instance.ShowPanel<RoomListPanel>();
+            else
+                UIManager.Instance.ShowPanel<TitlePanel>();
         }
 
         private void Logout()

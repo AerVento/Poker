@@ -9,15 +9,23 @@ namespace Game.UI
     {
         [SerializeField]
         private Button _start;
+        [SerializeField]
+        private Button _option;
+        [SerializeField]
+        private Button _quit;
 
         private void OnEnable()
         {
             _start.onClick.AddListener(Play);
+            _option.onClick.AddListener(Option);
+            _quit.onClick.AddListener(Quit);
         }
 
         private void OnDisable()
         {
             _start.onClick.RemoveListener(Play);
+            _option.onClick.RemoveListener(Option);
+            _quit.onClick.RemoveListener(Quit);
         }
 
         private void Play()
@@ -35,6 +43,21 @@ namespace Game.UI
             UIManager.Instance.HidePanel<TitlePanel>();
             UIManager.Instance.ShowPanel<LoginPanel>();
             LoginPanel.Instance.BeginSavedLogin();
+        }
+
+        private void Option()
+        {
+            UIManager.Instance.HidePanel<TitlePanel>();
+            UIManager.Instance.ShowPanel<OptionPanel>();
+        }
+
+        private static void Quit()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
         }
     }
 }
