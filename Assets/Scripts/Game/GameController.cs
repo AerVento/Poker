@@ -3,6 +3,7 @@ using Framework.Configs;
 using Framework.Log;
 using Framework.Singleton;
 using Framework.UI;
+using Game.Network.Diagnostics;
 using Game.UI;
 using Mirror;
 using Mirror.SimpleWeb;
@@ -29,8 +30,8 @@ namespace Game
 
         private void Start()
         {
-
-
+            if (PokerIntegrationRunner.TryStart(this))
+                return;
 
 #if UNITY_EDITOR || UNITY_STANDALONE_WIN
             //NetworkManager.singleton.AddComponent<NetworkManagerHUD>();

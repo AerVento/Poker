@@ -1,4 +1,4 @@
-#if UNITY_EDITOR || UNITY_STANDALONE_LINUX
+#if UNITY_EDITOR || UNITY_STANDALONE_LINUX || UNITY_STANDALONE_WIN
 using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
@@ -584,6 +584,63 @@ VALUES ($handId, $accountId, $startingChips, 0);";
             }
         }
 
+        public ChipReconciliationReport ReconcileChips()
+        {
+            lock (_syncRoot)
+            {
+                using (var connection = OpenConnection())
+                {
+                    return new ChipReconciliationReport
+                    {
+                        AccountBalanceTotal = ReadInt64(
+                            connection,
+                            "SELECT COALESCE(SUM(chips), 0) FROM player_accounts;"),
+                        LedgerNetTotal = ReadInt64(
+                            connection,
+                            "SELECT COALESCE(SUM(amount), 0) FROM chip_ledger;"),
+                        ActiveContributionTotal = ReadInt64(
+                            connection,
+                            @"SELECT COALESCE(SUM(participant.contributed_chips), 0)
+FROM poker_hand_participants AS participant
+INNER JOIN poker_hands AS hand ON hand.hand_id = participant.hand_id
+WHERE hand.status = 'Active';"),
+                        InternalHandLedgerTotal = ReadInt64(
+                            connection,
+                            @"SELECT COALESCE(SUM(amount), 0)
+FROM chip_ledger
+WHERE transaction_type IN (
+    'HandCommit', 'HandSettlement', 'CrashRecoveryRefund', 'HandAbortRefund');"),
+                        ActiveHandCount = ReadInt64(
+                            connection,
+                            "SELECT COUNT(*) FROM poker_hands WHERE status = 'Active';"),
+                        LedgerEntryCount = ReadInt64(
+                            connection,
+                            "SELECT COUNT(*) FROM chip_ledger;"),
+                        InvalidLedgerEntryCount = ReadInt64(
+                            connection,
+                            "SELECT COUNT(*) FROM chip_ledger WHERE balance_after - balance_before <> amount;"),
+                        AccountLedgerMismatchCount = ReadInt64(
+                            connection,
+                            @"SELECT COUNT(*)
+FROM (
+    SELECT account.account_id
+    FROM player_accounts AS account
+    LEFT JOIN chip_ledger AS ledger ON ledger.account_id = account.account_id
+    GROUP BY account.account_id, account.chips
+    HAVING account.chips <> COALESCE(SUM(ledger.amount), 0)
+);"),
+                        InvalidActiveContributionCount = ReadInt64(
+                            connection,
+                            @"SELECT COUNT(*)
+FROM poker_hand_participants AS participant
+INNER JOIN poker_hands AS hand ON hand.hand_id = participant.hand_id
+WHERE hand.status = 'Active'
+  AND participant.contributed_chips > participant.starting_chips;"),
+                    };
+                }
+            }
+        }
+
         private static void InitializeRuntime()
         {
             lock (RuntimeInitializationLock)
@@ -610,6 +667,15 @@ PRAGMA busy_timeout = 5000;";
             }
 
             return connection;
+        }
+
+        private static long ReadInt64(SqliteConnection connection, string commandText)
+        {
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = commandText;
+                return Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+            }
         }
 
         private static int GetSchemaVersion(SqliteConnection connection, SqliteTransaction transaction)

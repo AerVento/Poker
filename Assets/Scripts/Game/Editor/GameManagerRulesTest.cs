@@ -258,6 +258,82 @@ namespace Game.Tests
         }
 
         [Test]
+        public void DisconnectDuringHand_AutoChecksWhenFreeAndFoldsWhenFacingBet()
+        {
+            var manager = CreateManager(3, out var info);
+            info.Dealer = 2;
+            Assert.AreEqual(0, manager.StartNew(info.RoomInfo.Id));
+            var checkingSeat = info.OperatingPlayer;
+            info.Players[checkingSeat].StageBet = info.CurrentHighestPlayerBet;
+
+            manager.SetDisconnected(
+                info.RoomInfo.Id,
+                info.Players[checkingSeat].PlayerName);
+
+            Assert.IsFalse(info.Players[checkingSeat].IsFold);
+            Assert.AreEqual(PlayerOperationType.Check, info.Players[checkingSeat].LastOperation.Type);
+
+            var foldingSeat = info.OperatingPlayer;
+            manager.SetDisconnected(
+                info.RoomInfo.Id,
+                info.Players[foldingSeat].PlayerName);
+
+            Assert.IsTrue(info.Players[foldingSeat].IsFold);
+            Assert.AreEqual(PlayerOperationType.Fold, info.Players[foldingSeat].LastOperation.Type);
+        }
+
+        [Test]
+        public void AllInPlayer_RemainsEligibleAfterDisconnectAndSessionReplacement()
+        {
+            var manager = CreateManager(3, out var info, new uint[] { 100, 1000, 1000 });
+            info.Dealer = 2;
+            Assert.AreEqual(0, manager.StartNew(info.RoomInfo.Id));
+            Assert.AreEqual(0, info.OperatingPlayer);
+            Assert.AreEqual(0, manager.AllIn(info.RoomInfo.Id, 0));
+
+            var playerName = info.Players[0].PlayerName;
+            manager.SetDisconnected(info.RoomInfo.Id, playerName);
+            Assert.IsTrue(info.Players[0].IsAllIn);
+            Assert.IsTrue(info.Players[0].IsDisconnected);
+            Assert.IsFalse(info.Players[0].IsFold);
+
+            var sessionManager = new PlayerManager();
+            var account = _repository.FindByUserName(playerName);
+            var oldConnection = new Mirror.NetworkConnectionToClient(21);
+            var replacementConnection = new Mirror.NetworkConnectionToClient(22);
+            sessionManager.BindAccount(account, oldConnection);
+            Assert.AreSame(oldConnection, sessionManager.BindAccount(account, replacementConnection));
+            Assert.IsFalse(sessionManager.RemoveConnection(oldConnection, out _));
+
+            Assert.AreEqual(0, manager.SetConnected(info.RoomInfo.Id, playerName));
+            Assert.IsTrue(info.Players[0].IsAllIn);
+            Assert.IsFalse(info.Players[0].IsDisconnected);
+            Assert.IsFalse(info.Players[0].IsFold);
+        }
+
+        [Test]
+        public void SettlementFailure_CanRetryWithoutDuplicateCredits()
+        {
+            var manager = CreateManager(3, out var info);
+            info.Dealer = 2;
+            Assert.AreEqual(0, manager.StartNew(info.RoomInfo.Id));
+            Assert.AreEqual(0, manager.Fold(info.RoomInfo.Id, 0));
+            Assert.AreEqual(0, manager.Fold(info.RoomInfo.Id, 1));
+
+            manager.SetAccountRepository(new SettlementFailureRepository(_repository));
+            Assert.AreEqual(-7, manager.NextStage(info.RoomInfo.Id));
+            Assert.AreNotEqual(GameStage.RoundOver, info.Stage);
+            Assert.AreEqual(150, info.TotalPot);
+
+            manager.SetAccountRepository(_repository);
+            Assert.AreEqual(0, manager.NextStage(info.RoomInfo.Id));
+            Assert.AreEqual(GameStage.RoundOver, info.Stage);
+            Assert.AreEqual(0, info.TotalPot);
+            Assert.AreEqual(3000, info.Players.Sum(player => (long)player.Chips));
+            Assert.IsTrue(_repository.ReconcileChips().IsConsistent);
+        }
+
+        [Test]
         public void SpectatorClientView_HasNoPrivateCardsOrOperationIdentity()
         {
             var manager = CreateManager(2, out var info);
@@ -514,6 +590,75 @@ namespace Game.Tests
                 out IReadOnlyDictionary<string, PlayerAccount> accounts)
             {
                 return _inner.SettleHand(handId, requestId, credits, out accounts);
+            }
+
+            public bool AbortHand(string handId, string reason) => _inner.AbortHand(handId, reason);
+        }
+
+        private sealed class SettlementFailureRepository : IHandAccountRepository
+        {
+            private readonly IHandAccountRepository _inner;
+
+            public SettlementFailureRepository(IHandAccountRepository inner)
+            {
+                _inner = inner;
+            }
+
+            public void Initialize() => _inner.Initialize();
+
+            public PlayerAccount FindById(string accountId) => _inner.FindById(accountId);
+
+            public PlayerAccount FindByUserName(string userName) => _inner.FindByUserName(userName);
+
+            public CreateAccountResult Create(PlayerAccount account) => _inner.Create(account);
+
+            public bool SetLastRoom(string accountId, int? roomId) => _inner.SetLastRoom(accountId, roomId);
+
+            public ChipMutationResult ApplyChipMutation(
+                string accountId,
+                string requestId,
+                string transactionType,
+                long amount,
+                int? roomId,
+                string handId,
+                out PlayerAccount account)
+            {
+                return _inner.ApplyChipMutation(
+                    accountId,
+                    requestId,
+                    transactionType,
+                    amount,
+                    roomId,
+                    handId,
+                    out account);
+            }
+
+            public HandStartResult BeginHand(
+                string handId,
+                int roomId,
+                IReadOnlyList<string> accountIds,
+                uint minimumChips,
+                out IReadOnlyList<PlayerAccount> accounts)
+            {
+                return _inner.BeginHand(handId, roomId, accountIds, minimumChips, out accounts);
+            }
+
+            public HandDebitResult ApplyHandDebits(
+                string handId,
+                string requestId,
+                IReadOnlyList<HandChipDebit> debits,
+                out IReadOnlyDictionary<string, PlayerAccount> accounts)
+            {
+                return _inner.ApplyHandDebits(handId, requestId, debits, out accounts);
+            }
+
+            public HandSettlementResult SettleHand(
+                string handId,
+                string requestId,
+                IReadOnlyList<HandChipCredit> credits,
+                out IReadOnlyDictionary<string, PlayerAccount> accounts)
+            {
+                throw new InvalidOperationException("Injected settlement failure.");
             }
 
             public bool AbortHand(string handId, string reason) => _inner.AbortHand(handId, reason);

@@ -251,6 +251,65 @@ WHERE account_id = $accountId
             Assert.AreEqual(10000, restartedRepository.FindById(alice.AccountId).Chips);
             Assert.AreEqual(10000, restartedRepository.FindById(bob.AccountId).Chips);
             Assert.IsFalse(restartedRepository.AbortHand("hand-recovery", "RepeatedAbort"));
+            var report = restartedRepository.ReconcileChips();
+            Assert.IsTrue(report.IsConsistent);
+            Assert.AreEqual(0, report.ActiveHandCount);
+            Assert.AreEqual(0, report.ActiveContributionTotal);
+            Assert.AreEqual(0, report.InternalHandLedgerTotal);
+        }
+
+        [Test]
+        public void ReconciliationTracksActiveContributionsSettlementAndRecovery()
+        {
+            var service = CreateService();
+            var alice = service.Register("AuditAlice", "password123").Account;
+            var bob = service.Register("AuditBob", "password123").Account;
+            var repository = new SqliteAccountRepository(_databasePath);
+            repository.Initialize();
+
+            Assert.AreEqual(
+                HandStartResult.Started,
+                repository.BeginHand(
+                    "hand-audit",
+                    11,
+                    new[] { alice.AccountId, bob.AccountId },
+                    100,
+                    out _));
+            Assert.AreEqual(
+                HandDebitResult.Applied,
+                repository.ApplyHandDebits(
+                    "hand-audit",
+                    "audit-debit",
+                    new[]
+                    {
+                        new HandChipDebit { AccountId = alice.AccountId, Amount = 300 },
+                        new HandChipDebit { AccountId = bob.AccountId, Amount = 200 },
+                    },
+                    out _));
+
+            var activeReport = repository.ReconcileChips();
+            Assert.IsTrue(activeReport.IsConsistent);
+            Assert.AreEqual(19500, activeReport.AccountBalanceTotal);
+            Assert.AreEqual(19500, activeReport.LedgerNetTotal);
+            Assert.AreEqual(500, activeReport.ActiveContributionTotal);
+            Assert.AreEqual(-500, activeReport.InternalHandLedgerTotal);
+            Assert.AreEqual(1, activeReport.ActiveHandCount);
+
+            Assert.AreEqual(
+                HandSettlementResult.Applied,
+                repository.SettleHand(
+                    "hand-audit",
+                    "audit-settlement",
+                    new[] { new HandChipCredit { AccountId = bob.AccountId, Amount = 500 } },
+                    out _));
+
+            var settledReport = repository.ReconcileChips();
+            Assert.IsTrue(settledReport.IsConsistent);
+            Assert.AreEqual(20000, settledReport.AccountBalanceTotal);
+            Assert.AreEqual(20000, settledReport.LedgerNetTotal);
+            Assert.AreEqual(0, settledReport.ActiveContributionTotal);
+            Assert.AreEqual(0, settledReport.InternalHandLedgerTotal);
+            Assert.AreEqual(0, settledReport.ActiveHandCount);
         }
 
         private AccountService CreateService()

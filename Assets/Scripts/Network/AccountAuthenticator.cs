@@ -30,6 +30,16 @@ namespace Game.Network
 
         public IHandAccountRepository AccountRepository { get; private set; }
 
+        public void ConfigureDatabaseFileName(string databaseFileName)
+        {
+            if (NetworkServer.active)
+                throw new InvalidOperationException("The account database cannot be changed after the server starts.");
+            if (string.IsNullOrWhiteSpace(databaseFileName) || Path.GetFileName(databaseFileName) != databaseFileName)
+                throw new ArgumentException("A database file name without a directory is required.", nameof(databaseFileName));
+
+            _databaseFileName = databaseFileName;
+        }
+
         private void Awake()
         {
             _networkRoom = GetComponent<NetworkRoom>();
@@ -37,7 +47,7 @@ namespace Game.Network
 
         public override void OnStartServer()
         {
-#if UNITY_EDITOR || UNITY_STANDALONE_LINUX
+#if UNITY_EDITOR || UNITY_STANDALONE_LINUX || UNITY_STANDALONE_WIN
             try
             {
                 var databasePath = Path.Combine(Application.persistentDataPath, _databaseFileName);
@@ -57,7 +67,7 @@ namespace Game.Network
 #else
             _accountService = null;
             AccountRepository = null;
-            Log.WriteError("The account database server is only supported in the Unity Editor and Linux Standalone server.");
+            Log.WriteError("The account database server is only supported in the Unity Editor and standalone builds.");
 #endif
 
             NetworkServer.RegisterHandler<AccountRegisterRequest>(OnRegisterRequest, requireAuthentication: false);

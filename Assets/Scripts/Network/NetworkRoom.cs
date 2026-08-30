@@ -1143,7 +1143,17 @@ namespace Game.Network
             OnGameInfoChanged(roomId);
             // 等待一段时间
             await UniTask.WaitForSeconds(2);
-            _gameManager.NextStage(roomId);
+            while (ReferenceEquals(_gameManager.GetGameInfo(roomId), gameInfo) &&
+                gameInfo.Stage != GameStage.RoundOver &&
+                gameInfo.Stage != GameStage.GameOver)
+            {
+                var result = _gameManager.NextStage(roomId);
+                if (result != -7)
+                    return;
+
+                Log.WriteWarn($"Hand {gameInfo.HandId} settlement storage is unavailable; retrying in 2 seconds.");
+                await UniTask.WaitForSeconds(2);
+            }
         }
 
         private async void OnRoomRoundEnd(int roomId, RoundResult result)

@@ -59,6 +59,34 @@ namespace Game.Network.Accounts
         public uint Amount { get; set; }
     }
 
+    public sealed class ChipReconciliationReport
+    {
+        public long AccountBalanceTotal { get; set; }
+
+        public long LedgerNetTotal { get; set; }
+
+        public long ActiveContributionTotal { get; set; }
+
+        public long InternalHandLedgerTotal { get; set; }
+
+        public long ActiveHandCount { get; set; }
+
+        public long LedgerEntryCount { get; set; }
+
+        public long InvalidLedgerEntryCount { get; set; }
+
+        public long AccountLedgerMismatchCount { get; set; }
+
+        public long InvalidActiveContributionCount { get; set; }
+
+        public bool IsConsistent =>
+            AccountBalanceTotal == LedgerNetTotal &&
+            InternalHandLedgerTotal + ActiveContributionTotal == 0 &&
+            InvalidLedgerEntryCount == 0 &&
+            AccountLedgerMismatchCount == 0 &&
+            InvalidActiveContributionCount == 0;
+    }
+
     public interface IAccountRepository
     {
         void Initialize();
