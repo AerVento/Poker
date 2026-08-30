@@ -45,6 +45,25 @@ namespace Game.Tests
         }
 
         [Test]
+        public void PasswordLoginMigratesStoredWorkFactor()
+        {
+            var repository = new SqliteAccountRepository(_databasePath);
+            var originalService = new AccountService(
+                repository,
+                new PasswordHasher(iterations: 2000));
+            originalService.Initialize();
+            var registration = originalService.Register("MigratingUser", "password123");
+
+            var migratedService = new AccountService(
+                repository,
+                new PasswordHasher(iterations: 1000));
+            var login = migratedService.Login("MigratingUser", "password123");
+
+            Assert.AreEqual(AccountAuthenticationCode.Success, login.Code);
+            Assert.AreEqual(1000, repository.FindByUserName("MigratingUser").PasswordIterations);
+        }
+
+        [Test]
         public void RegistrationPersistsInitialBalanceAndLedger()
         {
             var service = CreateService();

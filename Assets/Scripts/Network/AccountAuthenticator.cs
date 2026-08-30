@@ -92,6 +92,7 @@ namespace Game.Network
 
         public override void OnServerAuthenticate(NetworkConnectionToClient conn)
         {
+            _networkRoom.RecordClientActivity(conn);
             // Wait for an explicit register or login request from the client.
         }
 
@@ -195,6 +196,7 @@ namespace Game.Network
             _pendingPassword = password;
             _pendingSessionToken = sessionToken;
             _pendingRequestSent = false;
+            _networkRoom.PromoteSilentConnectionAttempt();
 
             if (NetworkClient.isConnected)
             {
@@ -245,6 +247,7 @@ namespace Game.Network
 
         private void OnRegisterRequest(NetworkConnectionToClient conn, AccountRegisterRequest request)
         {
+            _networkRoom.RecordClientActivity(conn);
             Authenticate(
                 conn,
                 AccountAuthenticationOperation.Register,
@@ -253,6 +256,7 @@ namespace Game.Network
 
         private void OnLoginRequest(NetworkConnectionToClient conn, AccountLoginRequest request)
         {
+            _networkRoom.RecordClientActivity(conn);
             Authenticate(
                 conn,
                 AccountAuthenticationOperation.Login,
@@ -261,6 +265,7 @@ namespace Game.Network
 
         private void OnTokenLoginRequest(NetworkConnectionToClient conn, AccountTokenLoginRequest request)
         {
+            _networkRoom.RecordClientActivity(conn);
             Authenticate(
                 conn,
                 AccountAuthenticationOperation.TokenLogin,
@@ -269,6 +274,7 @@ namespace Game.Network
 
         private void OnLogoutRequest(NetworkConnectionToClient conn, AccountLogoutRequest request)
         {
+            _networkRoom.RecordClientActivity(conn);
             var revoked = false;
             try
             {

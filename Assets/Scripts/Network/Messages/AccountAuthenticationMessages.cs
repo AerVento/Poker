@@ -50,6 +50,10 @@ namespace Game.Network
         public bool Revoked;
     }
 
+    public struct ServerIdleDisconnectNotice : NetworkMessage
+    {
+    }
+
     public struct PlayerRoomRecoveryRequest : NetworkMessage
     {
         public int RoomId;

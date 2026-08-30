@@ -8,7 +8,10 @@ using System.Linq;
 
 namespace Game.Network.Accounts
 {
-    public sealed class SqliteAccountRepository : IHandAccountRepository, ISessionAccountRepository
+    public sealed class SqliteAccountRepository :
+        IHandAccountRepository,
+        ISessionAccountRepository,
+        IPasswordAccountRepository
     {
         public const int SchemaVersion = 3;
 
@@ -162,6 +165,42 @@ VALUES (
                         transaction.Rollback();
                         return CreateAccountResult.UserNameTaken;
                     }
+                }
+            }
+        }
+
+        public bool UpdatePasswordHash(string accountId, PasswordHashData passwordData)
+        {
+            if (string.IsNullOrEmpty(accountId) ||
+                passwordData == null ||
+                string.IsNullOrEmpty(passwordData.Algorithm) ||
+                passwordData.Hash == null ||
+                passwordData.Salt == null ||
+                passwordData.Iterations <= 0)
+            {
+                return false;
+            }
+
+            lock (_syncRoot)
+            {
+                using (var connection = OpenConnection())
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+UPDATE player_accounts
+SET password_algorithm = $passwordAlgorithm,
+    password_hash = $passwordHash,
+    password_salt = $passwordSalt,
+    password_iterations = $passwordIterations,
+    updated_at_utc = $updatedAtUtc
+WHERE account_id = $accountId;";
+                    command.Parameters.AddWithValue("$accountId", accountId);
+                    command.Parameters.AddWithValue("$passwordAlgorithm", passwordData.Algorithm);
+                    command.Parameters.AddWithValue("$passwordHash", passwordData.Hash);
+                    command.Parameters.AddWithValue("$passwordSalt", passwordData.Salt);
+                    command.Parameters.AddWithValue("$passwordIterations", passwordData.Iterations);
+                    command.Parameters.AddWithValue("$updatedAtUtc", FormatDateTime(DateTime.UtcNow));
+                    return command.ExecuteNonQuery() == 1;
                 }
             }
         }

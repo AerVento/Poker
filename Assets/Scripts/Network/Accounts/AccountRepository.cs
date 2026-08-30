@@ -117,6 +117,11 @@ namespace Game.Network.Accounts
             out PlayerAccount account);
     }
 
+    public interface IPasswordAccountRepository
+    {
+        bool UpdatePasswordHash(string accountId, PasswordHashData passwordData);
+    }
+
     public interface IHandAccountRepository : IAccountRepository
     {
         HandStartResult BeginHand(

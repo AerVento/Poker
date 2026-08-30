@@ -17,11 +17,15 @@ namespace Game.Network.Accounts
     public sealed class PasswordHasher
     {
         public const string AlgorithmName = "PBKDF2-HMAC-SHA256";
-        public const int DefaultIterations = 600000;
+        // Deliberate latency/security tradeoff for the current game server.
+        // The iteration count remains stored per account so it can be tuned again later.
+        public const int DefaultIterations = 100000;
         public const int SaltSize = 16;
         public const int HashSize = 32;
 
         private readonly int _iterations;
+
+        public int Iterations => _iterations;
 
         public PasswordHasher(int iterations = DefaultIterations)
         {

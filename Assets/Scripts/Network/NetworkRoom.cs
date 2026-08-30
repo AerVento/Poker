@@ -22,6 +22,11 @@ namespace Game.Network
         private RoomManager _roomManager = new RoomManager();
         private PlayerManager _playerManager = new PlayerManager();
         private GameManager _gameManager = new GameManager();
+        private const double ClientIdleTimeoutSeconds = 300d;
+        private const int ClientIdleMonitorIntervalMilliseconds = 1000;
+        private readonly Dictionary<int, double> _lastClientActivities = new Dictionary<int, double>();
+        private readonly HashSet<int> _idleDisconnectPending = new HashSet<int>();
+        private int _serverActivityMonitorVersion;
 
         #endregion
 
@@ -44,6 +49,10 @@ namespace Game.Network
 
         private TableParticipationStatus? _lastParticipationStatus;
 
+        private bool _silentConnectionAttempt;
+        private bool _silentDisconnect;
+        private int _silentConnectionAttemptVersion;
+
         #endregion
 
         public override void Awake()
@@ -62,6 +71,8 @@ namespace Game.Network
         public override void OnStartServer()
         {
             base.OnStartServer();
+            _serverActivityMonitorVersion++;
+            MonitorClientActivity(_serverActivityMonitorVersion).Forget();
             if (authenticator is AccountAuthenticator accountAuthenticator)
                 _gameManager.SetAccountRepository(accountAuthenticator.AccountRepository);
             NetworkServer.RegisterHandler<PlayerChangeReadyMessage>(PlayerChangeReadyMessageHandler, requireAuthentication: true);
@@ -73,6 +84,60 @@ namespace Game.Network
             NetworkServer.RegisterHandler<RoomInfoChange>(RoomInfoChangeHandler, requireAuthentication: true);
             NetworkServer.RegisterHandler<RoomListRequest>(RoomListRequestHandler, requireAuthentication: true);
             NetworkServer.RegisterHandler<PlayerRoomRecoveryRequest>(PlayerRoomRecoveryRequestHandler, requireAuthentication: true);
+        }
+
+        public override void OnStopServer()
+        {
+            _serverActivityMonitorVersion++;
+            _lastClientActivities.Clear();
+            _idleDisconnectPending.Clear();
+            base.OnStopServer();
+        }
+
+        internal void RecordClientActivity(NetworkConnectionToClient conn)
+        {
+            if (conn != null)
+                _lastClientActivities[conn.connectionId] = Time.realtimeSinceStartupAsDouble;
+        }
+
+        private async UniTask MonitorClientActivity(int monitorVersion)
+        {
+            while (NetworkServer.active && monitorVersion == _serverActivityMonitorVersion)
+            {
+                await UniTask.Delay(ClientIdleMonitorIntervalMilliseconds, ignoreTimeScale: true);
+                if (!NetworkServer.active || monitorVersion != _serverActivityMonitorVersion)
+                    return;
+
+                var now = Time.realtimeSinceStartupAsDouble;
+                foreach (var activity in _lastClientActivities.ToArray())
+                {
+                    if (now - activity.Value < ClientIdleTimeoutSeconds ||
+                        _idleDisconnectPending.Contains(activity.Key) ||
+                        !NetworkServer.connections.TryGetValue(activity.Key, out var conn))
+                    {
+                        continue;
+                    }
+
+                    _idleDisconnectPending.Add(activity.Key);
+                    conn.Send(new ServerIdleDisconnectNotice());
+                    DisconnectIdleClient(conn, monitorVersion).Forget();
+                }
+            }
+        }
+
+        private async UniTask DisconnectIdleClient(
+            NetworkConnectionToClient conn,
+            int monitorVersion)
+        {
+            await UniTask.Delay(100, ignoreTimeScale: true);
+            if (NetworkServer.active &&
+                monitorVersion == _serverActivityMonitorVersion &&
+                conn != null &&
+                NetworkServer.connections.TryGetValue(conn.connectionId, out var current) &&
+                ReferenceEquals(current, conn))
+            {
+                conn.Disconnect();
+            }
         }
 
         internal NetworkConnectionToClient BindAuthenticatedAccount(
@@ -115,11 +180,15 @@ namespace Game.Network
 
         public override void OnServerConnect(NetworkConnectionToClient conn)
         {
+            RecordClientActivity(conn);
             base.OnServerConnect(conn);
         }
 
         public override void OnServerDisconnect(NetworkConnectionToClient conn)
         {
+            _lastClientActivities.Remove(conn.connectionId);
+            _idleDisconnectPending.Remove(conn.connectionId);
+
             if (_playerManager.RemoveConnection(conn, out var name))
             {
 
@@ -148,6 +217,9 @@ namespace Game.Network
         public override void OnStartClient()
         {
             base.OnStartClient();
+            NetworkClient.RegisterHandler<ServerIdleDisconnectNotice>(
+                ServerIdleDisconnectNoticeHandler,
+                requireAuthentication: false);
             NetworkClient.RegisterHandler<GameInfoSync>(GameInfoSyncHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<GameResultNotification>(GameResultNotificationHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<PlayerJoinRoomResponse>(PlayerJoinRoomResponseHandler, requireAuthentication: false);
@@ -159,23 +231,81 @@ namespace Game.Network
             NetworkClient.RegisterHandler<InterHandCountdownSync>(InterHandCountdownSyncHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<AccountBalanceSync>(AccountBalanceSyncHandler, requireAuthentication: false);
             
-            MsgBox.Create("ConnectingServer", (setting) =>
+            if (!_silentConnectionAttempt)
+                ShowConnectingMessage();
+        }
+
+        public void StartSilentClientConnection(float timeoutSeconds)
+        {
+            if (timeoutSeconds <= 0 || NetworkServer.active || NetworkClient.active)
+                return;
+
+            _silentConnectionAttempt = true;
+            _silentDisconnect = false;
+            var attemptVersion = ++_silentConnectionAttemptVersion;
+            StartClient();
+            MonitorSilentConnection(attemptVersion, timeoutSeconds).Forget();
+        }
+
+        internal void PromoteSilentConnectionAttempt()
+        {
+            if (!_silentConnectionAttempt || NetworkClient.isConnected)
+                return;
+
+            _silentConnectionAttempt = false;
+            _silentConnectionAttemptVersion++;
+            ShowConnectingMessage();
+        }
+
+        private void ShowConnectingMessage()
+        {
+            if (_connectingMsgbox != null)
+                return;
+
+            MsgBox.Create("ConnectingServer", setting =>
             {
                 _connectingMsgbox = setting;
                 setting.Type = MsgboxType.Cancel;
                 setting.Title = "通知";
                 setting.Message = "正在连接到服务器";
                 setting.ShowCloseButton = false;
-                setting.OnCancel += () =>
-                {
-                    StopClient();
-                };
+                setting.OnCancel += StopClient;
             });
+        }
+
+        private async UniTask MonitorSilentConnection(int attemptVersion, float timeoutSeconds)
+        {
+            await UniTask.Delay(
+                TimeSpan.FromSeconds(timeoutSeconds),
+                ignoreTimeScale: true);
+            if (attemptVersion != _silentConnectionAttemptVersion)
+                return;
+
+            if (NetworkClient.isConnected)
+            {
+                _silentConnectionAttempt = false;
+                return;
+            }
+
+            if (NetworkClient.active)
+            {
+                _silentDisconnect = true;
+                StopClient();
+            }
+
+            _silentConnectionAttempt = false;
+        }
+
+        private void ServerIdleDisconnectNoticeHandler(ServerIdleDisconnectNotice notice)
+        {
+            _silentDisconnect = true;
         }
 
         public override void OnClientConnect()
         {
             // base.OnClientConnect();
+            _silentConnectionAttempt = false;
+            _silentConnectionAttemptVersion++;
 
             // 销毁连接时打开的Msgbox"ConnectingServer"
             if (_connectingMsgbox != null)
@@ -268,6 +398,8 @@ namespace Game.Network
         public override void OnClientError(TransportError error, string reason)
         {
             // base.OnClientError(error, reason);
+            if (_silentConnectionAttempt || _silentDisconnect)
+                return;
             MsgBox.Create((msgbox) =>
             {
                 msgbox.Title = "无法连接至服务器";
@@ -278,6 +410,8 @@ namespace Game.Network
         public override void OnClientTransportException(Exception exception)
         {
             // base.OnClientTransportException(exception);
+            if (_silentConnectionAttempt || _silentDisconnect)
+                return;
             MsgBox.Create((msgbox) =>
             {
                 msgbox.Title = "无法连接至服务器";
@@ -297,9 +431,15 @@ namespace Game.Network
             }
             bool oldConnectedStatus = _isConnected;
             bool intentionalLogout = _intentionalLogout;
+            bool silentDisconnect = _silentDisconnect || _silentConnectionAttempt;
+            _silentDisconnect = false;
+            _silentConnectionAttempt = false;
+            _silentConnectionAttemptVersion++;
             _intentionalLogout = false;
             _isConnected = false;
             _lastParticipationStatus = null;
+            if (silentDisconnect && !oldConnectedStatus)
+                return;
 
             foreach (var identifier in UIManager.Instance.ShowingPanelIdentifiers.ToList())
             {
@@ -314,7 +454,7 @@ namespace Game.Network
                 if (UIManager.Available)
                 {
                     UIManager.Instance.ShowPanel<TitlePanel>();
-                    if (intentionalLogout)
+                    if (intentionalLogout || silentDisconnect)
                         return;
 
                     MsgBox.Create((msgbox) =>
@@ -449,6 +589,7 @@ namespace Game.Network
 
         private void PlayerChangeReadyMessageHandler(NetworkConnectionToClient conn, PlayerChangeReadyMessage message)
         {
+            RecordClientActivity(conn);
             if (!TryGetAuthenticatedPlayer(conn, out var playerName))
                 return;
 
@@ -467,6 +608,7 @@ namespace Game.Network
         
         private void PlayerCreateRoomRequestHandler(NetworkConnectionToClient conn, PlayerCreateRoomRequest message)
         {
+            RecordClientActivity(conn);
             if (!TryGetAuthenticatedPlayer(conn, out var playerName))
                 return;
 
@@ -488,6 +630,7 @@ namespace Game.Network
 
         private void PlayerJoinRoomRequestHandler(NetworkConnectionToClient conn, PlayerJoinRoomRequest request)
         {
+            RecordClientActivity(conn);
             if (!TryGetAuthenticatedPlayer(conn, out var playerName))
                 return;
 
@@ -556,6 +699,7 @@ namespace Game.Network
             NetworkConnectionToClient conn,
             PlayerRoomRecoveryRequest request)
         {
+            RecordClientActivity(conn);
             if (!_playerManager.TryGetAccount(conn, out var sessionAccount))
                 return;
 
@@ -724,6 +868,7 @@ namespace Game.Network
 
         private void PlayerLeaveRoomRequestHandler(NetworkConnectionToClient conn, PlayerLeaveRoomRequest message)
         {
+            RecordClientActivity(conn);
             if (!TryGetAuthenticatedPlayer(conn, out var playerName))
                 return;
 
@@ -759,6 +904,7 @@ namespace Game.Network
 
         private void PlayerOperationRequestHandler(NetworkConnectionToClient conn, PlayerOperationRequest request)
         {
+            RecordClientActivity(conn);
             var response = new PlayerOperationResponse() { Type = request.Type };
             var room = _roomManager.FindRoom(request.RoomId);
             if (room == null)
@@ -944,6 +1090,7 @@ namespace Game.Network
 
         private void PlayerStartGameRequestHandler(NetworkConnectionToClient conn, PlayerStartGameRequest message)
         {
+            RecordClientActivity(conn);
             var response = new PlayerStartGameResponse();
             var room = _roomManager.FindRoom(message.RoomId);
             var authenticated = TryGetAuthenticatedPlayer(conn, out var playerName);
@@ -1071,6 +1218,7 @@ namespace Game.Network
 
         private void RoomInfoChangeHandler(NetworkConnectionToClient conn, RoomInfoChange message)
         {
+            RecordClientActivity(conn);
             if (!TryGetAuthenticatedPlayer(conn, out var playerName))
                 return;
 
@@ -1138,6 +1286,7 @@ namespace Game.Network
 
         private void RoomListRequestHandler(NetworkConnectionToClient conn, RoomListRequest request)
         {
+            RecordClientActivity(conn);
             RoomListResponse response = new RoomListResponse();
             response.RoomList = _roomManager.RoomList;
             conn.Send(response);

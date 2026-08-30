@@ -34,6 +34,7 @@ namespace Game.Network.Accounts
 
         private readonly IAccountRepository _repository;
         private readonly PasswordHasher _passwordHasher;
+        private readonly IPasswordAccountRepository _passwordRepository;
         private readonly ISessionAccountRepository _sessionRepository;
         private readonly uint _initialChips;
         private readonly TimeSpan _sessionLifetime;
@@ -48,6 +49,7 @@ namespace Game.Network.Accounts
         {
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
             _sessionRepository = repository as ISessionAccountRepository;
+            _passwordRepository = repository as IPasswordAccountRepository;
             _passwordHasher = passwordHasher ?? new PasswordHasher();
             _initialChips = initialChips;
             _sessionLifetime = sessionLifetime ?? DefaultSessionLifetime;
@@ -108,6 +110,8 @@ namespace Game.Network.Accounts
                 if (account == null || !_passwordHasher.Verify(password, account))
                     return Failure(AccountAuthenticationCode.InvalidCredentials);
 
+                MigratePasswordWorkFactor(account, password);
+
                 return CreateSession(account);
             }
             catch
@@ -156,6 +160,32 @@ namespace Game.Network.Accounts
             catch
             {
                 return false;
+            }
+        }
+
+        private void MigratePasswordWorkFactor(PlayerAccount account, string password)
+        {
+            if (_passwordRepository == null ||
+                account.PasswordAlgorithm != PasswordHasher.AlgorithmName ||
+                account.PasswordIterations == _passwordHasher.Iterations)
+            {
+                return;
+            }
+
+            try
+            {
+                var passwordData = _passwordHasher.HashPassword(password);
+                if (!_passwordRepository.UpdatePasswordHash(account.AccountId, passwordData))
+                    return;
+
+                account.PasswordAlgorithm = passwordData.Algorithm;
+                account.PasswordHash = passwordData.Hash;
+                account.PasswordSalt = passwordData.Salt;
+                account.PasswordIterations = passwordData.Iterations;
+            }
+            catch
+            {
+                // A work-factor migration must not reject otherwise valid credentials.
             }
         }
 

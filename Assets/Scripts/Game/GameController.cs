@@ -68,6 +68,11 @@ namespace Game
             };
 #endif
 
+#if UNITY_EDITOR || UNITY_STANDALONE_WIN || UNITY_WEBGL
+            if (NetworkManager.singleton is Game.Network.NetworkRoom networkRoom)
+                networkRoom.StartSilentClientConnection(5f);
+#endif
+
 #if UNITY_STANDALONE_LINUX
             NetworkManager.singleton.StartServer();
 #endif
