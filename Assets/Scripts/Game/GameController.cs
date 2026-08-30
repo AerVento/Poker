@@ -33,9 +33,17 @@ namespace Game
             if (PokerIntegrationRunner.TryStart(this))
                 return;
 
+#if UNITY_EDITOR
+            var networkManager = NetworkManager.singleton;
+            if (networkManager != null)
+            {
+                if (networkManager.GetComponent<NetworkManagerHUD>() == null)
+                    networkManager.gameObject.AddComponent<NetworkManagerHUD>();
+                networkManager.networkAddress = "localhost";
+            }
+#endif
+
 #if UNITY_EDITOR || UNITY_STANDALONE_WIN
-            //NetworkManager.singleton.AddComponent<NetworkManagerHUD>();
-            //NetworkManager.singleton.networkAddress = "localhost";
             UIManager.Instance.ShowPanel<TitlePanel>();
             Application.targetFrameRate = 60;
             AdjustScreen();
