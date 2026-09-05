@@ -105,7 +105,9 @@ namespace Game.Network
 
         private bool _silentConnectionAttempt;
         private bool _silentDisconnect;
-        private int _silentConnectionAttemptVersion;
+        private int _clientConnectionAttemptVersion;
+        private float _clientConnectTimeoutSeconds = 10f;
+        private ClientNetworkConfiguration _clientConfiguration;
         private ServerShutdownReason? _serverShutdownReason;
         private bool _spectatorIntroShown;
         private bool _clientTransportFailed;
@@ -118,6 +120,10 @@ namespace Game.Network
                 authenticator = GetComponent<AccountAuthenticator>() ?? gameObject.AddComponent<AccountAuthenticator>();
 
             base.Awake();
+            // Networking starts only after configuration validation; the legacy HUD bypasses that flow.
+            var hud = GetComponent<NetworkManagerHUD>();
+            if (hud != null)
+                hud.enabled = false;
             _departures = new RoomDepartureService(_roomManager, _gameManager,
                 name => PersistLastRoom(name, null));
             _participation = new TableParticipationService(_roomManager, _gameManager,
@@ -126,6 +132,32 @@ namespace Game.Network
             _gameManager.OnGameStageEnded += OnGameStageEnd;
             _gameManager.OnRoomRoundEnded += OnRoomRoundEnd;
             _gameManager.OnRoomGameOver += OnGameOver;
+        }
+
+        public override void Start()
+        {
+            // GameController owns startup, including headless builds, after loading deployment configuration.
+        }
+
+        public void ConfigureClient(ClientNetworkConfiguration configuration)
+        {
+            if (configuration == null)
+                throw new ArgumentNullException(nameof(configuration));
+            configuration.Apply(this);
+            _clientConfiguration = configuration;
+            _clientConnectTimeoutSeconds = configuration.ConnectTimeoutSeconds;
+        }
+
+        public bool StartConfiguredClientConnection()
+        {
+            if (NetworkClient.active || NetworkServer.active)
+                return false;
+            if (GameController.Available && GameController.Instance.HasNetworkInitializationStarted &&
+                !GameController.Instance.IsClientNetworkReady)
+                return false;
+            _clientConfiguration?.Apply(this);
+            StartClient();
+            return true;
         }
 
         #region Server
@@ -381,6 +413,7 @@ namespace Game.Network
             
             if (!_silentConnectionAttempt)
                 ShowConnectingMessage();
+            MonitorClientConnection(++_clientConnectionAttemptVersion, _clientConnectTimeoutSeconds).Forget();
         }
 
         public void StartSilentClientConnection(float timeoutSeconds)
@@ -390,9 +423,9 @@ namespace Game.Network
 
             _silentConnectionAttempt = true;
             _silentDisconnect = false;
-            var attemptVersion = ++_silentConnectionAttemptVersion;
-            StartClient();
-            MonitorSilentConnection(attemptVersion, timeoutSeconds).Forget();
+            _clientConnectTimeoutSeconds = timeoutSeconds;
+            if (!StartConfiguredClientConnection())
+                _silentConnectionAttempt = false;
         }
 
         internal void PromoteSilentConnectionAttempt()
@@ -401,7 +434,6 @@ namespace Game.Network
                 return;
 
             _silentConnectionAttempt = false;
-            _silentConnectionAttemptVersion++;
             ShowConnectingMessage();
         }
 
@@ -421,26 +453,19 @@ namespace Game.Network
             });
         }
 
-        private async UniTask MonitorSilentConnection(int attemptVersion, float timeoutSeconds)
+        private async UniTask MonitorClientConnection(int attemptVersion, float timeoutSeconds)
         {
-            await UniTask.Delay(
-                TimeSpan.FromSeconds(timeoutSeconds),
-                ignoreTimeScale: true);
-            if (attemptVersion != _silentConnectionAttemptVersion)
+            var cancelled = await UniTask.Delay(
+                TimeSpan.FromSeconds(timeoutSeconds), ignoreTimeScale: true,
+                cancellationToken: this.GetCancellationTokenOnDestroy()).SuppressCancellationThrow();
+            if (cancelled || attemptVersion != _clientConnectionAttemptVersion || NetworkClient.isConnected)
                 return;
-
-            if (NetworkClient.isConnected)
-            {
-                _silentConnectionAttempt = false;
-                return;
-            }
 
             if (NetworkClient.active)
             {
-                _silentDisconnect = true;
+                _silentDisconnect = _silentConnectionAttempt;
                 StopClient();
             }
-
             _silentConnectionAttempt = false;
         }
 
@@ -472,7 +497,7 @@ namespace Game.Network
         {
             // base.OnClientConnect();
             _silentConnectionAttempt = false;
-            _silentConnectionAttemptVersion++;
+            _clientConnectionAttemptVersion++;
 
             // 销毁连接时打开的Msgbox"ConnectingServer"
             if (_connectingMsgbox != null)
@@ -610,7 +635,7 @@ namespace Game.Network
             bool silentDisconnect = _silentDisconnect || _silentConnectionAttempt;
             _silentDisconnect = false;
             _silentConnectionAttempt = false;
-            _silentConnectionAttemptVersion++;
+            _clientConnectionAttemptVersion++;
             _intentionalLogout = false;
             _isConnected = false;
             ClearClientRoomNavigation();

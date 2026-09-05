@@ -4,14 +4,16 @@
 
 ## 当前结果
 
-- 自有 NUnit EditMode：**193 项、162 个方法、13 个测试类、11 个文件**。参数化用例按参数展开，循环断言不重复计数。
-- Unity 2022.3.52f1c1 最新完整结果：**193/193 通过**，作业 `7d7151074c2a4f74ae1e8da8592b2884`。
+- 自有 NUnit EditMode：**218 项、176 个方法、14 个测试类、12 个文件**。参数化用例按参数展开，循环断言不重复计数。
+- Unity 2022.3.52f1c1 最近一次完整结果：**218/218 通过**，作业 `62ce28dadcf3433dbe3f5f5e3ffaf785`。
 - 最后视觉修正后 UIInteractionTest 单独复跑 **40/40 通过**，作业 `dbadc520ae64486d905993bb31e9793a`。
-- 本轮新增导航用例 18 项，见 [导航说明](D:/GitHubRepos/Poker/Docs/UINavigationReview.md)。
+- 用户随后要求只做配置读取与启动冒烟；后续改动未再运行全量，待下一功能完成后统一回归。
+- 本轮新增网络配置用例 25 项，见 [部署配置说明](D:/GitHubRepos/Poker/Docs/NetworkConfiguration.md)。
+- 上轮新增导航用例 18 项，见 [导航说明](D:/GitHubRepos/Poker/Docs/UINavigationReview.md)。
 - 上轮新增提示交互用例 18 项；此前新增停服用例 12 项，覆盖存储异常、停止所有牌局、重启退款与提示 UI；见 [停服规则](D:/GitHubRepos/Poker/Docs/FatalStorageShutdown.md)。
 - 上一轮相比 119 项，增加 21 项旁观/座位/过期请求测试与 5 项真实 UI prefab 测试；另更新了与旧自动入座规则冲突的样例。
 - 独立进程场景包括默认、departures、spectators，以及本轮新增的 storage-allin、storage-normal 两套故障场景和恢复核对进程；这些检查点不额外计入 NUnit 数量。旁观/UI 验收见 [SpectatorLifecycle.md](D:/GitHubRepos/Poker/Docs/SpectatorLifecycle.md)，本轮一服三端、停服、重启恢复及构建记录见 [停服验证](D:/GitHubRepos/Poker/Docs/FatalStorageShutdown.md)。
-- 7 个旧手动脚本、20 项旧客户端验收步骤及临时 review 探针均保留说明，但不计入 193，也不因为文档列出便视为已执行。
+- 7 个旧手动脚本、20 项旧客户端验收步骤及临时 review 探针均保留说明，但不计入 218，也不因为文档列出便视为已执行。
 
 ## 当前 UI 流程
 
@@ -36,6 +38,7 @@
 | UIInteractionTest | 40 |
 | UINavigationTest | 18 |
 | FatalStorageTest | 11 |
+| NetworkConfigurationTest | 25 |
 
 ### AccountServiceTest（11 项）
 
@@ -360,7 +363,7 @@
 
 仍待处理：更多真实网络延迟/同帧操作竞争、复杂多边池逐玩家精确分配、固定七选五边界、长期多房间压力，以及当前版本的 WebGL/Linux 实机运行。上述历史资料中 85/88/106/119 均是不同阶段的套件规模，不能相加。
 
-复跑：在 Unity 2022.3.52f1c1 Test Runner 中执行 EditMode / Assembly-CSharp-Editor，应得到当前 145 项。独立进程场景使用相同 run/output 参数启动一个 server 与 client 0/1/2，选择 `-pokerIntegrationScenario spectators` 或 `departures`；默认不指定场景参数。使用独立账户库并备份恢复本机登录偏好。详见 SpectatorLifecycle.md。
+复跑：在 Unity 2022.3.52f1c1 Test Runner 中执行 EditMode / Assembly-CSharp-Editor，应得到当前 218 项。独立进程场景使用相同 run/output 参数启动一个 server 与 client 0/1/2，选择 `-pokerIntegrationScenario spectators` 或 `departures`；默认不指定场景参数。使用独立账户库并备份恢复本机登录偏好。详见 SpectatorLifecycle.md。
 
 ## 本轮提示交互新增用例（18 项）
 
@@ -409,3 +412,33 @@
 | UT-191 | [RoomSync_RejectsDisconnectedNonmemberAndUnrelatedRoom](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UINavigationTest.cs:232) / true, true, 99 | 拒绝断线、非成员及不匹配房间同步。 |
 | UT-192 | [StaleJoinAndStartResponses_DoNotOpenRoomOrGame](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UINavigationTest.cs:246) | 无对应请求的成功入房或开局响应不打开页面。 |
 | UT-193 | [MatchingRoomRefresh_DoesNotCloseSettingsOrReorderIt](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UINavigationTest.cs:258) | 当前房间内容刷新不关闭或盖住已有设置页。 |
+
+### NetworkConfigurationTest（25 项）
+
+| 编号 | 方法 / 参数 | 输入与预期结果 |
+| --- | --- | --- |
+| UT-194 | [Client_ParsesExplicitEndpointAndTimeout](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:18) | 解析域名或 IP、端口、加密开关与连接超时。 |
+| UT-195 | [Client_ParsesEncryptedDomainAndIPv6](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:26) | 生成 WSS 域名与 IPv6 的正确 URI。 |
+| UT-196 | [Client_RejectsHostContainingEndpointParts](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:39) / 带 https 协议 | 拒绝混入协议、端口、路径等内容的 serverHost。 |
+| UT-197 | [Client_RejectsHostContainingEndpointParts](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:39) / 带端口 | 拒绝混入协议、端口、路径等内容的 serverHost。 |
+| UT-198 | [Client_RejectsHostContainingEndpointParts](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:39) / 带路径 | 拒绝混入协议、端口、路径等内容的 serverHost。 |
+| UT-199 | [Client_RejectsHostContainingEndpointParts](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:39) / 带用户名 | 拒绝混入协议、端口、路径等内容的 serverHost。 |
+| UT-200 | [Client_RejectsHostContainingEndpointParts](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:39) / 含空格 | 拒绝混入协议、端口、路径等内容的 serverHost。 |
+| UT-201 | [Client_RejectsHostContainingEndpointParts](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:39) / 空字符串 | 拒绝混入协议、端口、路径等内容的 serverHost。 |
+| UT-202 | [BothSides_RejectInvalidPorts](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:49) / 0 | 两端均拒绝无效端口。 |
+| UT-203 | [BothSides_RejectInvalidPorts](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:49) / 65536 | 两端均拒绝无效端口。 |
+| UT-204 | [BothSides_RejectInvalidPorts](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:49) / -1 | 两端均拒绝无效端口。 |
+| UT-205 | [BothSides_RejectInvalidPorts](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:49) / 1.5 | 两端均拒绝无效端口。 |
+| UT-206 | [BothSides_RejectInvalidPorts](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:49) / 字符串 | 两端均拒绝无效端口。 |
+| UT-207 | [Client_RejectsInvalidTimeout](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:58) / 0 | 拒绝无效连接超时。 |
+| UT-208 | [Client_RejectsInvalidTimeout](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:58) / 301 | 拒绝无效连接超时。 |
+| UT-209 | [Client_RejectsInvalidTimeout](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:58) / null | 拒绝无效连接超时。 |
+| UT-210 | [Client_RequiresExplicitBooleanSslAndAllConnectionFields](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:64) | 拒绝缺失连接字段或将布尔值写成字符串。 |
+| UT-211 | [BothSides_RejectDuplicateUnknownAndMalformedConfiguration](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:72) | 拒绝重复字段、未知字段和错误的根 JSON 类型。 |
+| UT-212 | [ParsingFailure_DoesNotEchoServerSecrets](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:82) | 解析失败不将秘密内容放入异常或内部异常。 |
+| UT-213 | [Client_HttpsPageRejectsPlainWebsocketWithoutDowngrading](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:90) | HTTPS 页面拒绝 WS 配置；HTTP 本地测试及 HTTPS/WSS 正常。 |
+| UT-214 | [Server_PlainModeDoesNotRequireOrLoadCertificate](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:100) | 关闭 SSL 时不要求证书路径与密码。 |
+| UT-215 | [Server_SslRequiresAbsoluteCertificatePathAndExistingFile](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:108) | SSL 开启时拒绝空路径、相对路径和不存在的证书文件。 |
+| UT-216 | [Server_RejectsInvalidConnectionLimit](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:118) | 总连接上限必须为正整数。 |
+| UT-217 | [ServerJson_IsAlsoTheMirrorCertificateConfiguration](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:124) | Mirror 直接读取同一 JSON 的 path/password，转义密码保持一致。 |
+| UT-218 | [Apply_OverridesPrefabSslPortAndCapacityWithoutCouplingClientPortToListener](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:147) | 实际组件应用配置覆盖旧地址、SSL、端口模式与总连接数；客户端端口独立于监听端口。 |

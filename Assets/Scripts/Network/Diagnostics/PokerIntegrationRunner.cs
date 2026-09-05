@@ -115,6 +115,7 @@ namespace Game.Network.Diagnostics
         private IEnumerator RunServer()
         {
             _authenticator.ConfigureDatabaseFileName($"PokerIntegration-{_runId}.db");
+            NetworkConfigurationLoader.LoadAndApplyServer(_networkRoom);
             _networkRoom.StartServer();
             if (_testStorage)
             {
@@ -263,9 +264,10 @@ namespace Game.Network.Diagnostics
             LoginCredentialStore.Clear();
             var userNameRunId = _runId.Length <= 8 ? _runId : _runId.Substring(0, 8);
             _userName = $"Smoke{userNameRunId}_{_clientIndex}";
-            _networkRoom.networkAddress = "127.0.0.1";
+            var configurationPath = NetworkConfigurationLoader.GetClientPath();
+            _networkRoom.ConfigureClient(NetworkConfiguration.ParseClient(File.ReadAllText(configurationPath)));
             _authenticator.AuthenticationResponseReceived += OnAuthenticationResponse;
-            _networkRoom.StartClient();
+            _networkRoom.StartConfiguredClientConnection();
             RegisterClientHandlers();
             _authenticator.Register(_userName, Password);
 

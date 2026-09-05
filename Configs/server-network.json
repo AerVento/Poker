@@ -1,0 +1,7 @@
+{
+  "listenPort": 7777,
+  "useSsl": false,
+  "path": "",
+  "password": "",
+  "maxConnections": 100
+}

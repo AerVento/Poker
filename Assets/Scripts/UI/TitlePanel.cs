@@ -28,8 +28,20 @@ namespace Game.UI
             _quit.onClick.RemoveListener(Quit);
         }
 
+        private void Update()
+        {
+            _start.interactable = !GameController.Available || !GameController.Instance.IsNetworkInitializing;
+        }
+
         private void Play()
         {
+            if (GameController.Available && GameController.Instance.HasNetworkInitializationStarted &&
+                !GameController.Instance.IsClientNetworkReady)
+            {
+                GameController.Instance.RetryClientNetworkInitialization();
+                return;
+            }
+
             if (NetworkClient.isConnected && NetworkClient.connection != null &&
                 NetworkClient.connection.isAuthenticated &&
                 GameController.Available &&

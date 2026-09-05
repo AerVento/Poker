@@ -197,6 +197,9 @@ namespace Game.Network
         {
             if (NetworkClient.connection != null && NetworkClient.connection.isAuthenticated)
                 return;
+            if (GameController.Available && GameController.Instance.HasNetworkInitializationStarted &&
+                !GameController.Instance.IsClientNetworkReady)
+                return;
 
             _pendingOperation = operation;
             _pendingUserName = userName;
@@ -211,7 +214,8 @@ namespace Game.Network
             }
             else if (!NetworkClient.active)
             {
-                _networkRoom.StartClient();
+                if (!_networkRoom.StartConfiguredClientConnection())
+                    ClearPendingAuthentication();
             }
         }
 
