@@ -50,6 +50,9 @@ namespace Game.UI
         private TMP_InputField _maxPlayer;
 
         [SerializeField]
+        private TextMeshProUGUI _settingsHint;
+
+        [SerializeField]
         private Transform _playerList;
 
         /// <summary>
@@ -115,6 +118,8 @@ namespace Game.UI
 
         private void OnEnable()
         {
+            _back.interactable = true;
+            SetSettingsHint(string.Empty);
             _back.onClick.AddListener(Back);
             _ready.onClick.AddListener(ChangeReady);
             _cancelReady.onClick.AddListener(ChangeReady);
@@ -141,16 +146,19 @@ namespace Game.UI
 
 
 
+        public void SetLeaveRequestInFlight(bool inFlight)
+        {
+            _back.interactable = !inFlight;
+        }
+
         private void Back()
         {
-            NetworkClient.Send(new PlayerLeaveRoomRequest()
-            {
-                PlayerName = GameController.Instance.State.Nickname,
-                RoomId = _roomInfo.Id
-            });
-            GameController.Instance.State.SetLastRoom(null);
-            UIManager.Instance.HidePanel<RoomPanel>();
-            UIManager.Instance.ShowPanel<RoomListPanel>();
+            if (!_back.interactable)
+                return;
+            SetLeaveRequestInFlight(true);
+            if (!(NetworkManager.singleton is NetworkRoom networkRoom) ||
+                !networkRoom.RequestLeaveRoom(_roomInfo.Id))
+                SetLeaveRequestInFlight(false);
         }
 
         private void ChangeReady()
@@ -167,18 +175,14 @@ namespace Game.UI
         {
             if (!System.Int32.TryParse(value, out var result) || result <= 0)
             {
-                _smallBlindChips.text = _roomInfo.SmallBlindChips.ToString();
+                _smallBlindChips.SetTextWithoutNotify(_roomInfo.SmallBlindChips.ToString());
+                SetSettingsHint("小盲须为 1 至 2,147,483,647 的整数，已恢复原值。");
                 return;
             }
             // 防止筹码量过大时溢出
-            else if (result >= 10000000)
-            {
-                _smallBlindChips.text = "10000";
-                _roomInfo.SmallBlindChips = 10000;
-                return;
-            }
             else
             {
+                SetSettingsHint(string.Empty);
                 SendChangeRequest(result, _roomInfo.ThinkingTime, _roomInfo.MaxPlayerCount);
             }
 
@@ -186,33 +190,46 @@ namespace Game.UI
 
         private void ChangeTime(string value)
         {
-            if (!System.Single.TryParse(value, out var result) || result < 0)
+            if (!System.Single.TryParse(value, out var result) || result <= 0 || float.IsNaN(result) || float.IsInfinity(result))
             {
-                _thinkingTime.text = _roomInfo.ThinkingTime.ToString();
+                _thinkingTime.SetTextWithoutNotify(_roomInfo.ThinkingTime.ToString());
+                SetSettingsHint("思考时间须为大于 0 的有效秒数，已恢复原值。");
                 return;
             }
             else
             {
+                SetSettingsHint(string.Empty);
                 SendChangeRequest(_roomInfo.SmallBlindChips, result, _roomInfo.MaxPlayerCount);
             }
         }
 
         private void ChangeMaxPlayer(string value)
         {
-            if (!System.Int32.TryParse(value, out var result) || result < 2 || result > 16)
+            if (!System.Int32.TryParse(value, out var result) || result < 2 || result > 16 || result < _roomInfo.PlayerCount)
             {
-                _maxPlayer.text = _roomInfo.MaxPlayerCount.ToString();
+                _maxPlayer.SetTextWithoutNotify(_roomInfo.MaxPlayerCount.ToString());
+                SetSettingsHint($"参战人数须为 {Math.Max(2, _roomInfo.PlayerCount)} 至 16 的整数，已恢复原值。");
                 return;
             }
             else
             {
+                SetSettingsHint(string.Empty);
                 SendChangeRequest(_roomInfo.SmallBlindChips, _roomInfo.ThinkingTime, result);
+            }
+        }
+
+        private void SetSettingsHint(string message)
+        {
+            if (_settingsHint != null)
+            {
+                _settingsHint.text = message;
+                _settingsHint.gameObject.SetActive(!string.IsNullOrEmpty(message));
             }
         }
 
         private void Refresh()
         {
-            bool interactable = IsOwner;
+            bool interactable = IsOwner && _roomInfo.IsWaiting;
             _smallBlindChips.interactable = interactable;
             _thinkingTime.interactable = interactable;
             _maxPlayer.interactable = interactable;
@@ -241,7 +258,13 @@ namespace Game.UI
             {
                 _ready.gameObject.SetActive(false);
                 _cancelReady.gameObject.SetActive(false);
-                _start.gameObject.SetActive(true);
+                _start.gameObject.SetActive(_roomInfo.IsWaiting);
+                _start.interactable = _roomInfo.PlayerCount >= 2;
+                for (int i = 0; i < _roomInfo.PlayerCount; i++)
+                {
+                    if (_roomInfo.Players[i] != SelfName && !_roomInfo.ReadyStatus[i])
+                        _start.interactable = false;
+                }
             }
             else if (IsSpectator)
             {
@@ -282,6 +305,8 @@ namespace Game.UI
 
         private void SendChangeRequest(int smallBlindChips, float thinkingTime, int maxPlayer)
         {
+            if (!IsOwner || !_roomInfo.IsWaiting)
+                return;
             NetworkClient.Send(new RoomInfoChange()
             {
                 RoomId = _roomInfo.Id,

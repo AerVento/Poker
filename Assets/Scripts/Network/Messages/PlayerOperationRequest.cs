@@ -10,6 +10,8 @@ namespace Game.Network
     public struct PlayerOperationRequest : NetworkMessage
     {
         public int RoomId;
+        public string HandId;
+        public ulong TurnId;
         public int PlayerIndex;
         public PlayerOperationType Type;
         /// <summary>

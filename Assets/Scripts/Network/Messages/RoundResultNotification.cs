@@ -10,6 +10,7 @@ namespace Game.Network
 {
     public struct RoundResultNotification : NetworkMessage
     {
+        public int RoomId;
         public string RawData;
         public RoundResult RoundResult
         {

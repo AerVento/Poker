@@ -96,6 +96,8 @@ namespace Game.UI.GamePanelElement
             get => _thinkingTime;
             set
             {
+                if (_thinkingTime == value || value <= 0 || float.IsNaN(value) || float.IsInfinity(value))
+                    return;
                 _thinkingTime = value;
                 if(_timer.IsCounting)
                 {
@@ -134,9 +136,11 @@ namespace Game.UI.GamePanelElement
             get => _isOperating;
             set
             {
-                _isOperating = value;
                 _timeText.gameObject.SetActive(value);
                 _background.sprite = value ? _opertingSprite : _nonOperatingSprite;
+                if (_isOperating == value)
+                    return;
+                _isOperating = value;
 
                 if (value && !_timer.IsCounting)
                     _timer.Start();
@@ -195,10 +199,12 @@ namespace Game.UI.GamePanelElement
 
         public void StartCountDown() => _timer.Start();
 
-        // Start is called before the first frame update
-        void Start()
+        private void OnDisable()
         {
-
+            _timer.Stop();
+            _isOperating = false;
+            _timeText.gameObject.SetActive(false);
+            _background.sprite = _nonOperatingSprite;
         }
 
         // Update is called once per frame

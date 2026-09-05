@@ -44,7 +44,7 @@ namespace Game
 #endif
 
 #if UNITY_EDITOR || UNITY_STANDALONE_WIN
-            UIManager.Instance.ShowPanel<TitlePanel>();
+            UIManager.Instance.PushPanel<TitlePanel>();
             Application.targetFrameRate = 60;
             AdjustScreen();
             AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
@@ -57,7 +57,7 @@ namespace Game
 
 #if UNITY_WEBGL
 
-            UIManager.Instance.ShowPanel<TitlePanel>();
+            UIManager.Instance.PushPanel<TitlePanel>();
             Application.targetFrameRate = 60;
             AdjustScreen();
             AppDomain.CurrentDomain.UnhandledException += (sender, args) =>

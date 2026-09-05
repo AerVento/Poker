@@ -35,7 +35,7 @@ namespace Game.UI.RoomListPanelElement
         {
             _id.text = info.Id.ToString();
             _owner.text = info.OwnerName + (info.IsWaiting ? " · 等待" : " · 牌局中");
-            _capacity.text = $"{info.PlayerCount}/{info.MaxPlayerCount}";
+            _capacity.text = $"参战 {info.PlayerCount}/{info.MaxPlayerCount} · 旁观 {info.Spectators.Count}";
         }
 
     }

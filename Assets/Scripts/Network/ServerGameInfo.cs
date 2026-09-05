@@ -71,6 +71,8 @@ namespace Game.Network
         [JsonIgnore]
         public long ActionSequence { get; set; }
 
+        public ulong TurnId { get; set; }
+
         /// <summary>
         /// 思考Timer
         /// </summary>
@@ -160,7 +162,7 @@ namespace Game.Network
             ServerGameInfo info = new ServerGameInfo();
             info.RoomInfo = roomInfo;
             info.Timer = new Timer(roomInfo.ThinkingTime);
-            for (int seatIndex = 0; seatIndex < roomInfo.MaxPlayerCount; seatIndex++)
+            for (int seatIndex = 0; seatIndex < roomInfo.NextSeatIndex; seatIndex++)
             {
                 info.Players.Add(new PlayerInfo
                 {

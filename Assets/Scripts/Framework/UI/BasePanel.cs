@@ -12,12 +12,26 @@ namespace Framework.UI
         {
             IsShowing = true;
             gameObject.SetActive(true);
+            if (UIManager.Available)
+                UIManager.Instance.NotifyPanelShown(this);
         }
 
         public virtual void Hide()
         {
             IsShowing = false;
             gameObject.SetActive(false);
+            if (UIManager.Available)
+                UIManager.Instance.NotifyPanelHidden(this);
+        }
+
+        internal virtual void ReleaseManagedInstance()
+        {
+        }
+
+        protected virtual void OnDestroy()
+        {
+            if (UIManager.Available)
+                UIManager.Instance.NotifyPanelDestroyed(this);
         }
 
         protected void DestroyMe()

@@ -22,6 +22,12 @@ namespace Game.Network
         public uint AccountChips;
         public uint BigBlind;
         public TableParticipationStatus ParticipationStatus;
+        public bool CanLeaveImmediately;
+        public bool LeaveAfterHand;
+        public bool SitOutAfterHand;
+        public bool JoinNextHand;
+        public bool CanJoinNextHand;
+        public uint ParticipationRevision;
         public ClientGameInfo Info
         {
             get => JsonSerializer.Deserialize<ClientGameInfo>(RawData);

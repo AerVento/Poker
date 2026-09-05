@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 namespace Game.UI
 {
@@ -33,6 +34,9 @@ namespace Game.UI
 
         private MsgboxType _type = MsgboxType.Confirm;
         private bool _showCloseButton = true;
+        private bool _closed;
+        private bool _preferCancel;
+        private GameObject _previousSelection;
 
 
         public event System.Action OnConfirm;
@@ -63,6 +67,8 @@ namespace Game.UI
                         _cancelButton.gameObject.SetActive(false);
                         break;
                 }
+                if (IsShowing)
+                    SelectDefaultButton();
             }
         }
 
@@ -76,6 +82,8 @@ namespace Game.UI
             {
                 _showCloseButton = value;
                 _closeButton.gameObject.SetActive(value);
+                if (IsShowing)
+                    SelectDefaultButton();
             }
         }
 
@@ -103,27 +111,75 @@ namespace Game.UI
             set => _cancelButton.GetComponentInChildren<TextMeshProUGUI>().text = value;
         }
 
-        private void Start()
+        private void Awake()
         {
-            _closeButton.onClick.AddListener(Hide);
-            _confirmButton.onClick.AddListener(() =>
+            Type = _type;
+            ShowCloseButton = _showCloseButton;
+        }
+
+        private void OnEnable()
+        {
+            _previousSelection = EventSystem.current == null ? null : EventSystem.current.currentSelectedGameObject;
+            IsShowing = true;
+            SelectDefaultButton();
+            _closeButton.onClick.AddListener(Cancel);
+            _confirmButton.onClick.AddListener(Confirm);
+            _cancelButton.onClick.AddListener(Cancel);
+        }
+
+        private void OnDisable()
+        {
+            _closeButton.onClick.RemoveListener(Cancel);
+            _confirmButton.onClick.RemoveListener(Confirm);
+            _cancelButton.onClick.RemoveListener(Cancel);
+        }
+
+        public bool PreferCancel
+        {
+            get => _preferCancel;
+            set
             {
-                OnConfirm?.Invoke();
-                Hide();
-            });
-            _cancelButton.onClick.AddListener(() =>
-            {
-                OnCancel?.Invoke();
-                Hide();
-            });
+                _preferCancel = value;
+                if (IsShowing)
+                    SelectDefaultButton();
+            }
+        }
+
+        private void SelectDefaultButton()
+        {
+            if (EventSystem.current == null)
+                return;
+            var button = _preferCancel && _cancelButton.gameObject.activeSelf ? _cancelButton :
+                _confirmButton.gameObject.activeSelf ? _confirmButton :
+                _cancelButton.gameObject.activeSelf ? _cancelButton :
+                _closeButton.gameObject.activeSelf ? _closeButton : null;
+            EventSystem.current.SetSelectedGameObject(button == null ? null : button.gameObject);
+        }
+
+        private void Confirm() => Complete(OnConfirm);
+
+        private void Cancel() => Complete(OnCancel);
+
+        private void Complete(System.Action callback)
+        {
+            if (_closed)
+                return;
+            Hide();
+            callback?.Invoke();
         }
 
         public override void Hide()
         {
-            IsShowing = false;
-            _closeButton.onClick.RemoveAllListeners();
-            _confirmButton.onClick.RemoveAllListeners();
-            _cancelButton.onClick.RemoveAllListeners();
+            if (_closed)
+                return;
+            _closed = true;
+            var eventSystem = EventSystem.current;
+            var selected = eventSystem == null ? null : eventSystem.currentSelectedGameObject;
+            bool restoreSelection = selected == null || selected.transform.IsChildOf(transform);
+            base.Hide();
+            if (eventSystem != null && restoreSelection)
+                eventSystem.SetSelectedGameObject(_previousSelection != null && _previousSelection.activeInHierarchy
+                    ? _previousSelection : null);
             OnConfirm = null;
             OnCancel = null;
             UIManager.Instance.DestroyPanel(Identifier);
@@ -137,7 +193,7 @@ namespace Game.UI
         /// <returns></returns>
         public static MsgBox Create(string identifier)
         {
-            return UIManager.Instance.CreatePanel<MsgBox>(identifier, UIManager.Layer.System);
+            return UIManager.Instance.PushPanel<MsgBox>(identifier, UIManager.Layer.System);
         }
 
         /// <summary>
@@ -147,7 +203,8 @@ namespace Game.UI
         /// <param name="setting"></param>
         public static void Create(string identifier, System.Action<MsgBox> setting = null)
         {
-            setting?.Invoke(Create(identifier));
+            var msgbox = Create(identifier);
+            setting?.Invoke(msgbox);
         }
 
         /// <summary>
@@ -157,7 +214,7 @@ namespace Game.UI
         /// <returns></returns>
         public static MsgBox Create()
         {
-            return UIManager.Instance.CreatePanel<MsgBox>(System.Guid.NewGuid().ToString(), UIManager.Layer.System);
+            return UIManager.Instance.PushPanel<MsgBox>(System.Guid.NewGuid().ToString(), UIManager.Layer.System);
         }
 
         /// <summary>
@@ -167,7 +224,8 @@ namespace Game.UI
         /// <param name="setting"></param>
         public static void Create(System.Action<MsgBox> setting = null)
         {
-            setting?.Invoke(Create());
+            var msgbox = Create();
+            setting?.Invoke(msgbox);
         }
     }
 

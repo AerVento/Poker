@@ -29,9 +29,17 @@ namespace Framework.UI
             }
         }
 
-        protected virtual void OnDestroy()
+        internal override void ReleaseManagedInstance()
         {
-            _instance = null;
+            if (_instance == this)
+                _instance = null;
+        }
+
+        protected override void OnDestroy()
+        {
+            if (_instance == this)
+                _instance = null;
+            base.OnDestroy();
         }
     }
 }

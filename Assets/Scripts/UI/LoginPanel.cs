@@ -50,7 +50,7 @@ namespace Game.UI
             var pending = _authenticator != null && _authenticator.IsAuthenticationPending;
             _login.interactable = !pending;
             _register.interactable = !pending;
-            _back.interactable = !pending;
+            _back.interactable = true;
             _userName.interactable = !pending;
             _password.interactable = !pending;
         }
@@ -65,14 +65,16 @@ namespace Game.UI
             _password.text = string.Empty;
         }
 
-        public void BeginSavedLogin()
+        public void BeginSavedLogin(string sessionToken = null)
         {
             if (_savedLoginStarted)
                 return;
 
             _savedLoginStarted = true;
             ResolveAuthenticator();
-            if (_authenticator != null && _authenticator.LoginWithSavedCredentials())
+            if (!string.IsNullOrEmpty(sessionToken) && GameController.Available)
+                _userName.text = GameController.Instance.State.UserName;
+            if (_authenticator != null && _authenticator.LoginWithSavedCredentials(sessionToken))
                 SetStatus("正在恢复登录状态……");
         }
 
@@ -116,8 +118,7 @@ namespace Game.UI
                 networkRoom.HandleClientLogout();
             else
             {
-                UIManager.Instance.HidePanel<LoginPanel>();
-                UIManager.Instance.ShowPanel<TitlePanel>();
+                UIManager.Instance.PopPanel<LoginPanel>();
             }
         }
 

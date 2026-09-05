@@ -29,6 +29,9 @@ namespace Game.UI.GamePanelElement
         private TMP_InputField _betInput;
 
         [SerializeField]
+        private TextMeshProUGUI _betHint;
+
+        [SerializeField]
         private Button _callButton;
 
         [SerializeField]
@@ -52,13 +55,45 @@ namespace Game.UI.GamePanelElement
         private ClientGameInfo _info;
 
         private uint _betChips;
+        private bool _operationPending;
+        private bool _resetBetInput = true;
+        private MsgBox _confirmation;
+        private int _confirmationVersion;
+
+        private bool CanOperate => _info.RoomInfo != null && !_info.IsSpectator &&
+            _info.Round < GameStage.RoundOver &&
+            _info.OperatingPlayer == _info.CurrentPlayerIndex &&
+            _info.CurrentPlayer.IsOccupied && !_info.CurrentPlayer.IsFold &&
+            !_info.CurrentPlayer.IsAllIn && !_info.CurrentPlayer.IsDisconnected &&
+            !_info.CurrentPlayer.IsLeaving && !_info.CurrentPlayer.IsWaitingForNextHand;
+
+        private ulong AvailableTotal => Math.Min(uint.MaxValue,
+            (ulong)_info.CurrentPlayer.StageBet + _info.CurrentPlayer.Chips);
+
+        private uint MinimumBetTotal => (uint)Math.Min(AvailableTotal,
+            (ulong)_info.CurrentHighestPlayerBet + _info.LeastRaise);
 
         public ClientGameInfo Info
         {
             get => _info;
             set
             {
+                _resetBetInput = _info.RoomInfo == null || value.RoomInfo == null ||
+                    _info.RoomInfo.Id != value.RoomInfo.Id || _info.Round != value.Round ||
+                    _info.HandId != value.HandId || _info.TurnId != value.TurnId ||
+                    _info.OperatingPlayer != value.OperatingPlayer ||
+                    _info.CurrentPlayerIndex != value.CurrentPlayerIndex ||
+                    _info.CurrentHighestPlayerBet != value.CurrentHighestPlayerBet ||
+                    _info.LeastRaise != value.LeastRaise || _info.CanRaise != value.CanRaise ||
+                    _info.CurrentPlayer.Chips != value.CurrentPlayer.Chips ||
+                    _info.CurrentPlayer.StageBet != value.CurrentPlayer.StageBet;
                 _info = value;
+                if (_resetBetInput || !CanOperate)
+                {
+                    CloseConfirmation();
+                    SetBetHint(string.Empty);
+                }
+                _operationPending = false;
                 Refresh();
             }
         }
@@ -76,6 +111,8 @@ namespace Game.UI.GamePanelElement
 
         private void OnDisable()
         {
+            CloseConfirmation();
+            SetBetHint(string.Empty);
             _betInput.onEndEdit.RemoveListener(OnBetOrRaiseChipsChanged);
 
             _checkButton.onClick.RemoveListener(OnCheck);
@@ -87,50 +124,35 @@ namespace Game.UI.GamePanelElement
 
         private void OnBetOrRaiseChipsChanged(string value)
         {
-            if(!uint.TryParse(value, out var num))
-            {
-                _betInput.text = _betChips.ToString();
-                MsgBox.Create(msgbox =>
-                {
-                    msgbox.Title = "提示";
-                    msgbox.Message = "请输入一个有效数字！";
-                });
+            if (!CanOperate || !_info.CanRaise || _operationPending)
                 return;
-            }
 
-            var availableTotal = (ulong)_info.CurrentPlayer.StageBet + _info.CurrentPlayer.Chips;
-            var minimumRaiseTotal = (ulong)_info.CurrentHighestPlayerBet + _info.LeastRaise;
-            if (!_info.CanRaise || num <= _info.CurrentHighestPlayerBet)
+            var valid = ulong.TryParse(value, out var amount);
+            if (!valid)
+                amount = _betChips;
+            var minimum = MinimumBetTotal;
+            var maximum = AvailableTotal;
+            var corrected = (uint)Math.Max(minimum, Math.Min(maximum, amount));
+            SetBetHint(!valid ? "请输入有效的非负整数，已恢复金额。" :
+                amount < minimum ? $"已调整至最低可下注总额 ${minimum:N0}。" :
+                amount > maximum ? $"已调整至可用总额 ${maximum:N0}（全下）。" : string.Empty);
+            _betChips = corrected;
+            _betInput.SetTextWithoutNotify(_betChips.ToString());
+        }
+
+        private void SetBetHint(string message)
+        {
+            if (_betHint != null)
             {
-                _betInput.text = minimumRaiseTotal.ToString();
-                MsgBox.Create(msgbox =>
-                {
-                    msgbox.Title = "提示";
-                    msgbox.Message = "当前行动没有加注权。";
-                });
-                return;
+                _betHint.text = message;
+                _betHint.gameObject.SetActive(!string.IsNullOrEmpty(message));
             }
-            if (num > availableTotal)
-            {
-                _betInput.text = availableTotal.ToString();
-                MsgBox.Create(msgbox =>
-                {
-                    msgbox.Title = "提示";
-                    msgbox.Message = $"下注到${num}超出了你的可用总额${availableTotal}。";
-                });
-                return;
-            }
-            if (num < minimumRaiseTotal && num != availableTotal)
-            {
-                _betInput.text = minimumRaiseTotal.ToString();
-                MsgBox.Create(msgbox =>
-                {
-                    msgbox.Title = "提示";
-                    msgbox.Message = $"当前最少要加注到${minimumRaiseTotal}。\n只有 all-in 可以低于最小加注额。";
-                });
-                return;
-            }
-            _betChips = num;
+        }
+
+        public void OnOperationRejected()
+        {
+            _operationPending = false;
+            Refresh();
         }
 
         private string BigNumberToString(uint number)
@@ -147,6 +169,9 @@ namespace Game.UI.GamePanelElement
 
         public void Refresh()
         {
+            if (_info.RoomInfo == null)
+                return;
+
             // 基本信息
             _playerNameText.text = _info.IsSpectator
                 ? "旁观中"
@@ -158,112 +183,135 @@ namespace Game.UI.GamePanelElement
             // 卡牌信息
             _hole.ForEach(poker => poker.IsShowing = false);
             _community.ForEach(poker => poker.IsShowing = false);
-            for (int i = 0; i < _info.Hole.Count; i++)
+            for (int i = 0; i < (_info.Hole?.Count ?? 0) && i < _hole.Count; i++)
             {
                 _hole[i].IsShowing = true;
                 _hole[i].Poker = _info.Hole[i];
             }
-            for (int i = 0; i < _info.Community.Count; i++)
+            for (int i = 0; i < (_info.Community?.Count ?? 0) && i < _community.Count; i++)
             {
                 _community[i].IsShowing = true;
                 _community[i].Poker = _info.Community[i];
             }
 
-            if (_info.IsSpectator)
-            {
-                _checkButton.gameObject.SetActive(false);
-                _betOrRaiseButton.gameObject.SetActive(false);
-                _callButton.gameObject.SetActive(false);
-                _allInButton.gameObject.SetActive(false);
-                _foldButton.gameObject.SetActive(false);
-                return;
-            }
-
-
-            // 如果不是你操作，则所有按钮都不该显示
-            bool isOperating = _info.OperatingPlayer == _info.CurrentPlayerIndex;
+            bool isOperating = CanOperate;
+            var availableTotal = AvailableTotal;
+            bool canBet = isOperating && _info.CanRaise &&
+                availableTotal > _info.CurrentHighestPlayerBet;
 
             _checkButton.gameObject.SetActive(isOperating &&
                 _info.CurrentPlayer.StageBet == _info.CurrentHighestPlayerBet);
-
-            var availableTotal = (ulong)_info.CurrentPlayer.Chips + _info.CurrentPlayer.StageBet;
-            var minimumRaiseTotal = (ulong)_info.CurrentHighestPlayerBet + _info.LeastRaise;
-            _betOrRaiseButton.gameObject.SetActive(isOperating &&
-                _info.CanRaise &&
-                availableTotal > _info.CurrentHighestPlayerBet);
-            _betOrRaiseTitle.text = _info.CurrentHighestPlayerBet == 0 ? "Bet" : "Raise";
-            _betChips = (uint)Math.Min(availableTotal, minimumRaiseTotal);
-            _betInput.text = _betChips.ToString();
-
-            _callButton.gameObject.SetActive(isOperating && 
-                _info.CurrentPlayer.StageBet < _info.CurrentHighestPlayerBet && 
-                _info.CurrentPlayer.Chips > 0);
-
-            _allInButton.gameObject.SetActive(isOperating &&
-                (_info.CanRaise || availableTotal <= _info.CurrentHighestPlayerBet));
-
-            _foldButton.gameObject.SetActive(isOperating);
-        }
-
-        private void OnCheck()
-        {
-            var req = new PlayerOperationRequest()
+            _betOrRaiseButton.gameObject.SetActive(canBet);
+            _betInput.gameObject.SetActive(canBet);
+            _betOrRaiseTitle.text = _info.CurrentHighestPlayerBet == 0 ? "下注到" : "加注到";
+            if (_resetBetInput)
             {
-                RoomId = _info.RoomInfo.Id,
-                PlayerIndex = _info.CurrentPlayerIndex,
-                Type = PlayerOperationType.Check,
-            };
-            NetworkClient.Send(req);
-            Log.Write($"Send player operation request to the server: Type = {req.Type}");
+                _betChips = MinimumBetTotal;
+                _betInput.SetTextWithoutNotify(_betChips.ToString());
+                _resetBetInput = false;
+            }
+
+            _callButton.gameObject.SetActive(isOperating &&
+                _info.CurrentPlayer.StageBet < _info.CurrentHighestPlayerBet &&
+                _info.CurrentPlayer.Chips > 0);
+            _allInButton.gameObject.SetActive(isOperating && _info.CurrentPlayer.Chips > 0 &&
+                (_info.CanRaise || availableTotal <= _info.CurrentHighestPlayerBet));
+            _foldButton.gameObject.SetActive(isOperating);
+
+            _checkButton.interactable = !_operationPending;
+            _betOrRaiseButton.interactable = !_operationPending;
+            _betInput.interactable = !_operationPending;
+            _callButton.interactable = !_operationPending;
+            _allInButton.interactable = !_operationPending;
+            _foldButton.interactable = !_operationPending;
         }
+
+        private void OnCheck() => SendOperation(PlayerOperationType.Check);
 
         private void OnBetOrRaise()
         {
-            var req = new PlayerOperationRequest()
-            {
-                RoomId = _info.RoomInfo.Id,
-                PlayerIndex = _info.CurrentPlayerIndex,
-                Type = PlayerOperationType.Bet,
-                Number = _betChips
-            };
-            NetworkClient.Send(req);
-            Log.Write($"Send player operation request to the server: Type = {req.Type}, Num = {_betChips}");
+            if (!_betOrRaiseButton.isActiveAndEnabled || !_betOrRaiseButton.interactable)
+                return;
+            OnBetOrRaiseChipsChanged(_betInput.text);
+            RequestOperation(PlayerOperationType.Bet, _betChips);
         }
 
-        private void OnCall()
+        private void OnCall() => RequestOperation(PlayerOperationType.Call);
+
+        private void OnAllIn() => RequestOperation(PlayerOperationType.AllIn);
+
+        private void OnFold() => RequestOperation(PlayerOperationType.Fold);
+
+        private bool UsesAllRemainingChips(PlayerOperationType type, uint number)
         {
-            var req = new PlayerOperationRequest()
-            {
-                RoomId = _info.RoomInfo.Id,
-                PlayerIndex = _info.CurrentPlayerIndex,
-                Type = PlayerOperationType.Call,
-            };
-            NetworkClient.Send(req);
-            Log.Write($"Send player operation request to the server: Type = {req.Type}");
+            var player = _info.CurrentPlayer;
+            return player.Chips > 0 && (type == PlayerOperationType.AllIn ||
+                type == PlayerOperationType.Call && _info.CurrentHighestPlayerBet > player.StageBet &&
+                    (ulong)_info.CurrentHighestPlayerBet - player.StageBet >= player.Chips ||
+                type == PlayerOperationType.Bet && (ulong)number >= (ulong)player.StageBet + player.Chips);
         }
 
-        private void OnAllIn()
+        private void RequestOperation(PlayerOperationType type, uint number = 0)
         {
-            var req = new PlayerOperationRequest()
+            if (!CanOperate || _operationPending || _confirmation != null)
+                return;
+            var allIn = UsesAllRemainingChips(type, number);
+            var freeFold = type == PlayerOperationType.Fold &&
+                _info.CurrentPlayer.StageBet == _info.CurrentHighestPlayerBet;
+            if (!allIn && !freeFold)
             {
-                RoomId = _info.RoomInfo.Id,
-                PlayerIndex = _info.CurrentPlayerIndex,
-                Type = PlayerOperationType.AllIn,
+                SendOperation(type, number);
+                return;
+            }
+
+            var version = _confirmationVersion;
+            var box = MsgBox.Create("PokerOperation");
+            _confirmation = box;
+            box.Type = MsgboxType.ConfirmAndCancel;
+            box.Title = allIn ? "确认全下" : "确认弃牌";
+            box.Message = allIn
+                ? $"确定投入剩余全部 ${_info.CurrentPlayer.Chips:N0} 筹码？\n确认期间，操作倒计时仍会继续。"
+                : "当前可以免费过牌，确定弃牌？\n确认期间，操作倒计时仍会继续。";
+            box.ConfirmButtonText = allIn ? "确认全下" : "确认弃牌";
+            box.CancelButtonText = "取消";
+            box.PreferCancel = true;
+            box.OnCancel += () => _confirmation = null;
+            box.OnConfirm += () =>
+            {
+                _confirmation = null;
+                if (isActiveAndEnabled && version == _confirmationVersion && CanOperate)
+                    SendOperation(type, number);
             };
-            NetworkClient.Send(req);
-            Log.Write($"Send player operation request to the server: Type = {req.Type}");
         }
 
-        private void OnFold()
+        private void CloseConfirmation()
         {
-            var req = new PlayerOperationRequest()
+            _confirmationVersion++;
+            var box = _confirmation;
+            _confirmation = null;
+            if (box != null)
+                box.Hide();
+        }
+
+        private void SendOperation(PlayerOperationType type, uint number = 0)
+        {
+            if (!CanOperate || _operationPending || !NetworkClient.isConnected ||
+                NetworkClient.connection == null || !NetworkClient.connection.isAuthenticated)
+                return;
+
+            _operationPending = true;
+            Refresh();
+            var request = new PlayerOperationRequest
             {
                 RoomId = _info.RoomInfo.Id,
+                HandId = _info.HandId,
+                TurnId = _info.TurnId,
                 PlayerIndex = _info.CurrentPlayerIndex,
-                Type = PlayerOperationType.Fold,
+                Type = type,
+                Number = number,
             };
-            NetworkClient.Send(req);
-            Log.Write($"Send player operation request to the server: Type = {req.Type}");
+            NetworkClient.Send(request);
+            Log.Write($"Send player operation request to the server: Type = {type}, Num = {number}");
         }
     }
 }

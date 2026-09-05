@@ -27,7 +27,7 @@ namespace Game.UI
 
         private List<Resolution> _availableResolutions = new List<Resolution>();
 
-        private void Start()
+        private void RefreshResolutions()
         {
             _availableResolutions.Clear();
             foreach (var resolution in Screen.resolutions)
@@ -47,12 +47,22 @@ namespace Game.UI
                     _availableResolutions.Add(resolution);
             }
 
+            int selected = _availableResolutions.FindIndex(resolution =>
+                resolution.width == Screen.width && resolution.height == Screen.height);
+            if (selected < 0)
+            {
+                selected = _availableResolutions.Count;
+                _availableResolutions.Add(new Resolution { width = Screen.width, height = Screen.height });
+            }
+
             _resolution.ClearOptions();
             foreach(var resolution in _availableResolutions)
             {
                 var option = new TMP_Dropdown.OptionData($"{resolution.width}x{resolution.height}");
                 _resolution.options.Add(option);
             }
+            _resolution.SetValueWithoutNotify(selected);
+            _resolution.RefreshShownValue();
         }
 
         private void OnEnable()
@@ -68,19 +78,10 @@ namespace Game.UI
             _logout.gameObject.SetActive(isAuthenticated);
             _logout.interactable = isAuthenticated;
 
-            var resolutions = Screen.resolutions;
-            for (int i = 0; i < resolutions.Length; i++)
-            {
-                var resolution = resolutions[i];
-                if (Screen.width == resolution.width && Screen.height == resolution.height)
-                {
-                    _resolution.SetValueWithoutNotify(i);
-                    break;
-                }
-            }
+            RefreshResolutions();
             _resolution.onValueChanged.AddListener(ChangeResolution);
 
-            _fullscreen.isOn = Screen.fullScreen;
+            _fullscreen.SetIsOnWithoutNotify(Screen.fullScreen);
             _fullscreen.onValueChanged.AddListener(ChangeFullscreen);
         }
         private void OnDisable()
@@ -93,11 +94,7 @@ namespace Game.UI
 
         private void Back()
         {
-            UIManager.Instance.HidePanel<OptionPanel>();
-            if (GameController.Available && GameController.Instance.State.IsAuthenticated)
-                UIManager.Instance.ShowPanel<RoomListPanel>();
-            else
-                UIManager.Instance.ShowPanel<TitlePanel>();
+            UIManager.Instance.PopPanel<OptionPanel>();
         }
 
         private void Logout()
@@ -112,6 +109,8 @@ namespace Game.UI
 
         private void ChangeResolution(int option)
         {
+            if (option < 0 || option >= _availableResolutions.Count)
+                return;
             var resolution = _availableResolutions[option];
             Screen.SetResolution(resolution.width, resolution.height, Screen.fullScreen);
             PlayerPrefs.SetInt("Screen_Width", resolution.width);

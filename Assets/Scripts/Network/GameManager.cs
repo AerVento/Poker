@@ -38,7 +38,8 @@ namespace Game.Network
             room.EnsureSeatModel();
             if (room.PlayerCount < 2)
                 throw new ArgumentException("At least two players are required.", nameof(room));
-            if (room.SmallBlindChips <= 0 || room.ThinkingTime <= 0)
+            if (room.SmallBlindChips <= 0 || room.ThinkingTime <= 0 ||
+                float.IsNaN(room.ThinkingTime) || float.IsInfinity(room.ThinkingTime))
                 throw new ArgumentException("Blinds and thinking time must be positive.", nameof(room));
             if (_accountRepository == null)
                 return -7;
@@ -100,7 +101,9 @@ namespace Game.Network
             return player.IsOccupied &&
                 !player.IsLeaving &&
                 player.Chips >= GetBigBlindAmount(info) &&
-                !player.IsDisconnected;
+                !player.IsDisconnected &&
+                !info.RoomInfo.Seats.Any(seat =>
+                    seat.SeatIndex == player.SeatIndex && (seat.LeaveAfterHand || seat.SitOutAfterHand));
         }
 
         private static int FindSeatAtOrAfter(
@@ -314,6 +317,7 @@ namespace Game.Network
 
         private void AdvanceAfterAction(ServerGameInfo info)
         {
+            info.TurnId++;
             ResetActionTimer(info);
 
             if (IsBettingRoundComplete(info))
@@ -356,6 +360,7 @@ namespace Game.Network
 
         private void BeginNextStreet(ServerGameInfo info, GameStage nextStage, int communityCardCount)
         {
+            info.TurnId++;
             info.Stage = nextStage;
             DealCommunityCards(info, communityCardCount);
             info.CurrentHighestPlayerBet = 0;
@@ -382,6 +387,7 @@ namespace Game.Network
 
         private void DealRunoutStreet(ServerGameInfo info, GameStage nextStage, int communityCardCount)
         {
+            info.TurnId++;
             info.Stage = nextStage;
             DealCommunityCards(info, communityCardCount);
             info.CurrentHighestPlayerBet = 0;
@@ -598,53 +604,20 @@ namespace Game.Network
             return 0;
         }
 
-        public int SetLeaving(int roomId, string playerName)
+        public bool RequiresDeferredLeave(int roomId, string playerName)
         {
-            if (!_games.TryGetValue(roomId, out var info))
-                return -1;
-
-            var playerIndex = FindPlayerSeat(roomId, playerName);
-            if (playerIndex < 0)
-                return -2;
-
-            var player = info.Players[playerIndex];
-            player.IsLeaving = true;
-            player.IsWaitingForNextHand = false;
-            if (!IsHandInProgress(roomId) || !player.ParticipatedThisHand || player.IsFold || player.IsAllIn)
-            {
-                OnGameInfoChanged?.Invoke(roomId);
-                return 0;
-            }
-
-            player.IsFold = true;
-            player.LastOperation = new PlayerOperation { Type = PlayerOperationType.Fold };
-            player.HasActedThisStage = true;
-            player.BetFacedAtLastAction = info.CurrentHighestPlayerBet;
-            if (playerIndex == info.OperatingPlayer)
-            {
-                AdvanceAfterAction(info);
-            }
-            else if (info.Players.Count(candidate =>
-                candidate.ParticipatedThisHand && !candidate.IsFold) <= 1 ||
-                IsBettingRoundComplete(info))
-            {
-                info.OperatingPlayer = -1;
-                OnGameInfoChanged?.Invoke(roomId);
-                OnGameStageEnded?.Invoke(roomId);
-            }
-            else
-            {
-                OnGameInfoChanged?.Invoke(roomId);
-            }
-
-            return 0;
+            var seatIndex = FindPlayerSeat(roomId, playerName);
+            return seatIndex >= 0 && IsHandInProgress(roomId) &&
+                _games[roomId].Players[seatIndex].ParticipatedThisHand;
         }
 
         private bool SynchronizeRoomSeats(ServerGameInfo info)
         {
             info.RoomInfo.EnsureSeatModel();
+            while (info.Players.Count < info.RoomInfo.NextSeatIndex)
+                info.Players.Add(CreateEmptySeat(info.Players.Count));
             if (info.RoomInfo.Seats.Any(seat =>
-                    seat.SeatIndex < 0 || seat.SeatIndex >= info.PlayersCount) ||
+                    seat.SeatIndex < 0 || seat.SeatIndex >= info.RoomInfo.NextSeatIndex) ||
                 info.RoomInfo.Seats.Select(seat => seat.SeatIndex).Distinct().Count() !=
                 info.RoomInfo.Seats.Count)
             {
@@ -708,6 +681,15 @@ namespace Game.Network
                 if (seat.State == RoomSeatState.Leaving)
                     continue;
 
+                // A failed departure persistence must not release this seat to spectators
+                // or allow the player to be dealt into another hand.
+                if (seat.LeaveAfterHand)
+                {
+                    seat.State = RoomSeatState.WaitingForNextHand;
+                    player.IsWaitingForNextHand = true;
+                    continue;
+                }
+
                 var eligible = CanParticipateInNextHand(info, player);
                 seat.State = eligible
                     ? RoomSeatState.WaitingForNextHand
@@ -718,11 +700,56 @@ namespace Game.Network
             info.RoomInfo.SynchronizeLegacyLists();
         }
 
+        private static void CompactSeatsForNextHand(ServerGameInfo info)
+        {
+            var room = info.RoomInfo;
+            if (room.NextSeatIndex == 0 || room.Seats.Count * 2 >= room.NextSeatIndex)
+                return;
+
+            var occupied = room.Seats.OrderBy(seat => seat.SeatIndex).ToList();
+            // Map the old button to its surviving predecessor so the next advance preserves the ring.
+            var previousDealer = occupied.FindLastIndex(seat => seat.SeatIndex <= info.Dealer);
+            var previousBigBlind = occupied.FindIndex(seat => seat.SeatIndex == info.BigBlind);
+            var players = occupied.Select(seat => info.Players[seat.SeatIndex]).ToList();
+            for (int index = 0; index < occupied.Count; index++)
+            {
+                occupied[index].SeatIndex = index;
+                players[index].SeatIndex = index;
+            }
+            info.Players = players;
+            info.Dealer = previousDealer < 0 ? occupied.Count - 1 : previousDealer;
+            info.BigBlind = previousBigBlind;
+            info.SmallBlind = -1;
+            room.NextSeatIndex = occupied.Count;
+            room.SynchronizeLegacyLists();
+        }
+
+        public int ExecuteOperation(PlayerOperationRequest request)
+        {
+            if (!_games.TryGetValue(request.RoomId, out var info))
+                return -1;
+            if (string.IsNullOrEmpty(request.HandId) || request.HandId != info.HandId ||
+                request.TurnId != info.TurnId || info.Stage >= GameStage.RoundOver)
+                return -8;
+
+            return request.Type switch
+            {
+                PlayerOperationType.Check => Check(request.RoomId, request.PlayerIndex),
+                PlayerOperationType.Bet => Bet(request.RoomId, request.PlayerIndex, request.Number),
+                PlayerOperationType.Raise => Bet(request.RoomId, request.PlayerIndex, request.Number),
+                PlayerOperationType.Call => Call(request.RoomId, request.PlayerIndex),
+                PlayerOperationType.AllIn => AllIn(request.RoomId, request.PlayerIndex),
+                PlayerOperationType.Fold => Fold(request.RoomId, request.PlayerIndex),
+                _ => -1024,
+            };
+        }
+
         public int StartNew(int roomId)
         {
             if (!_games.TryGetValue(roomId, out var info))
                 return -1;
-            if (info.Stage == GameStage.GameOver)
+            if (info.Stage == GameStage.GameOver ||
+                (!string.IsNullOrEmpty(info.HandId) && IsHandInProgress(roomId)))
                 return -2;
             if (info.RoomInfo.SmallBlindChips <= 0)
                 return -3;
@@ -749,6 +776,7 @@ namespace Game.Network
                 return -7;
             }
 
+            CompactSeatsForNextHand(info);
             var participatingPlayers = info.Players
                 .Select(player => CanParticipateInNextHand(info, player))
                 .ToArray();
@@ -780,6 +808,7 @@ namespace Game.Network
                 return handStartResult == HandStartResult.InsufficientChips ? -2 : -7;
 
             info.HandId = handId;
+            info.TurnId = 1;
             info.ActionSequence = 0;
             var handAccountsById = handAccounts.ToDictionary(account => account.AccountId);
             foreach (var player in info.Players)
@@ -798,26 +827,11 @@ namespace Game.Network
             info.Stage = GameStage.Preflop;
 
             var participantCount = participatingPlayers.Count(participates => participates);
-            if (participantCount == 2)
-            {
-                if (info.LastHandParticipantCount > 2 &&
-                    info.BigBlind >= 0 &&
-                    info.BigBlind < participatingPlayers.Length &&
-                    participatingPlayers[info.BigBlind])
-                {
-                    // 三人及以上转为单挑时，让上一手的大盲成为按钮/小盲，避免另一人连续承担大盲。
-                    info.Dealer = info.BigBlind;
-                }
-                else
-                {
-                    info.Dealer = HoldemRules.GetNextSeat(info.Dealer, participatingPlayers);
-                }
-            }
+            if (info.LastHandParticipantCount > 2 && participantCount == 2 &&
+                info.BigBlind >= 0 && info.BigBlind < participatingPlayers.Length && participatingPlayers[info.BigBlind])
+                info.Dealer = info.BigBlind;
             else
-            {
-                // 锦标赛使用 dead-button：多人桌按钮每手前进一个物理座位，即使该座位已经淘汰。
-                info.Dealer = (info.Dealer + 1) % info.PlayersCount;
-            }
+                info.Dealer = HoldemRules.GetNextSeat(info.Dealer, participatingPlayers);
             var positions = HoldemRules.GetPositions(info.Dealer, participatingPlayers);
             info.SmallBlind = positions.SmallBlind;
             info.BigBlind = positions.BigBlind;
@@ -860,6 +874,7 @@ namespace Game.Network
             if (!PostBlinds(info, smallBlindAmount, bigBlindAmount))
             {
                 SafeAbortHand(info.HandId, "BlindPostingFailed");
+                info.Stage = GameStage.RoundOver;
                 return -7;
             }
 
@@ -1143,6 +1158,19 @@ namespace Game.Network
             OnGameInfoChanged?.Invoke(roomId);
             CancelGame(roomId, "GameClosed");
             GC.Collect();
+        }
+
+        // Do not attempt refunds or any other writes while storage is unavailable.
+        public void StopForStorageFailure()
+        {
+            foreach (var info in _games.Values)
+            {
+                info.OperatingPlayer = -1;
+                info.Timer.OnTimeUp = null;
+                info.Timer.Stop();
+            }
+            _autoRunningRooms.Clear();
+            _games.Clear();
         }
 
         public void CancelGame(int roomId, string reason)

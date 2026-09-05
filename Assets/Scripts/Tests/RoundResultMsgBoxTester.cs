@@ -16,7 +16,7 @@ namespace Game.Tests
     {
         private void Start()
         {
-            UIManager.Instance.ShowPanel<RoundResultMsgBox>();
+            UIManager.Instance.PushPanel<RoundResultMsgBox>();
             Test();
         }
         private async void Test()

@@ -55,7 +55,8 @@ namespace Game.Network
             try
             {
                 var databasePath = Path.Combine(Application.persistentDataPath, _databaseFileName);
-                AccountRepository = new SqliteAccountRepository(databasePath);
+                AccountRepository = new GuardedAccountRepository(
+                    new SqliteAccountRepository(databasePath), _networkRoom.HandleFatalStorageError);
                 _accountService = new AccountService(
                     AccountRepository,
                     initialChips: _initialChips);
@@ -67,6 +68,7 @@ namespace Game.Network
                 _accountService = null;
                 AccountRepository = null;
                 Log.WriteError($"Unable to initialize the account database: {exception}");
+                _networkRoom.HandleFatalStorageError(exception);
             }
 #else
             _accountService = null;
@@ -92,6 +94,11 @@ namespace Game.Network
 
         public override void OnServerAuthenticate(NetworkConnectionToClient conn)
         {
+            if (_networkRoom.IsServerShuttingDown)
+            {
+                conn.Send(new ServerShutdownNotice { Reason = ServerShutdownReason.StorageFailure });
+                return;
+            }
             _networkRoom.RecordClientActivity(conn);
             // Wait for an explicit register or login request from the client.
         }
@@ -128,9 +135,9 @@ namespace Game.Network
             BeginAuthentication(AccountAuthenticationOperation.Login, userName, password);
         }
 
-        public bool LoginWithSavedCredentials()
+        public bool LoginWithSavedCredentials(string sessionToken = null)
         {
-            if (!LoginCredentialStore.TryLoad(out _, out var sessionToken))
+            if (string.IsNullOrEmpty(sessionToken) && !LoginCredentialStore.TryLoad(out _, out sessionToken))
                 return false;
 
             BeginAuthentication(
@@ -275,6 +282,8 @@ namespace Game.Network
         private void OnLogoutRequest(NetworkConnectionToClient conn, AccountLogoutRequest request)
         {
             _networkRoom.RecordClientActivity(conn);
+            if (_networkRoom.IsServerShuttingDown)
+                return;
             var revoked = false;
             try
             {
@@ -285,7 +294,8 @@ namespace Game.Network
                 Log.WriteError($"Unable to revoke account session: {exception}");
             }
 
-            conn.Send(new AccountLogoutResponse { Revoked = revoked });
+            if (!_networkRoom.IsServerShuttingDown)
+                conn.Send(new AccountLogoutResponse { Revoked = revoked });
         }
 
         private void Authenticate(
@@ -293,7 +303,7 @@ namespace Game.Network
             AccountAuthenticationOperation operation,
             Func<AccountAuthenticationResult> authenticate)
         {
-            if (conn == null || conn.isAuthenticated)
+            if (_networkRoom.IsServerShuttingDown || conn == null || conn.isAuthenticated)
                 return;
 
             AccountAuthenticationResult result;
@@ -313,6 +323,9 @@ namespace Game.Network
                 };
             }
 
+            if (_networkRoom.IsServerShuttingDown)
+                return;
+
             if (!result.IsSuccess)
             {
                 conn.Send(CreateResponse(operation, result, false));
@@ -320,6 +333,8 @@ namespace Game.Network
             }
 
             _networkRoom.ValidateLastRoom(result.Account);
+            if (_networkRoom.IsServerShuttingDown)
+                return;
             var canRestoreReplacedSession = _networkRoom.CanRestoreReplacedSession(result.Account);
             var oldConnection = _networkRoom.BindAuthenticatedAccount(result.Account, conn);
             var response = CreateResponse(

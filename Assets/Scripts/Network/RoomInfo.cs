@@ -26,6 +26,10 @@ namespace Game.Network
         public bool IsReady { get; set; }
 
         public RoomSeatState State { get; set; }
+
+        public bool LeaveAfterHand { get; set; }
+
+        public bool SitOutAfterHand { get; set; }
     }
 
     /// <summary>
@@ -69,6 +73,15 @@ namespace Game.Network
         /// </summary>
         public List<string> Spectators { get; set; } = new List<string>();
 
+        public List<string> NextHandPlayers { get; set; } = new List<string>();
+
+        // Seat numbers are a ring, independent of the maximum number of seated players.
+        public int NextSeatIndex { get; set; }
+
+        [JsonIgnore]
+        public double EmptySeatRatio => NextSeatIndex == 0 ? 0 :
+            (double)(NextSeatIndex - Seats.Count) / NextSeatIndex;
+
         /// <summary>
         /// ≥ı º≥Ô¬Î
         /// </summary>
@@ -107,8 +120,10 @@ namespace Game.Network
                 Seats = new List<RoomSeatInfo>();
             if (Spectators == null)
                 Spectators = new List<string>();
+            if (NextHandPlayers == null)
+                NextHandPlayers = new List<string>();
 
-            if (Seats.Count == 0 && Players != null)
+            if (Seats.Count == 0 && NextSeatIndex == 0 && Players != null)
             {
                 for (int index = 0; index < Players.Count; index++)
                 {
@@ -146,13 +161,7 @@ namespace Game.Network
         public int FindAvailableSeatIndex()
         {
             EnsureSeatModel();
-            for (int seatIndex = 0; seatIndex < MaxPlayerCount; seatIndex++)
-            {
-                if (Seats.All(seat => seat.SeatIndex != seatIndex))
-                    return seatIndex;
-            }
-
-            return -1;
+            return Seats.Count < MaxPlayerCount ? NextSeatIndex : -1;
         }
 
         public void SynchronizeLegacyLists()
@@ -166,6 +175,9 @@ namespace Game.Network
             ReadyStatus.Clear();
             if (Seats == null)
                 return;
+
+            if (Seats.Count > 0)
+                NextSeatIndex = System.Math.Max(NextSeatIndex, Seats.Max(seat => seat.SeatIndex) + 1);
 
             foreach (var seat in Seats
                 .Where(seat => seat != null && seat.State != RoomSeatState.Leaving)

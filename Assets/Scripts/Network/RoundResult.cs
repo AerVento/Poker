@@ -14,6 +14,21 @@ namespace Game.Network
     {
         public List<Poker> Community { get; set; } = new List<Poker>();
         public List<Player> PlayerResults { get; set; } = new List<Player>();
+        public RoundResult ForSpectator()
+        {
+            return new RoundResult
+            {
+                Community = new List<Poker>(Community),
+                PlayerResults = PlayerResults.Select(player => new Player
+                {
+                    PlayerName = player.PlayerName,
+                    IsFold = player.IsFold,
+                    IsDisconnected = player.IsDisconnected,
+                    ChipEarned = player.ChipEarned,
+                }).ToList(),
+            };
+        }
+
         [System.Serializable]
         public class Player
         {

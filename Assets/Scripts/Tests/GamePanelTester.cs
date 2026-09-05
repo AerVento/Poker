@@ -14,7 +14,7 @@ namespace Game.Tests
     {
         private void Start()
         {
-            UIManager.Instance.ShowPanel<GamePanel>();
+            UIManager.Instance.PushPanel<GamePanel>();
             //Test();
         }
         //private async void Test()

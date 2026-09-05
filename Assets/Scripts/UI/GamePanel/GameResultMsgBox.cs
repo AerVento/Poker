@@ -45,7 +45,7 @@ namespace Game.UI.GamePanelElement
                 Destroy(tmp.gameObject);
             }
             _listItems.Clear();
-            _info.PlayerResults.Sort((a, b) => (int)(b.Chips - a.Chips));
+            _info.PlayerResults.Sort((a, b) => b.Chips.CompareTo(a.Chips));
             foreach (var playerInfo in _info.PlayerResults)
             {
                 GameObject obj = Instantiate(_gameResultListItemPrefab, _listTransform);
@@ -72,12 +72,6 @@ namespace Game.UI.GamePanelElement
             _confirmButton.onClick.RemoveAllListeners();
         }
 
-        public override void Hide()
-        {
-            base.Hide();
 
-            UIManager.Instance.HidePanel<GamePanel>();
-            UIManager.Instance.ShowPanel<TitlePanel>();
-        }
     }
 }

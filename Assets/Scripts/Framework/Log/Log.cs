@@ -23,24 +23,42 @@ namespace Framework.Log
             get => _path;
             set
             {
-                _path = value;
-                var dir = System.IO.Path.GetDirectoryName(_path);
-                if (!Directory.Exists(dir))
+                if (_stream != null && value == _path)
+                    return;
+                var dir = System.IO.Path.GetDirectoryName(value);
+                if (!string.IsNullOrEmpty(dir))
                     Directory.CreateDirectory(dir);
-                if( _stream != null )
-                    _stream.Close();
-                _stream = File.Open(_path, FileMode.OpenOrCreate, FileAccess.Write);
+                var stream = File.Open(value, FileMode.Append, FileAccess.Write, FileShare.Read);
+                _stream?.Close();
+                _stream = stream;
+                _path = value;
             }
         }
         static Log()
         {
             DateTime time = DateTime.Now;
-            Path = $"./logs/log-[{time.Year}-{time.Month}-{time.Day}][{time.Hour}-{time.Minute}-{time.Second}].txt";
+            try
+            {
+                // Clients launched together must never contend for the same log file.
+                Path = $"./logs/log-[{time:yyyy-MM-dd}][{time:HH-mm-ss}]-{Guid.NewGuid():N}.txt";
+            }
+            catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
+            {
+                Debug.LogWarning($"File logging is unavailable: {exception.Message}");
+            }
         }
 
         private static void WriteString(string msg)
         {
-            _stream.Write(Encoding.UTF8.GetBytes(msg));
+            try
+            {
+                _stream?.Write(Encoding.UTF8.GetBytes(msg));
+            }
+            catch (Exception exception) when (exception is IOException || exception is ObjectDisposedException)
+            {
+                _stream = null;
+                Debug.LogWarning($"File logging stopped: {exception.Message}");
+            }
 #if UNITY_EDITOR
             Debug.Log(msg);
 #endif

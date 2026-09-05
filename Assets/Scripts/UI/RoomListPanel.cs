@@ -7,6 +7,8 @@ using TMPro;
 using Game.Network;
 using Mirror;
 using Cysharp.Threading.Tasks;
+using System.Threading;
+using System.Linq;
 using RoomListItem = Game.UI.RoomListPanelElement.RoomListItem;
 
 namespace Game.UI
@@ -40,11 +42,10 @@ namespace Game.UI
         /// <summary>
         /// 持续刷新
         /// </summary>
-        private bool _refreshRoutineFlag = false;
-        private UniTask? _refreshRoutine = null;
+        private CancellationTokenSource _refreshCancellation;
 
         private RoomList _roomList = new RoomList();
-        private List<RoomListItem> _tmpRoomItem = new List<RoomListItem>();
+        private readonly Dictionary<int, RoomListItem> _roomItems = new Dictionary<int, RoomListItem>();
 
         /// <summary>
         /// 显示的房间列表
@@ -54,28 +55,32 @@ namespace Game.UI
             get => _roomList;
             set
             {
-                _roomList = value;
-
-                // 移除老的
-                foreach (var tmp in _tmpRoomItem)
+                _roomList = value ?? new RoomList();
+                var rooms = _roomList.Rooms ?? new List<RoomInfo>();
+                var roomIds = new HashSet<int>(rooms.Select(room => room.Id));
+                foreach (var roomId in _roomItems.Keys.ToList())
                 {
-                    tmp.OnClick.RemoveAllListeners();
-                    Destroy(tmp.gameObject);
+                    if (roomIds.Contains(roomId))
+                        continue;
+                    var item = _roomItems[roomId];
+                    item.gameObject.SetActive(false);
+                    Destroy(item.gameObject);
+                    _roomItems.Remove(roomId);
                 }
-                _tmpRoomItem.Clear();
 
-                // 添加新的
-                foreach (var room in _roomList.Rooms)
+                // Keep existing buttons alive during periodic refreshes so clicks and focus survive.
+                for (int i = 0; i < rooms.Count; i++)
                 {
-                    GameObject obj = Instantiate(_roomItem, _list);
-                    var component = obj.GetComponent<RoomListItem>();
-                    component.SetRoomInfo(room);
-                    component.OnClick.AddListener(() =>
+                    var room = rooms[i];
+                    if (!_roomItems.TryGetValue(room.Id, out var item))
                     {
-                        JoinRoom(room.Id);
-                    });
-
-                    _tmpRoomItem.Add(component);
+                        item = Instantiate(_roomItem, _list).GetComponent<RoomListItem>();
+                        int roomId = room.Id;
+                        item.OnClick.AddListener(() => JoinRoom(roomId));
+                        _roomItems.Add(roomId, item);
+                    }
+                    item.SetRoomInfo(room);
+                    item.transform.SetSiblingIndex(i);
                 }
 
             }
@@ -85,25 +90,20 @@ namespace Game.UI
         private void OnEnable()
         {
             RefreshAccountStatus();
-            NetworkClient.Send(new RoomListRequest());
+            RefreshRoomList();
             _back.onClick.AddListener(Back);
             _refresh.onClick.AddListener(RefreshRoomList);
             _createRoom.onClick.AddListener(CreateRoom);
             _settings.onClick.AddListener(Settings);
 
-            _refreshRoutineFlag = true;
-            if (_refreshRoutine == null)
-            {
-                _refreshRoutine = UniTask.Create(async () =>
-                {
-                    do
-                    {
-                        RefreshRoomList();
-                        await UniTask.WaitForSeconds(1);
-                    } while (_refreshRoutineFlag);
-                    _refreshRoutine = null;
-                });
-            }
+            _refreshCancellation = new CancellationTokenSource();
+            RefreshLoop(_refreshCancellation.Token).Forget();
+        }
+
+        private async UniTask RefreshLoop(CancellationToken cancellationToken)
+        {
+            while (!await UniTask.Delay(1000, cancellationToken: cancellationToken).SuppressCancellationThrow())
+                RefreshRoomList();
         }
 
         private void OnDisable()
@@ -112,29 +112,38 @@ namespace Game.UI
             _refresh.onClick.RemoveListener(RefreshRoomList);
             _createRoom.onClick.RemoveListener(CreateRoom);
             _settings.onClick.RemoveListener(Settings);
-            _refreshRoutineFlag = false;
+            _refreshCancellation?.Cancel();
+            _refreshCancellation?.Dispose();
+            _refreshCancellation = null;
         }
 
-        private void Start()
+        private void Update()
         {
-
+            bool pending = NetworkManager.singleton is NetworkRoom room && room.IsRoomEntryPending;
+            _back.interactable = !pending;
+            _settings.interactable = !pending;
+            _createRoom.interactable = !pending;
         }
 
         private void Back()
         {
-            UIManager.Instance.HidePanel<RoomListPanel>();
-            UIManager.Instance.ShowPanel<TitlePanel>();
+            if (NetworkManager.singleton is NetworkRoom room && room.IsRoomEntryPending)
+                return;
+            UIManager.Instance.PopPanel<RoomListPanel>();
         }
 
         private void Settings()
         {
-            UIManager.Instance.HidePanel<RoomListPanel>();
-            UIManager.Instance.ShowPanel<OptionPanel>();
+            if (NetworkManager.singleton is NetworkRoom room && room.IsRoomEntryPending)
+                return;
+            UIManager.Instance.PushPanel<OptionPanel>();
         }
 
         public void RefreshRoomList()
         {
-            NetworkClient.Send(new RoomListRequest());
+            if (isActiveAndEnabled && NetworkClient.isConnected &&
+                NetworkClient.connection != null && NetworkClient.connection.isAuthenticated)
+                NetworkClient.Send(new RoomListRequest());
         }
 
         public void RefreshAccountStatus()
@@ -148,17 +157,12 @@ namespace Game.UI
 
         private void CreateRoom()
         {
-            NetworkClient.Send(new PlayerCreateRoomRequest() { PlayerName = GameController.Instance.State.Nickname });
-            UIManager.Instance.HidePanel<RoomListPanel>();
-            UIManager.Instance.ShowPanel<RoomPanel>();
+            (NetworkManager.singleton as NetworkRoom)?.RequestCreateRoom();
         }
 
         private void JoinRoom(int roomId)
         {
-            NetworkClient.Send(new PlayerJoinRoomRequest() { 
-                PlayerName = GameController.Instance.State.Nickname,
-                RoomId = roomId
-            });
+            (NetworkManager.singleton as NetworkRoom)?.RequestJoinRoom(roomId);
         }
     }
 }

@@ -10,6 +10,9 @@ namespace Game.Network
     public struct PlayerOperationResponse : NetworkMessage
     {
         public int SuccessCode;
+        public string HandId;
+        public ulong TurnId;
+        public int RoomId;
         public PlayerOperationType Type;
     }
 }

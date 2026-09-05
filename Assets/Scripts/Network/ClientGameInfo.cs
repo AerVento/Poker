@@ -16,6 +16,10 @@ namespace Game.Network
     {
         public RoomInfo RoomInfo { get; set; }
 
+        public string HandId { get; set; }
+
+        public ulong TurnId { get; set; }
+
         public List<PlayerInfo> Players { get; set; }
 
         [JsonIgnore]
@@ -102,6 +106,8 @@ namespace Game.Network
         public ClientGameInfo (ServerGameInfo serverGameInfo, int playerIndex)
         {
             RoomInfo = serverGameInfo.RoomInfo;
+            HandId = serverGameInfo.HandId;
+            TurnId = serverGameInfo.TurnId;
             Players = new List<PlayerInfo>();
             for(int i = 0; i < serverGameInfo.PlayersCount; i++)
             {

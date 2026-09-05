@@ -30,25 +30,22 @@ namespace Game.UI
 
         private void Play()
         {
-            if (NetworkClient.connection != null &&
+            if (NetworkClient.isConnected && NetworkClient.connection != null &&
                 NetworkClient.connection.isAuthenticated &&
                 GameController.Available &&
                 GameController.Instance.State.IsAuthenticated)
             {
-                UIManager.Instance.HidePanel<TitlePanel>();
-                UIManager.Instance.ShowPanel<RoomListPanel>();
+                UIManager.Instance.PushPanel<RoomListPanel>();
                 return;
             }
 
-            UIManager.Instance.HidePanel<TitlePanel>();
-            UIManager.Instance.ShowPanel<LoginPanel>();
+            UIManager.Instance.PushPanel<LoginPanel>();
             LoginPanel.Instance.BeginSavedLogin();
         }
 
         private void Option()
         {
-            UIManager.Instance.HidePanel<TitlePanel>();
-            UIManager.Instance.ShowPanel<OptionPanel>();
+            UIManager.Instance.PushPanel<OptionPanel>();
         }
 
         private static void Quit()

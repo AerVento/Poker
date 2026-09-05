@@ -62,55 +62,43 @@ namespace Game.UI.GamePanelElement
             }
             _listItems.Clear();
 
-            if(_info.Community.Count == 5)
+            // Only rank hands that the server actually disclosed at showdown.
+            var entries = _info.PlayerResults.Select(player =>
             {
-                List<(PokerPattern pattern, Poker[] hand, RoundResult.Player player)> list = new();
-                foreach (var playerInfo in _info.PlayerResults)
-                {
-                    var pattern = PokerUtility.GetBiggestPattern(_info.Community.Concat(playerInfo.Hole).ToList(), out var hand);
-                    list.Add((pattern, hand, playerInfo));
-                }
-                list.Sort((a, b) =>
-                {
-                    if (a.pattern.SmallerThan(b.pattern))
-                        return 1;
-                    else
-                        return -1;
-                });
-
-                foreach (var (pattern, hand, playerInfo) in list)
-                {
-                    GameObject obj = Instantiate(_roundResultListItemPrefab, _listTransform);
-                    var component = obj.GetComponent<RoundResultListItem>();
-
-                    component.PlayerName = playerInfo.PlayerName;
-                    component.SetHole(playerInfo.Hole);
-                    component.IsFold = playerInfo.IsFold;
-                    component.IsDisconnected = playerInfo.IsDisconnected;
-                    component.ShowPattern = true;
-                    component.SetPattern(pattern, hand);
-                    component.ChipEarned = playerInfo.ChipEarned;
-                    _listItems.Add(component);
-                }
-            }
-            else
+                bool showPattern = _info.Community.Count == 5 && !player.IsFold && player.Hole.Count == 2;
+                Poker[] hand = null;
+                var pattern = showPattern
+                    ? PokerUtility.GetBiggestPattern(_info.Community.Concat(player.Hole).ToList(), out hand)
+                    : default;
+                return (player, showPattern, pattern, hand);
+            }).ToList();
+            entries.Sort((a, b) =>
             {
-                foreach (var playerInfo in _info.PlayerResults)
-                {
-                    GameObject obj = Instantiate(_roundResultListItemPrefab, _listTransform);
-                    var component = obj.GetComponent<RoundResultListItem>();
+                if (a.showPattern != b.showPattern)
+                    return b.showPattern.CompareTo(a.showPattern);
+                if (!a.showPattern)
+                    return b.player.ChipEarned.CompareTo(a.player.ChipEarned);
+                if (a.pattern.BiggerThan(b.pattern))
+                    return -1;
+                return a.pattern.SmallerThan(b.pattern) ? 1 : 0;
+            });
 
-                    component.PlayerName = playerInfo.PlayerName;
-                    component.SetHole(playerInfo.Hole);
-                    component.IsFold = playerInfo.IsFold;
-                    component.IsDisconnected = playerInfo.IsDisconnected;
-                    component.ShowPattern = false;
-                    component.ChipEarned = playerInfo.ChipEarned;
-                    _listItems.Add(component);
-                }
+            foreach (var entry in entries)
+            {
+                var obj = Instantiate(_roundResultListItemPrefab, _listTransform);
+                var component = obj.GetComponent<RoundResultListItem>();
+                component.PlayerName = entry.player.PlayerName;
+                component.SetHole(entry.player.Hole);
+                component.IsFold = entry.player.IsFold;
+                component.IsDisconnected = entry.player.IsDisconnected;
+                component.ShowPattern = entry.showPattern;
+                if (entry.showPattern)
+                    component.SetPattern(entry.pattern, entry.hand);
+                component.ChipEarned = entry.player.ChipEarned;
+                _listItems.Add(component);
             }
-
         }
+
 
         private void OnEnable()
         {

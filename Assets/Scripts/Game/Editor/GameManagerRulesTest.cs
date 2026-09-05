@@ -33,6 +33,19 @@ namespace Game.Tests
             DeleteIfExists(_databasePath + "-wal");
         }
 
+        [TestCase(float.NaN)]
+        [TestCase(float.PositiveInfinity)]
+        [TestCase(float.NegativeInfinity)]
+        public void CreateGame_RejectsNonFiniteThinkingTime(float thinkingTime)
+        {
+            var room = RoomInfo.CreateRoom("Alice");
+            room.Seats.Add(new RoomSeatInfo { SeatIndex = 1, PlayerName = "Bob" });
+            room.SynchronizeLegacyLists();
+            room.ThinkingTime = thinkingTime;
+            var manager = new GameManager(_repository);
+            Assert.Throws<ArgumentException>(() => manager.CreateGame(room));
+        }
+
         [Test]
         public void StartNew_HeadsUp_ButtonIsSmallBlindAndActsFirstPreflop()
         {
@@ -162,7 +175,7 @@ namespace Game.Tests
         }
 
         [Test]
-        public void StartNew_MultiwayUsesDeadButtonAfterElimination()
+        public void StartNew_MultiwaySkipsInactiveButtonAfterElimination()
         {
             var manager = CreateManager(4, out var info);
             info.Dealer = 0;
@@ -171,10 +184,10 @@ namespace Game.Tests
 
             Assert.AreEqual(0, manager.StartNew(info.RoomInfo.Id));
 
-            Assert.AreEqual(1, info.Dealer);
-            Assert.AreEqual(2, info.SmallBlind);
-            Assert.AreEqual(3, info.BigBlind);
-            Assert.AreEqual(0, info.OperatingPlayer);
+            Assert.AreEqual(2, info.Dealer);
+            Assert.AreEqual(3, info.SmallBlind);
+            Assert.AreEqual(0, info.BigBlind);
+            Assert.AreEqual(2, info.OperatingPlayer);
         }
 
         [Test]
@@ -669,31 +682,26 @@ namespace Game.Tests
     public class RoomManagerSeatTest
     {
         [Test]
-        public void ActiveRoom_UsesStableSeatsAndReusesOnlyFinalizedDepartures()
+        public void ActiveRoom_ObserversDoNotOccupyOrReuseSeats()
         {
             var manager = new RoomManager();
             var room = manager.CreateRoom("Owner");
-            room.MaxPlayerCount = 4;
+            room.MaxPlayerCount = 2;
             Assert.IsNull(manager.CreateRoom("Owner"));
             Assert.AreEqual(0, manager.Join(room.Id, "Bob"));
             Assert.AreEqual(0, manager.PlayerChangeReady(room.Id, "Bob"));
             Assert.AreEqual(0, manager.StartGame(room.Id));
-
             Assert.AreEqual(0, manager.Join(room.Id, "Carol"));
-            Assert.AreEqual(2, room.FindSeat("Carol").SeatIndex);
-            Assert.AreEqual(RoomSeatState.WaitingForNextHand, room.FindSeat("Carol").State);
-
-            Assert.AreEqual(0, manager.Leave(room.Id, "Bob", deferRemoval: true));
-            Assert.AreEqual(RoomSeatState.Leaving, room.FindSeat("Bob").State);
             Assert.AreEqual(0, manager.Join(room.Id, "Dave"));
-            Assert.AreEqual(3, room.FindSeat("Dave").SeatIndex);
-
-            Assert.IsTrue(manager.FinalizeDepartures(room.Id));
-            Assert.AreEqual(0, manager.Join(room.Id, "Erin"));
-            Assert.AreEqual(1, room.FindSeat("Erin").SeatIndex);
-
+            Assert.IsNull(room.FindSeat("Carol"));
+            Assert.IsNull(room.FindSeat("Dave"));
+            Assert.AreEqual(2, room.PlayerCount);
+            Assert.AreEqual(2, room.Spectators.Count);
+            Assert.AreEqual(2, room.NextSeatIndex);
+            Assert.AreEqual(0, manager.Leave(room.Id, "Bob"));
+            Assert.AreEqual(2, room.FindAvailableSeatIndex());
             Assert.AreEqual(0, manager.Leave(room.Id, "Owner"));
-            Assert.AreEqual("Erin", room.OwnerName);
+            Assert.AreEqual("Carol", room.OwnerName);
             Assert.IsNotNull(manager.FindRoom(room.Id));
         }
 
@@ -711,7 +719,7 @@ namespace Game.Tests
         }
 
         [Test]
-        public void WatchingMember_ReleasesSeatAndRestoresAsNextHandPlayer()
+        public void WatchingMember_ReleasesSeatAndRestoresAsUnseatedSpectator()
         {
             var manager = new RoomManager();
             var room = manager.CreateRoom("Owner");
@@ -727,10 +735,9 @@ namespace Game.Tests
             Assert.IsTrue(manager.WhichRoom("Bob", out var associatedRoomId));
             Assert.AreEqual(room.Id, associatedRoomId);
 
-            Assert.AreEqual(0, manager.Restore(room.Id, "Bob", canTakeSeat: true));
-            Assert.AreEqual(1, room.FindSeat("Bob").SeatIndex);
-            Assert.AreEqual(RoomSeatState.WaitingForNextHand, room.FindSeat("Bob").State);
-            CollectionAssert.DoesNotContain(room.Spectators, "Bob");
+            Assert.AreEqual(1, manager.Restore(room.Id, "Bob", canTakeSeat: true));
+            Assert.IsNull(room.FindSeat("Bob"));
+            CollectionAssert.Contains(room.Spectators, "Bob");
         }
 
         [Test]
