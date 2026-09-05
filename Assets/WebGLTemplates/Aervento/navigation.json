@@ -1,0 +1,29 @@
+{
+    "items": [
+        {
+            "label": "主页",
+            "url": "https://www.aervento.top/",
+            "newTab": true
+        },
+        {
+            "label": "日常",
+            "url": "https://www.aervento.top/tag/daily/",
+            "newTab": true
+        },
+        {
+            "label": "技术",
+            "url": "https://www.aervento.top/tag/tech/",
+            "newTab": true
+        },
+        {
+            "label": "美食",
+            "url": "https://www.aervento.top/tag/food/",
+            "newTab": true
+        },
+        {
+            "label": "关于我",
+            "url": "https://www.aervento.top/about/",
+            "newTab": true
+        }
+    ]
+}

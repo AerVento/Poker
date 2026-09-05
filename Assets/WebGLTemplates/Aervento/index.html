@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{{ PRODUCT_NAME }}}</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css">
+    <link rel="stylesheet" href="navigation.css">
+    <script src="navigation.js" defer></script>
+#if SHOW_DIAGNOSTICS
+    <link rel="stylesheet" href="<<<TemplateData/diagnostics.css>>>">
+    <script src="<<<TemplateData/diagnostics.js>>>"></script>
+#endif
+</head>
+<body>
+    <header id="aervento-navigation" class="aervento-navigation">
+        <nav class="aervento-navigation__inner" aria-label="网站导航">
+            <button class="aervento-navigation__toggle" type="button" aria-expanded="false" aria-controls="aervento-navigation-links" hidden>
+                <span class="aervento-navigation__toggle-label">菜单</span>
+                <span class="aervento-navigation__icon" aria-hidden="true"></span>
+            </button>
+            <ul id="aervento-navigation-links" class="aervento-navigation__links"></ul>
+        </nav>
+    </header>
+    <main id="unity-game-area" aria-label="游戏">
+        <div id="unity-container">
+            <canvas id="unity-canvas" width="{{{ WIDTH }}}" height="{{{ HEIGHT }}}" tabindex="-1"></canvas>
+            <div id="unity-loading-bar" role="progressbar" aria-label="游戏加载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div id="unity-logo"></div>
+                <div id="unity-progress-bar-empty">
+                    <div id="unity-progress-bar-full"></div>
+                </div>
+            </div>
+            <div id="unity-warning" role="alert"></div>
+            <div id="unity-footer">
+                <div id="unity-webgl-logo"></div>
+                <div id="unity-build-title">{{{ PRODUCT_NAME }}}</div>
+#if SHOW_DIAGNOSTICS
+                <button id="diagnostics-icon" type="button" aria-label="内存诊断"><img src="TemplateData/webmemd-icon.png" alt=""></button>
+#endif
+                <button id="unity-fullscreen-button" type="button" aria-label="全屏游戏" disabled></button>
+            </div>
+        </div>
+    </main>
+    <script>
+        var gameArea = document.querySelector("#unity-game-area");
+        var container = document.querySelector("#unity-container");
+        var canvas = document.querySelector("#unity-canvas");
+        var footer = document.querySelector("#unity-footer");
+        var loadingBar = document.querySelector("#unity-loading-bar");
+        var progressBarFull = document.querySelector("#unity-progress-bar-full");
+        var fullscreenButton = document.querySelector("#unity-fullscreen-button");
+        var warningBanner = document.querySelector("#unity-warning");
+#if SHOW_DIAGNOSTICS
+        var diagnosticsIcon = document.querySelector("#diagnostics-icon");
+#endif
+
+        // Unity may capture document-wide keyboard input. Preserve native page controls
+        // before its listeners run; keys directed at the canvas still go to the game.
+        var gameKeysDown = new Set();
+        function keepPageKeyboardInput(event)
+        {
+            var key = event.code || event.key;
+            // A key pressed in-game must also be released there if focus moved to the menu.
+            if (event.type === "keyup" && gameKeysDown.delete(key))
+            {
+                return;
+            }
+
+            var target = event.target;
+            var pageControl = target instanceof Element && target.closest("#aervento-navigation, #unity-footer");
+            if (!pageControl && !(target === document.body && event.key === "Tab"))
+            {
+                if (event.type === "keydown")
+                {
+                    gameKeysDown.add(key);
+                }
+                return;
+            }
+
+            if (event.type === "keydown" && event.key === "Escape")
+            {
+                var openMenu = document.querySelector(".aervento-navigation__toggle[aria-expanded='true']");
+                if (openMenu)
+                {
+                    openMenu.click();
+                    openMenu.focus();
+                }
+            }
+            event.stopImmediatePropagation();
+        }
+
+        ["keydown", "keypress", "keyup"].forEach(function (type)
+        {
+            window.addEventListener(type, keepPageKeyboardInput, true);
+        });
+        window.addEventListener("blur", function () { gameKeysDown.clear(); });
+
+        // Keep the build's aspect ratio and fit below the navigation, including its open menu.
+        function fitGame()
+        {
+            if (document.fullscreenElement)
+            {
+                return;
+            }
+
+            var areaStyle = getComputedStyle(gameArea);
+            var availableWidth = gameArea.clientWidth - parseFloat(areaStyle.paddingLeft) - parseFloat(areaStyle.paddingRight);
+            var availableHeight = gameArea.clientHeight - parseFloat(areaStyle.paddingTop) - parseFloat(areaStyle.paddingBottom) - footer.offsetHeight;
+            var width = Math.max(1, Math.min({{{ WIDTH }}}, availableWidth, availableHeight * {{{ WIDTH / HEIGHT }}}));
+            container.style.width = width + "px";
+        }
+
+        new ResizeObserver(fitGame).observe(gameArea);
+        window.addEventListener("resize", fitGame);
+        document.addEventListener("fullscreenchange", function () { requestAnimationFrame(fitGame); });
+        fitGame();
+
+        function unityShowBanner(message, type)
+        {
+            var banner = document.createElement("div");
+            banner.textContent = message;
+            banner.className = type === "error" ? "unity-error" : "unity-notice";
+            warningBanner.appendChild(banner);
+            warningBanner.style.display = "block";
+
+            if (type !== "error")
+            {
+                setTimeout(function ()
+                {
+                    banner.remove();
+                    warningBanner.style.display = warningBanner.children.length ? "block" : "none";
+                }, 5000);
+            }
+        }
+
+        var buildUrl = "Build";
+        var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
+        var config = {
+            dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+            frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_THREADS
+            workerUrl: buildUrl + "/{{{ WORKER_FILENAME }}}",
+#endif
+#if USE_WASM
+            codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+#endif
+#if MEMORY_FILENAME
+            memoryUrl: buildUrl + "/{{{ MEMORY_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+            symbolsUrl: buildUrl + "/{{{ SYMBOLS_FILENAME }}}",
+#endif
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+            productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+            productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+            showBanner: unityShowBanner
+        };
+
+#if BACKGROUND_FILENAME
+        canvas.style.background = "url('" + buildUrl + "/{{{ BACKGROUND_FILENAME.replace(/'/g, '%27') }}}') center / cover";
+#endif
+        loadingBar.style.display = "block";
+
+        // This loader deliberately does not await navigation.json.
+        var loader = document.createElement("script");
+        loader.src = loaderUrl;
+        loader.onerror = function ()
+        {
+            loadingBar.style.display = "none";
+            unityShowBanner("游戏加载器下载失败，请刷新页面重试。", "error");
+        };
+        loader.onload = function ()
+        {
+            createUnityInstance(canvas, config, function (progress)
+            {
+                progressBarFull.style.width = 100 * progress + "%";
+                loadingBar.setAttribute("aria-valuenow", String(Math.round(100 * progress)));
+            }).then(function (unityInstance)
+            {
+                loadingBar.style.display = "none";
+                fullscreenButton.disabled = false;
+                fullscreenButton.onclick = function () { unityInstance.SetFullscreen(1); };
+#if SHOW_DIAGNOSTICS
+                diagnosticsIcon.onclick = function () { unityDiagnostics.openDiagnosticsDiv(unityInstance.GetMemoryInfo); };
+#endif
+            }).catch(function (message)
+            {
+                loadingBar.style.display = "none";
+                unityShowBanner(String(message), "error");
+            });
+        };
+        document.body.appendChild(loader);
+    </script>
+</body>
+</html>
