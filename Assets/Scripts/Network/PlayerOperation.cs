@@ -19,6 +19,8 @@ namespace Game.Network
     public class PlayerOperation
     {
         public PlayerOperationType Type { get; set; }
+        // Authoritative action identity within the hand; serialized in ClientGameInfo JSON.
+        public ulong TurnId { get; set; }
         /// <summary>
         /// 当Type为Bet、Raise、Call、In时，此字段有效，标明加注的数量。
         /// </summary>

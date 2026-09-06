@@ -17,6 +17,7 @@ namespace Game.Network.Accounts
         AccountBusyInHand,
         InsufficientChips,
         Overflow,
+        BalanceRequirementNotMet,
     }
 
     public enum HandStartResult

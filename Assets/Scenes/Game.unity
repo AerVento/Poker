@@ -304,7 +304,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2218618269851951246, guid: d8ddfd99b94bdd84887e19142e3cb558, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5057206814914806953, guid: d8ddfd99b94bdd84887e19142e3cb558, type: 3}
       propertyPath: m_LocalPosition.x
@@ -360,7 +360,7 @@ PrefabInstance:
       objectReference: {fileID: 546588494}
     - target: {fileID: 8494411799814438751, guid: d8ddfd99b94bdd84887e19142e3cb558, type: 3}
       propertyPath: networkAddress
-      value: 122.51.4.28
+      value: localhost
       objectReference: {fileID: 0}
     - target: {fileID: 8494411799814438751, guid: d8ddfd99b94bdd84887e19142e3cb558, type: 3}
       propertyPath: exceptionsDisconnect

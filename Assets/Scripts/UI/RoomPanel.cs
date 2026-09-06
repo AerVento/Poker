@@ -118,6 +118,7 @@ namespace Game.UI
 
         private void OnEnable()
         {
+            GameAudioManager.EnsureClient()?.EnterLobby();
             _back.interactable = true;
             SetSettingsHint(string.Empty);
             _back.onClick.AddListener(Back);

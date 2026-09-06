@@ -1,4 +1,4 @@
-﻿using Framework.UI;
+using Framework.UI;
 using Game.Network;
 using Game.UI.GamePanelElement;
 using System;
@@ -35,23 +35,21 @@ namespace Game.UI
         [SerializeField]
         private OperationArea _operationArea;
 
-        [SerializeField]
         private Button _leaveButton;
 
-        [SerializeField]
         private TextMeshProUGUI _leaveButtonLabel;
 
         [SerializeField]
         private TextMeshProUGUI _leaveStatus;
 
-        [SerializeField]
         private Button _participationButton;
 
-        [SerializeField]
         private TextMeshProUGUI _participationButtonLabel;
 
-        [SerializeField]
         private Button _keepSpectatingButton;
+
+        [SerializeField]
+        private Button _settingsButton;
 
         private GameInfoSync _sync;
         private bool _participationRequestInFlight;
@@ -89,26 +87,30 @@ namespace Game.UI
             _canLeaveImmediately = message.CanLeaveImmediately;
             _leaveAfterHand = message.LeaveAfterHand;
             Info = message.Info;
+            GameAudioManager.EnsureClient()?.ObserveGame(message.Info);
+            if (_info.Round != GameStage.RoundOver)
+                SetInterHandCountdown(false, 0);
+        }
+
+        private void OpenSettings()
+        {
+            UIManager.Instance.PushPanel<InGameOptionPanel>();
         }
 
         private void OnEnable()
         {
-            if (_leaveButton != null)
-                _leaveButton.onClick.AddListener(LeaveRoom);
-            if (_participationButton != null)
-                _participationButton.onClick.AddListener(ChangeParticipation);
-            if (_keepSpectatingButton != null)
-                _keepSpectatingButton.onClick.AddListener(KeepSpectating);
+            if (_settingsButton != null)
+                _settingsButton.onClick.AddListener(OpenSettings);
+
         }
 
         private void OnDisable()
         {
-            if (_leaveButton != null)
-                _leaveButton.onClick.RemoveListener(LeaveRoom);
-            if (_participationButton != null)
-                _participationButton.onClick.RemoveListener(ChangeParticipation);
-            if (_keepSpectatingButton != null)
-                _keepSpectatingButton.onClick.RemoveListener(KeepSpectating);
+            if (_settingsButton != null)
+                _settingsButton.onClick.RemoveListener(OpenSettings);
+            if (UIManager.Available && UIManager.Instance.ContainsPanel<InGameOptionPanel>())
+                UIManager.Instance.PopPanel<InGameOptionPanel>();
+            DetachSettingsControls();
             _participationRequestInFlight = false;
             _leaveRequestInFlight = false;
             SetInterHandCountdown(false, 0);
@@ -119,16 +121,50 @@ namespace Game.UI
             }
         }
 
+        // Settings owns the controls; the live game retains request and authoritative state handling.
+        public void AttachSettingsControls(Button leave, TextMeshProUGUI leaveLabel,
+            Button participation, TextMeshProUGUI participationLabel, Button keepSpectating)
+        {
+            DetachSettingsControls();
+            _leaveButton = leave;
+            _leaveButtonLabel = leaveLabel;
+            _participationButton = participation;
+            _participationButtonLabel = participationLabel;
+            _keepSpectatingButton = keepSpectating;
+            _leaveButton.onClick.AddListener(LeaveRoom);
+            _participationButton.onClick.AddListener(ChangeParticipation);
+            _keepSpectatingButton.onClick.AddListener(KeepSpectating);
+            RefreshLeaveControls();
+            RefreshParticipationControls();
+        }
+
+        public void DetachSettingsControls()
+        {
+            if (_leaveButton != null)
+                _leaveButton.onClick.RemoveListener(LeaveRoom);
+            if (_participationButton != null)
+                _participationButton.onClick.RemoveListener(ChangeParticipation);
+            if (_keepSpectatingButton != null)
+                _keepSpectatingButton.onClick.RemoveListener(KeepSpectating);
+            _leaveButton = null;
+            _leaveButtonLabel = null;
+            _participationButton = null;
+            _participationButtonLabel = null;
+            _keepSpectatingButton = null;
+        }
+
         public void SetLeaveRequestInFlight(bool inFlight)
         {
             _leaveRequestInFlight = inFlight;
             RefreshLeaveControls();
+            RefreshParticipationControls();
         }
 
         public void SetLeaveAfterHand(bool leaveAfterHand)
         {
             _leaveAfterHand = leaveAfterHand;
             RefreshLeaveControls();
+            RefreshParticipationControls();
         }
 
         private void LeaveRoom()
@@ -139,29 +175,31 @@ namespace Game.UI
             int roomId = _info.RoomInfo.Id;
             if (_leaveAfterHand || _canLeaveImmediately)
             {
-                SendLeaveRequest(roomId, _leaveAfterHand);
+                SendLeaveRequest(roomId, !_canLeaveImmediately && _leaveAfterHand);
                 return;
             }
 
+            var handId = _info.HandId;
             MsgBox.Create("LeaveRoom", msgbox =>
             {
                 msgbox.Type = MsgboxType.ConfirmAndCancel;
                 msgbox.Title = "本手结束后离开";
-                msgbox.Message = "本手结束并结算后，将自动返回大厅。期间你仍可正常操作，也可以取消离开预约。";
+                msgbox.Message = "本手结算并查看结果后、下一手准备时，将自动返回大厅。期间可正常操作或取消预约。";
                 msgbox.ConfirmButtonText = "预约离开";
                 msgbox.CancelButtonText = "继续游戏";
-                msgbox.OnConfirm += () => SendLeaveRequest(roomId, false);
+                msgbox.OnConfirm += () => SendLeaveRequest(roomId, false, handId);
             });
         }
 
-        private void SendLeaveRequest(int roomId, bool cancelPending)
+        private void SendLeaveRequest(int roomId, bool cancelPending, string expectedHandId = null)
         {
             if (!isActiveAndEnabled || _info.RoomInfo?.Id != roomId || _leaveRequestInFlight)
                 return;
 
             SetLeaveRequestInFlight(true);
             if (!(Mirror.NetworkManager.singleton is NetworkRoom networkRoom) ||
-                !networkRoom.RequestLeaveRoom(roomId, cancelPending))
+                !networkRoom.RequestLeaveRoom(roomId, cancelPending, expectedHandId ?? _info.HandId,
+                    expectedHandId == null && _canLeaveImmediately))
                 SetLeaveRequestInFlight(false);
         }
 
@@ -171,12 +209,12 @@ namespace Game.UI
                 _leaveButton.interactable = _info.RoomInfo != null && !_leaveRequestInFlight;
             if (_leaveButtonLabel != null)
                 _leaveButtonLabel.text = _leaveRequestInFlight ? "处理中…" :
-                    _leaveAfterHand ? "取消离开" :
-                    _canLeaveImmediately ? "离开房间" : "本手后离开";
+                    _canLeaveImmediately ? "离开房间" :
+                    _leaveAfterHand ? "取消离开" : "本手后离开";
             if (_leaveStatus != null)
             {
                 _leaveStatus.gameObject.SetActive(_leaveAfterHand);
-                _leaveStatus.text = _leaveAfterHand ? "本手结算后返回大厅" : string.Empty;
+                _leaveStatus.text = _leaveAfterHand ? "查看结果结束后返回大厅" : string.Empty;
             }
         }
 
@@ -195,13 +233,21 @@ namespace Game.UI
             }
             else
             {
-                SendParticipation(_sync.SitOutAfterHand
+                SendParticipation(!_canLeaveImmediately && _sync.SitOutAfterHand
                     ? TableParticipationAction.CancelSitOut
                     : TableParticipationAction.SitOutAfterHand);
             }
         }
 
-        private void KeepSpectating() => SendParticipation(TableParticipationAction.KeepSpectating);
+        private void KeepSpectating()
+        {
+            if (_info.IsSpectator)
+                SendParticipation(TableParticipationAction.KeepSpectating);
+            else if (_leaveAfterHand)
+                SendLeaveRequest(_info.RoomInfo.Id, true);
+            else if (_sync.SitOutAfterHand)
+                SendParticipation(TableParticipationAction.CancelSitOut);
+        }
 
         private void SendParticipation(TableParticipationAction action)
         {
@@ -219,15 +265,19 @@ namespace Game.UI
             var spectator = _info.IsSpectator;
             _participationButton.gameObject.SetActive(true);
             _participationButton.interactable = _info.RoomInfo != null && !_participationRequestInFlight &&
-                !_leaveAfterHand && (!spectator || (_sync.CanJoinNextHand && !_sync.JoinNextHand));
+                (_canLeaveImmediately || !_leaveAfterHand) && (!spectator || (_sync.CanJoinNextHand && !_sync.JoinNextHand));
             _participationButtonLabel.text = _participationRequestInFlight ? "处理中…" :
                 spectator ? (_sync.JoinNextHand ? "已申请下一手" :
                     _sync.CanJoinNextHand ? "下一手参战" : _accountChips < _bigBlind ? "筹码不足" : "参战名额已满") :
-                _sync.SitOutAfterHand ? "取消转旁观" : _canLeaveImmediately ? "转为旁观" : "本手后旁观";
+                _canLeaveImmediately ? "转为旁观" : _sync.SitOutAfterHand ? "取消转旁观" : "本手后旁观";
             if (_keepSpectatingButton != null)
             {
-                _keepSpectatingButton.gameObject.SetActive(spectator);
-                _keepSpectatingButton.interactable = !_participationRequestInFlight;
+                _keepSpectatingButton.gameObject.SetActive(spectator ||
+                    (_canLeaveImmediately && (_leaveAfterHand || _sync.SitOutAfterHand)));
+                _keepSpectatingButton.interactable = !_participationRequestInFlight && !_leaveRequestInFlight;
+                var label = _keepSpectatingButton.GetComponentInChildren<TMP_Text>();
+                if (label != null)
+                    label.text = spectator ? "继续旁观" : _leaveAfterHand ? "取消离开预约" : "取消观战预约";
             }
         }
 
@@ -240,14 +290,15 @@ namespace Game.UI
                 _accountStatus.text = $"账户余额  ${chips:N0}";
         }
 
-        public void SetInterHandCountdown(bool isActive, int secondsRemaining)
+        public void SetInterHandCountdown(bool isActive, int secondsRemaining, bool canStartNextHand = true)
         {
             if (_countdownStatus == null)
                 return;
 
             _countdownStatus.gameObject.SetActive(isActive);
             _countdownStatus.text = isActive
-                ? $"下一手将在 {secondsRemaining} 秒后开始"
+                ? canStartNextHand ? $"下一手将在 {secondsRemaining} 秒后开始"
+                    : $"当前可参战人数不足，{secondsRemaining} 秒后返回"
                 : string.Empty;
         }
 
@@ -314,7 +365,7 @@ namespace Game.UI
                     TableParticipationStatus.WaitingForNextHand => "等待下一手",
                     TableParticipationStatus.Spectating => "旁观中",
                     TableParticipationStatus.InsufficientChips => $"筹码不足（至少需要 ${_bigBlind:N0}）",
-                    _ => _sync.SitOutAfterHand ? "已预约：本手结算后转为旁观" : string.Empty,
+                    _ => _sync.SitOutAfterHand ? "已预约：查看结果结束后转为旁观" : string.Empty,
                 };
             }
         }

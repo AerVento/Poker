@@ -63,7 +63,8 @@ namespace Game.Tests
         }
 
         private TableParticipationResult Request(string name, TableParticipationAction action) =>
-            _participation.Request(_room.Id, name, action, Info.HandId, _participation.GetRevision(name));
+            _participation.Request(_room.Id, name, action, Info.HandId, _participation.GetRevision(name),
+                !_games.RequiresDeferredLeave(_room.Id, name));
 
         private void JoinObserver(string name)
         {
@@ -77,6 +78,7 @@ namespace Game.Tests
                 Assert.AreEqual(0, _games.Fold(_room.Id, Info.OperatingPlayer));
             Assert.AreEqual(0, _games.NextStage(_room.Id));
             Assert.AreEqual(GameStage.RoundOver, Info.Stage);
+            _games.PrepareNextHandSeats(_room.Id);
             _rooms.ReleaseWatchingSeats(_room.Id);
             Assert.AreEqual(0, _games.SynchronizeRoomSeats(_room.Id));
         }
@@ -85,6 +87,143 @@ namespace Game.Tests
         {
             _participation.AdmitForNextHand(_room.Id);
             Assert.AreEqual(0, _games.StartNew(_room.Id));
+        }
+
+        private void SettleWithoutPreparing()
+        {
+            while (Info.OperatingPlayer >= 0)
+                Assert.AreEqual(0, _games.Fold(_room.Id, Info.OperatingPlayer));
+            Assert.AreEqual(0, _games.NextStage(_room.Id));
+            Assert.AreEqual(GameStage.RoundOver, Info.Stage);
+        }
+
+        [Test]
+        public void ResultReview_PreservesBothReservationsAndSeatsUntilPreparation()
+        {
+            Assert.AreEqual(RoomLeaveStatus.Queued, _departures.Request(_room.Id, "A"));
+            Assert.AreEqual(TableParticipationResult.Success, Request("B", TableParticipationAction.SitOutAfterHand));
+            SettleWithoutPreparing();
+            Assert.IsNotNull(_room.FindSeat("A"));
+            Assert.IsNotNull(_room.FindSeat("B"));
+            Assert.IsTrue(_room.FindSeat("A").LeaveAfterHand);
+            Assert.IsTrue(_room.FindSeat("B").SitOutAfterHand);
+            Assert.IsEmpty(_room.Spectators);
+            Assert.IsFalse(_room.IsWaiting);
+            Assert.AreEqual(0, _repository.ReconcileChips().ActiveHandCount);
+
+            _departures.CompletePending(_room.Id);
+            _games.PrepareNextHandSeats(_room.Id);
+            _rooms.ReleaseWatchingSeats(_room.Id);
+            Assert.IsFalse(_room.ContainsMember("A"));
+            Assert.IsNull(_room.FindSeat("B"));
+            CollectionAssert.Contains(_room.Spectators, "B");
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ResultReview_ImmediateChoiceOverridesExistingDeparture(bool spectate)
+        {
+            Assert.AreEqual(RoomLeaveStatus.Queued, _departures.Request(_room.Id, "A"));
+            SettleWithoutPreparing();
+            var handId = Info.HandId;
+            if (spectate)
+            {
+                Assert.AreEqual(TableParticipationResult.Success, Request("A", TableParticipationAction.SitOutAfterHand));
+                CollectionAssert.Contains(_room.Spectators, "A");
+                Assert.IsEmpty(_departures.CompletePending(_room.Id));
+            }
+            else
+            {
+                Assert.AreEqual(RoomLeaveStatus.Left,
+                    _departures.RequestForHand(_room.Id, "A", handId, true));
+                Assert.IsFalse(_room.ContainsMember("A"));
+            }
+            Assert.IsNull(_room.FindSeat("A"));
+            Assert.AreEqual(handId, Info.HandId);
+            Assert.IsFalse(_room.IsWaiting);
+            Assert.AreEqual(1, _participation.CountNextHandPlayers(_room.Id));
+            Assert.IsTrue(_repository.ReconcileChips().IsConsistent);
+        }
+
+        [Test]
+        public void ResultReview_CanCancelSitOutOrExecuteItImmediately()
+        {
+            Assert.AreEqual(TableParticipationResult.Success, Request("A", TableParticipationAction.SitOutAfterHand));
+            SettleWithoutPreparing();
+            Assert.AreEqual(TableParticipationResult.Success, Request("A", TableParticipationAction.CancelSitOut));
+            Assert.AreEqual(2, _participation.CountNextHandPlayers(_room.Id));
+            Assert.IsNotNull(_room.FindSeat("A"));
+            Assert.AreEqual(TableParticipationResult.Success, Request("A", TableParticipationAction.SitOutAfterHand));
+            Assert.IsNull(_room.FindSeat("A"));
+            CollectionAssert.Contains(_room.Spectators, "A");
+        }
+
+        [Test]
+        public void ResultReview_LowBalanceSeatStaysVisibleButDoesNotBlockReplacement()
+        {
+            _room.MaxPlayerCount = 2;
+            JoinObserver("C");
+            SettleWithoutPreparing();
+            // A balance below one big blind represents a busted player's next-hand eligibility.
+            Assert.AreEqual(ChipMutationResult.Applied, _repository.ApplyChipMutation("A", "review-low-balance",
+                "TestAdjustment", -(long)_repository.FindById("A").Chips, null, null, out _));
+            Info.Players[0].Chips = 0;
+            Assert.IsNotNull(_room.FindSeat("A"));
+            Assert.AreEqual(1, _participation.CountNextHandPlayers(_room.Id));
+            Assert.AreEqual(TableParticipationResult.Success, Request("C", TableParticipationAction.JoinNextHand));
+            Assert.IsNull(_room.FindSeat("C"));
+            Assert.AreEqual(2, _participation.CountNextHandPlayers(_room.Id));
+            Assert.AreEqual(RoomLeaveStatus.Queued, _departures.RequestForHand(_room.Id, "B", Info.HandId, false));
+            Assert.AreEqual(RoomLeaveStatus.Cancelled, _departures.Request(_room.Id, "B", true),
+                "The low-balance seat must not prevent cancellation when B and C fit the next hand.");
+            _games.PrepareNextHandSeats(_room.Id);
+            _rooms.ReleaseWatchingSeats(_room.Id);
+            _participation.AdmitForNextHand(_room.Id);
+            Assert.IsNull(_room.FindSeat("A"));
+            Assert.IsNotNull(_room.FindSeat("C"));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ResultReview_PreviousHandLeaveAndParticipationCannotAffectNewHand(bool cancel)
+        {
+            SettleWithoutPreparing();
+            var oldHand = Info.HandId;
+            NextHand();
+            Assert.AreEqual(RoomLeaveStatus.StaleRequest,
+                _departures.RequestForHand(_room.Id, "A", oldHand, true, cancel));
+            Assert.AreEqual(TableParticipationResult.StaleRequest,
+                _participation.Request(_room.Id, "A", TableParticipationAction.SitOutAfterHand,
+                    oldHand, _participation.GetRevision("A")));
+            Assert.AreEqual(RoomLeaveStatus.StaleRequest,
+                _departures.RequestForHand(_room.Id, "A", Info.HandId, true));
+            Assert.IsFalse(_room.FindSeat("A").LeaveAfterHand);
+            Assert.IsFalse(_room.FindSeat("A").SitOutAfterHand);
+            Assert.IsTrue(Info.Players[0].ParticipatedThisHand);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ResultReview_ReservationArrivingAfterSettlementRemainsDeferred(bool spectate)
+        {
+            var handId = Info.HandId;
+            SettleWithoutPreparing();
+            if (spectate)
+            {
+                Assert.AreEqual(TableParticipationResult.Success,
+                    _participation.Request(_room.Id, "A", TableParticipationAction.SitOutAfterHand,
+                        handId, _participation.GetRevision("A"), requireImmediate: false));
+                Assert.IsTrue(_room.FindSeat("A").SitOutAfterHand);
+            }
+            else
+            {
+                Assert.AreEqual(RoomLeaveStatus.Queued,
+                    _departures.RequestForHand(_room.Id, "A", handId, requireImmediate: false));
+                Assert.IsTrue(_room.FindSeat("A").LeaveAfterHand);
+            }
+            Assert.IsNotNull(_room.FindSeat("A"));
+            Assert.IsFalse(_room.IsWaiting);
+            Assert.IsEmpty(_room.Spectators);
         }
 
         [Test]

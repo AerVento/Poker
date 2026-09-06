@@ -11,6 +11,7 @@ namespace Game.Network
         NotMember,
         StorageUnavailable,
         TableFull,
+        StaleRequest,
     }
 
     public struct PlayerLeaveRoomResponse : NetworkMessage

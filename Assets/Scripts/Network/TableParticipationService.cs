@@ -40,8 +40,9 @@ namespace Game.Network
                 room.NextHandPlayers.Count(name => room.Spectators.Contains(name) && IsEligible(room, name));
         }
 
-        private static int ReservedPlayerCount(RoomInfo room) =>
-            room.Seats.Count(seat => !seat.LeaveAfterHand && !seat.SitOutAfterHand) + room.NextHandPlayers.Count;
+        private int ReservedPlayerCount(RoomInfo room) =>
+            room.Seats.Count(seat => !seat.LeaveAfterHand && !seat.SitOutAfterHand &&
+                (_games.IsHandInProgress(room.Id) || IsEligible(room, seat.PlayerName))) + room.NextHandPlayers.Count;
 
         public TableParticipationResult CanJoin(int roomId, string name)
         {
@@ -61,7 +62,7 @@ namespace Game.Network
         }
 
         public TableParticipationResult Request(int roomId, string name,
-            TableParticipationAction action, string handId, uint revision)
+            TableParticipationAction action, string handId, uint revision, bool requireImmediate = false)
         {
             var room = _rooms.FindRoom(roomId);
             var game = _games.GetGameInfo(roomId);
@@ -88,12 +89,14 @@ namespace Game.Network
                     room.NextHandPlayers.Remove(name);
                     break;
                 case TableParticipationAction.SitOutAfterHand:
-                    if (seat == null || seat.LeaveAfterHand)
+                    if (requireImmediate && _games.RequiresDeferredLeave(roomId, name))
+                        return TableParticipationResult.StaleRequest;
+                    if (seat == null || (seat.LeaveAfterHand && !requireImmediate))
                         return TableParticipationResult.InvalidAction;
-                    if (_games.RequiresDeferredLeave(roomId, name))
-                        seat.SitOutAfterHand = true;
-                    else
+                    if (requireImmediate)
                         _rooms.MoveToSpectator(roomId, name);
+                    else
+                        seat.SitOutAfterHand = true;
                     break;
                 case TableParticipationAction.CancelSitOut:
                     if (seat == null || !seat.SitOutAfterHand)

@@ -1,0 +1,48 @@
+Poker game audio v1 — 2026-09-06
+
+MUSIC — attribution required when used in a released game
+
+"Lobby Time" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0
+https://creativecommons.org/licenses/by/4.0/
+Track: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1600054
+Project file: Music/BGM_Lobby_Loop_v1.ogg
+
+"Covert Affair" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0
+https://creativecommons.org/licenses/by/4.0/
+Track: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100795
+Project file: Music/BGM_Game_Loop_v1.ogg
+
+"Crypto" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0
+https://creativecommons.org/licenses/by/4.0/
+Track: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1600013
+Project file: Music/BGM_AllIn_Loop_v1.ogg
+
+Music has been excerpted into full-bar loops, blended at the loop boundary,
+adjusted in level and encoded as Ogg Vorbis. Original MP3 files are retained
+in AudioSources/Incompetech. Exact edits are in loop_edits.json there.
+Licensing reference: https://incompetech.com/music/royalty-free/licenses/
+The in-game Settings > Audio Credits dialog displays attribution and
+identifies the loop edits. Keep these credits with redistributed assets.
+
+SOUND EFFECT SOURCES
+
+Casino Audio (1.1) by Kenney Vleugels (Kenney.nl)
+https://kenney.nl/assets/casino-audio
+Creative Commons Zero 1.0 (CC0)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Kenney samples are used in SFX_Bet, SFX_Call, SFX_Raise, SFX_AllIn,
+SFX_Fold and SFX_Win. They were trimmed, mixed, faded, converted to mono
+44.1 kHz PCM16 WAV and adjusted in level for this audition pack.
+SFX_AllIn also includes a locally synthesized low tone.
+SFX_Win also includes a locally synthesized ascending chime.
+Exact source file mappings are recorded in AudioSources/sfx_manifest.json.
+Original archive and license: AudioSources/Kenney/.
+
+SFX_YourTurn, SFX_Check and SFX_Lose were synthesized locally for Poker,
+using mathematical oscillators and deterministic noise; no external
+recordings, paid generators or third-party voice samples were used.
+The generation recipe is Tools/Audio/prepare_audio_review.py.

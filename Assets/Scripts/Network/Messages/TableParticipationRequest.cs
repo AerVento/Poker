@@ -28,6 +28,7 @@ namespace Game.Network
         public string HandId;
         public uint Revision;
         public TableParticipationAction Action;
+        public bool RequireImmediate;
     }
 
     public struct TableParticipationResponse : NetworkMessage

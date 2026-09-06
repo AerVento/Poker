@@ -5,7 +5,7 @@ namespace Game.Network.Accounts
 {
     // Expected business rejections are return values. Unexpected repository failures stop the server.
     public sealed class GuardedAccountRepository : IHandAccountRepository,
-        IPasswordAccountRepository, ISessionAccountRepository
+        IPasswordAccountRepository, ISessionAccountRepository, IDailyRewardRepository
     {
         private readonly IHandAccountRepository _inner;
         private readonly IPasswordAccountRepository _passwords;
@@ -68,6 +68,21 @@ namespace Game.Network.Accounts
         {
             PlayerAccount snapshot = null;
             var result = Execute(() => _inner.ApplyChipMutation(accountId, requestId, transactionType, amount, roomId, handId, out snapshot));
+            account = snapshot;
+            return result;
+        }
+
+        public DailyRewardAccountState ReadDailyRewards(string accountId, string supplyKey, string comebackKey)
+        {
+            return Execute(() => ((IDailyRewardRepository)_inner).ReadDailyRewards(accountId, supplyKey, comebackKey));
+        }
+
+        public ChipMutationResult ClaimDailyReward(string accountId, string claimKey, uint amount,
+            uint? maximumBalanceExclusive, out PlayerAccount account)
+        {
+            PlayerAccount snapshot = null;
+            var result = Execute(() => ((IDailyRewardRepository)_inner).ClaimDailyReward(
+                accountId, claimKey, amount, maximumBalanceExclusive, out snapshot));
             account = snapshot;
             return result;
         }

@@ -126,6 +126,6 @@ Linux Standalone / Dedicated Server 默认启动服务端；Windows 默认启动
 
 证据位于忽略目录 `Logs/NetworkConfiguration/` 的 `startup-smoke`、`http-smoke`、`linux-startup-smoke`、`linux-tls-startup-smoke`。
 
-用户调整范围之前，新增 25 项配置 EditMode 测试及既有套件共 **218/218** 通过，作业 `62ce28dadcf3433dbe3f5f5e3ffaf785`；一服三端使用外部 JSON 的 17891 端口完成 spectators 场景，记录为 `integration-f7c308e2`。这些是此前已结束的验证，后续未再执行全量回归。
+用户调整范围之前，新增 25 项配置 EditMode 测试及既有套件共 **218/218** 通过，作业 `62ce28dadcf3433dbe3f5f5e3ffaf785`；一服三端使用外部 JSON 的 17891 端口完成 spectators 场景，记录为 `integration-f7c308e2`。这些是配置功能阶段的验证；每日任务功能完成后，已重新执行 257 项全量 EditMode 和 Windows / Linux 一服三端回归，详见 [每日任务验证](D:/GitHubRepos/Poker/Docs/DailyTasks.md)。
 
-本轮未执行 WebGL 构建、实际浏览器 HTTPS/WSS 端到端验证或真实公网证书部署验证。等下一项功能完成后再统一执行完整回归。
+本轮未执行 WebGL 构建、实际浏览器 HTTPS/WSS 端到端验证或真实公网证书部署验证。原定下一功能完成后的自动化与多人流程回归现已完成；上述浏览器和公网验证仍未执行。

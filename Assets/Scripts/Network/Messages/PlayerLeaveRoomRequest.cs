@@ -12,5 +12,7 @@ namespace Assets.Scripts.Network.Messages
         public string PlayerName;
         public int RoomId;
         public bool CancelPending;
+        public string HandId;
+        public bool RequireImmediate;
     }
 }

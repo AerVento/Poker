@@ -149,11 +149,12 @@ namespace Game.Tests
                 results++;
                 Assert.IsTrue(_room.ContainsMember("Owner"));
                 Assert.AreEqual(1003, _repository.FindByUserName("Owner").Chips);
-                var departures = _departures.CompletePending(id);
-                Assert.AreEqual(RoomLeaveStatus.Left, departures.Single().Status);
+                Assert.IsTrue(_room.FindSeat("Owner").LeaveAfterHand);
             };
             Assert.AreEqual(0, _games.NextStage(_room.Id));
             Assert.AreEqual(1, results);
+            Assert.IsTrue(_room.ContainsMember("Owner"), "The result event must preserve the pending player.");
+            Assert.AreEqual(RoomLeaveStatus.Left, _departures.CompletePending(_room.Id).Single().Status);
             Assert.IsFalse(_room.ContainsMember("Owner"));
             Assert.AreEqual("Bob", _room.OwnerName);
             Assert.IsNull(_repository.FindByUserName("Owner").LastRoomId);

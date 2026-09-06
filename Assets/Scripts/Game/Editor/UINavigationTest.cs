@@ -162,6 +162,24 @@ namespace Game.Tests
             Assert.IsNull(_ui.TopPanelIdentifier);
         }
 
+        [Test]
+        public void InGameSettings_UsesDedicatedPanelAndBackRestoresLiveTable()
+        {
+            var game = _ui.PushPanel<GamePanel>();
+            Invoke(game, "OpenSettings");
+            Assert.AreEqual(nameof(InGameOptionPanel), _ui.TopPanelIdentifier);
+            Assert.IsTrue(game.IsShowing);
+            Assert.IsFalse(game.GetComponent<CanvasGroup>().interactable);
+            Assert.IsFalse(_ui.ContainsPanel<OptionPanel>());
+            var settings = _ui.GetPanel<InGameOptionPanel>();
+            Assert.IsNull(settings.transform.Find("Buttons/LogoutButton"));
+            Assert.NotNull(settings.transform.Find("TableActions/LeaveButton"));
+            Assert.IsNull(game.transform.Find("LeaveButton"));
+            Invoke(settings, "Back");
+            Assert.AreEqual(nameof(GamePanel), _ui.TopPanelIdentifier);
+            Assert.IsTrue(game.GetComponent<CanvasGroup>().interactable);
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void SettingsBack_ReturnsToActualOriginRegardlessOfCachedAccount(bool fromLobby)
@@ -265,6 +283,139 @@ namespace Game.Tests
             Invoke(_network, "RoomInfoSyncHandler", new RoomInfoSync { RoomInfo = CreateRoom(42, "Tester") });
             Assert.AreEqual(nameof(OptionPanel), _ui.TopPanelIdentifier);
             Assert.AreEqual(42, panel.RoomInfo.Id);
+        }
+
+        [Test]
+        public void DailyTasksPrefabHasCompleteEntryCardsAndNavigationReferences()
+        {
+            var title = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Panels/TitlePanel.prefab").GetComponent<TitlePanel>();
+            Assert.IsNotNull(Field<UnityEngine.UI.Button>(title, "_tasks"));
+            var panel = _ui.PushPanel<DailyTaskPanel>();
+            foreach (var name in new[] { "_back", "_refresh" })
+                Assert.IsNotNull(Field<UnityEngine.UI.Button>(panel, name));
+            var cards = Field<DailyTaskCard[]>(panel, "_cards");
+            Assert.AreEqual(2, cards.Length);
+            Assert.AreEqual(Game.Network.Accounts.DailyTaskId.DailySupply, cards[0].TaskId);
+            Assert.AreEqual(Game.Network.Accounts.DailyTaskId.Comeback, cards[1].TaskId);
+            foreach (var card in cards)
+            {
+                Assert.IsNotNull(Field<UnityEngine.UI.Button>(card, "_claim"));
+                foreach (var name in new[] { "_title", "_description", "_reward", "_progress", "_status", "_claimLabel" })
+                    Assert.IsNotNull(Field<TMPro.TextMeshProUGUI>(card, name));
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TaskLoginReturnsToTaskPanelUnlessRoomRecoveryHasPriority(bool hasRoom)
+        {
+            _ui.PushPanel<TitlePanel>();
+            var login = _ui.PushPanel<LoginPanel>();
+            Invoke(login, "Awake");
+            Set(login, "<OpenTasksAfterLogin>k__BackingField", true);
+            Invoke(_network, "HandleClientAuthentication", new Game.Network.AccountAuthenticationResponse
+            {
+                Code = Game.Network.Accounts.AccountAuthenticationCode.Success,
+                HasLastRoom = hasRoom,
+                LastRoomId = 42,
+            });
+            Assert.AreEqual(hasRoom ? nameof(RoomListPanel) : nameof(DailyTaskPanel), _ui.TopPanelIdentifier);
+            Assert.IsFalse(_ui.ContainsPanel<LoginPanel>());
+        }
+
+        [Test]
+        public void CancellingTaskLoginDoesNotRedirectLaterNormalLogin()
+        {
+            var login = _ui.PushPanel<LoginPanel>();
+            Set(login, "<OpenTasksAfterLogin>k__BackingField", true);
+            Invoke(login, "OnDisable");
+            Assert.IsFalse((bool)typeof(LoginPanel).GetProperty("OpenTasksAfterLogin", Private).GetValue(login));
+        }
+
+        [Test]
+        public void TasksBackAndDisconnectPreserveTitleDestination()
+        {
+            _ui.PushPanel<TitlePanel>();
+            var tasks = _ui.PushPanel<DailyTaskPanel>();
+            Invoke(tasks, "Back");
+            Assert.AreEqual(nameof(TitlePanel), _ui.TopPanelIdentifier);
+            _ui.PushPanel<DailyTaskPanel>();
+            Set(_network, "_silentDisconnect", true);
+            Set(_network, "_isConnected", true);
+            _network.OnClientDisconnect();
+            CollectionAssert.AreEqual(new[] { nameof(TitlePanel) }, _ui.PanelOrder);
+        }
+
+        [TestCase("pending")]
+        [TestCase("active")]
+        [TestCase("last-room")]
+        public void TasksCannotOpenDuringRoomEntryOrFromInsideRoom(string state)
+        {
+            Assert.IsTrue(_network.CanOpenDailyTasks);
+            if (state == "pending") Set(_network, "_roomEntryPending", true);
+            if (state == "active") Set(_network, "_activeClientRoomId", (int?)42);
+            if (state == "last-room") _controller.State.SetLastRoom(42);
+            Assert.IsFalse(_network.CanOpenDailyTasks);
+            Assert.AreEqual(0, _network.RequestDailyTasks());
+            Assert.AreEqual(0, _network.RequestDailyTaskClaim(Game.Network.Accounts.DailyTaskId.DailySupply, 20260905));
+        }
+
+        [Test]
+        public void ReopeningLoginImmediatelyRestoresControlsAfterPreviousPendingRequest()
+        {
+            var login = _ui.PushPanel<LoginPanel>();
+            Field<UnityEngine.UI.Button>(login, "_login").interactable = false;
+            Field<UnityEngine.UI.Button>(login, "_register").interactable = false;
+            Invoke(login, "OnEnable");
+            Assert.IsTrue(Field<UnityEngine.UI.Button>(login, "_login").interactable);
+            Assert.IsTrue(Field<UnityEngine.UI.Button>(login, "_register").interactable);
+            Invoke(login, "OnDisable");
+        }
+
+        [Test]
+        public void TaskResponsesIgnoreEarlierOpenAndClosedPanel()
+        {
+            _ui.PushPanel<TitlePanel>();
+            var panel = _ui.PushPanel<DailyTaskPanel>();
+            // Give this panel an active hierarchy while retaining the fixture's isolated account.
+            panel.transform.SetParent(null);
+            try
+            {
+                Set(panel, "_statusRequest", (ulong)20);
+                var response = new DailyTasksResponse
+                {
+                    RequestId = 19,
+                    Result = Game.Network.Accounts.DailyTaskResult.Success,
+                    Snapshot = new Game.Network.Accounts.DailyTasksSnapshot
+                    {
+                        Balance = 2000, Period = 20260905, ServerUnixSeconds = 100, NextResetUnixSeconds = 200,
+                        Tasks = new[]
+                        {
+                            new Game.Network.Accounts.DailyTaskState { Id = Game.Network.Accounts.DailyTaskId.DailySupply,
+                                Name = "每日补给", Reward = 1000, Availability = Game.Network.Accounts.DailyTaskAvailability.Claimed },
+                            new Game.Network.Accounts.DailyTaskState { Id = Game.Network.Accounts.DailyTaskId.Comeback,
+                                Name = "东山再起", Reward = 2000, Availability = Game.Network.Accounts.DailyTaskAvailability.BalanceTooHigh },
+                        },
+                    },
+                };
+                panel.ReceiveStatus(response);
+                Assert.AreEqual(1000, _controller.State.Chips);
+                Assert.AreEqual(20, Field<ulong>(panel, "_statusRequest"));
+                response.RequestId = 20;
+                panel.ReceiveStatus(response);
+                Assert.AreEqual(2000, _controller.State.Chips);
+                Assert.IsTrue(Field<bool>(panel, "_hasSnapshot"));
+                Set(panel, "_claimRequest", (ulong)22);
+                panel.ReceiveClaim(new DailyTaskClaimResponse { RequestId = 21, Result = Game.Network.Accounts.DailyTaskResult.Success });
+                Assert.AreEqual(22, Field<ulong>(panel, "_claimRequest"));
+                _ui.PopPanel<DailyTaskPanel>();
+                Set(panel, "_statusRequest", (ulong)20);
+                response.Snapshot.Balance = 5000;
+                panel.ReceiveStatus(response);
+                Assert.AreEqual(2000, _controller.State.Chips);
+                Assert.AreEqual(nameof(TitlePanel), _ui.TopPanelIdentifier);
+            }
+            finally { panel.transform.SetParent(_root.transform); }
         }
 
         private static RoomInfo CreateRoom(int id, string owner)

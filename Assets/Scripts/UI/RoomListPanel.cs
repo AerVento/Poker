@@ -89,6 +89,7 @@ namespace Game.UI
 
         private void OnEnable()
         {
+            GameAudioManager.EnsureClient()?.EnterLobby();
             RefreshAccountStatus();
             RefreshRoomList();
             _back.onClick.AddListener(Back);

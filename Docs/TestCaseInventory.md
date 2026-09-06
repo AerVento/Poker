@@ -1,25 +1,27 @@
 # 当前测试用例总表
 
-更新：2026-09-05。此版本按新的“先旁观、主动申请下一手、预约转旁观、只限制参战人数”规则整理。
+更新：2026-09-06。本轮新增结果查看期的 12 项回归用例；按要求仅运行相关测试，不执行全量回归。
 
 ## 当前结果
 
-- 自有 NUnit EditMode：**218 项、176 个方法、14 个测试类、12 个文件**。参数化用例按参数展开，循环断言不重复计数。
-- Unity 2022.3.52f1c1 最近一次完整结果：**218/218 通过**，作业 `62ce28dadcf3433dbe3f5f5e3ffaf785`。
-- 最后视觉修正后 UIInteractionTest 单独复跑 **40/40 通过**，作业 `dbadc520ae64486d905993bb31e9793a`。
-- 用户随后要求只做配置读取与启动冒烟；后续改动未再运行全量，待下一功能完成后统一回归。
-- 本轮新增网络配置用例 25 项，见 [部署配置说明](D:/GitHubRepos/Poker/Docs/NetworkConfiguration.md)。
+- 自有 NUnit EditMode：**269 项、206 个方法、15 个测试类、13 个文件**。参数化用例按参数展开，循环断言不重复计数。
+- 上一版本在 Unity 2022.3.52f1c1 的完整结果：**257/257 通过**，作业 `46a221852c734f2aa15b10f24f533aef`。
+- 上一版本最后视觉修正后 UIInteractionTest 单独复跑 **40/40 通过**，作业 `dbadc520ae64486d905993bb31e9793a`。
+- 每日任务功能完成时曾执行全部自有 EditMode 测试；新增 39 项，见 [每日任务说明](D:/GitHubRepos/Poker/Docs/DailyTasks.md)。
+- 上轮新增网络配置用例 25 项，见 [部署配置说明](D:/GitHubRepos/Poker/Docs/NetworkConfiguration.md)。
 - 上轮新增导航用例 18 项，见 [导航说明](D:/GitHubRepos/Poker/Docs/UINavigationReview.md)。
 - 上轮新增提示交互用例 18 项；此前新增停服用例 12 项，覆盖存储异常、停止所有牌局、重启退款与提示 UI；见 [停服规则](D:/GitHubRepos/Poker/Docs/FatalStorageShutdown.md)。
 - 上一轮相比 119 项，增加 21 项旁观/座位/过期请求测试与 5 项真实 UI prefab 测试；另更新了与旧自动入座规则冲突的样例。
-- 独立进程场景包括默认、departures、spectators，以及本轮新增的 storage-allin、storage-normal 两套故障场景和恢复核对进程；这些检查点不额外计入 NUnit 数量。旁观/UI 验收见 [SpectatorLifecycle.md](D:/GitHubRepos/Poker/Docs/SpectatorLifecycle.md)，本轮一服三端、停服、重启恢复及构建记录见 [停服验证](D:/GitHubRepos/Poker/Docs/FatalStorageShutdown.md)。
-- 7 个旧手动脚本、20 项旧客户端验收步骤及临时 review 探针均保留说明，但不计入 218，也不因为文档列出便视为已执行。
+- 独立进程场景包括默认、departures、spectators、storage-allin、storage-normal，以及本轮新增的 tasks。最新一服三端任务、预约离开、停服及恢复记录见 [每日任务验证](D:/GitHubRepos/Poker/Docs/DailyTasks.md)；这些检查点不额外计入 NUnit 数量。
+- 7 个旧手动脚本、20 项旧客户端验收步骤及临时 review 探针均保留说明，但不计入 269，也不因为文档列出便视为已执行。
 
 ## 当前 UI 流程
 
 大厅点击“牌局中”的房间后先进入旁观，**不会自动占座或自动参加下一手**，满桌也可旁观。牌桌提供“下一手参战”“继续旁观”“离开房间”；有名额且筹码至少够一个大盲时可申请，申请期间仍无座号、无底牌，点击继续旁观可取消。下一手开局前才正式入座发牌。
 
-本手玩家可点击“本手后旁观”，当前手照常行动并结算，之后释放座位成为旁观者；仍保留独立的“本手后离开”路径。若下一手合格人数不足两人，剩余参赛者回房间等待页，所有旁观者清除房间关联并返回大厅。具体条件与实际验证见上述生命周期文档。
+本手玩家可点击“本手后旁观”，当前手照常行动并结算，保留 10 秒查看结果时间，之后才执行预约并释放座位成为旁观者；仍保留独立的“本手后离开”路径。查看期间可立即离开或转旁观，不打断其他人的查看时间。查看结束后，若下一手合格人数不足两人，剩余参赛者回房间等待页，所有旁观者清除房间关联并返回大厅。具体条件与实际验证见上述生命周期文档。
+
+标题页增加“每日任务”。未登录时先登录，成功后回到任务页；仍有关联房间时优先恢复房间。打开面板和领取结束均请求服务器状态，关闭后过期响应不会重新打开页面。
 
 ## 自动化用例逐项清单
 
@@ -36,9 +38,10 @@
 | RoomDepartureTest | 11 |
 | TableParticipationTest | 21 |
 | UIInteractionTest | 40 |
-| UINavigationTest | 18 |
+| UINavigationTest | 28 |
 | FatalStorageTest | 11 |
 | NetworkConfigurationTest | 25 |
+| DailyTaskTest | 29 |
 
 ### AccountServiceTest（11 项）
 
@@ -180,39 +183,39 @@
 | UT-094 | [FoldedAndAllInParticipants_StillWaitForSettlement(false)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:105) | 本手参与者即使已弃牌或全下也只能预约离开，结算前保留成员身份。 参数：false。 |
 | UT-095 | [FoldedAndAllInParticipants_StillWaitForSettlement(true)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:105) | 本手参与者即使已弃牌或全下也只能预约离开，结算前保留成员身份。 参数：true。 |
 | UT-096 | [WaitingJoinerAndUnseatedSpectator_LeaveImmediatelyDuringActiveHand](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:120) | 新加入等待者及无座旁观者在牌局中立即离房，清理关联而不中止他人的牌局。 |
-| UT-097 | [Settlement_CreditsAllInLeaverBeforeRemovingAndTransferringOwner](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:139) | 先向全下预约离开者结算到账，再移除并移交房主；只通知一次，不向离开者发下一手。 |
-| UT-098 | [DisconnectAndReconnect_PreservePendingDepartureAndDoNotRestoreFoldedHand](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:169) | 预约后断线再重连仍保留预约，已发生的弃牌不撤销。 |
-| UT-099 | [OfflinePendingPlayer_IsRemovedAfterSettlementUsingAccountPersistence](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:182) | 预约者持续离线，结算后仍通过账户存储清除 LastRoomId 并移除成员。 |
-| UT-100 | [StorageFailure_KeepsPendingPlayerOutOfNextHandUntilRetrySucceeds](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:194) | 离房落库失败时保留预约和关联、排除下一手资格；存储恢复后可完成离房。 |
-| UT-101 | [EveryoneQueues_RoomExistsUntilSettlementAndThenDissolves](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:211) | 全员预约仍保留当前房间到结算完成；随后全部移除、房间解散、对账一致。 |
-| UT-102 | [InvalidRoomOrMember_CannotChangeMembershipOrPendingState](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:227) | 无效房间或非成员请求返回错误，不改变任何预约状态。 |
-| UT-103 | [Projection_RoundTripsDepartureFlagWithoutDisclosingOtherHoleCards](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:235) | JSON 往返保留预约标记；只包含自己的 Hole，不泄漏其他底牌、AccountId 或 Deck。 |
+| UT-097 | [Settlement_CreditsAllInLeaverBeforeRemovingAndTransferringOwner](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:139) | 先向全下预约离开者结算到账，结果事件保留成员，下一手准备时再移除并移交房主；只通知一次，不向离开者发下一手。 |
+| UT-098 | [DisconnectAndReconnect_PreservePendingDepartureAndDoNotRestoreFoldedHand](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:170) | 预约后断线再重连仍保留预约，已发生的弃牌不撤销。 |
+| UT-099 | [OfflinePendingPlayer_IsRemovedAfterSettlementUsingAccountPersistence](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:183) | 预约者持续离线，查看结束后仍通过账户存储清除 LastRoomId 并移除成员。 |
+| UT-100 | [StorageFailure_KeepsPendingPlayerOutOfNextHandUntilRetrySucceeds](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:195) | 离房落库失败时保留预约和关联、排除下一手资格；存储恢复后可完成离房。 |
+| UT-101 | [EveryoneQueues_RoomExistsUntilSettlementAndThenDissolves](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:212) | 全员预约仍保留当前房间到结算完成；查看期结束执行预约时全部移除、房间解散、对账一致。 |
+| UT-102 | [InvalidRoomOrMember_CannotChangeMembershipOrPendingState](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:228) | 无效房间或非成员请求返回错误，不改变任何预约状态。 |
+| UT-103 | [Projection_RoundTripsDepartureFlagWithoutDisclosingOtherHoleCards](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/RoomDepartureTest.cs:236) | JSON 往返保留预约标记；只包含自己的 Hole，不泄漏其他底牌、AccountId 或 Deck。 |
 
 ### TableParticipationTest（21 项）
 
 | 编号 | 方法 / 参数 | 输入与预期结果 |
 | --- | --- | --- |
-| UT-104 | [CreateJoinReadyStart_DealsOnlyTheTwoPlayers](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:91) | 建房、另一玩家加入并准备、房主开局；只给两名参赛者发牌并正确收盲注。 |
-| UT-105 | [FullRoom_AllowsUnlimitedUnseatedObserversButRejectsParticipation](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:101) | 满桌接收多个无座旁观者；拒绝满额参战、低余额参战；JSON 不含其他底牌或服务器秘密。 |
-| UT-106 | [Observer_ContinuesWatchingAcrossThreeHandsWithoutAutomaticEntry](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:121) | 明确继续旁观后跨三手保持无座、无底牌，不自动入座。 |
-| UT-107 | [JoinNextHand_CanCancelAndAllocatesOnlyWhenTheNextHandBegins](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:137) | 申请和取消都不占座；重新申请后仅在下一手开始分配新座号并获得两张底牌。 |
-| UT-108 | [Reservations_PreventOverbookingAndGuardCancellingSitOut](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:157) | 转旁观释放的下一手名额可预留；不超订，取消转旁观不能抢占已预留名额。 |
-| UT-109 | [CancelDeparture_CannotTakeAPlaceAlreadyReservedByAnObserver](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:172) | 预约离房者取消时同样检查预留名额；申请者取消后允许取消离房。 |
-| UT-110 | [WaitingApplicant_LeavesImmediatelyAndReleasesReservation](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:185) | 申请参战的旁观者立即离房，清理预留及账户关联，不改变当前手或奖池。 |
-| UT-111 | [SitOut_PreservesFoldedOrAllInRightsUntilSettlement(false)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:201) | 预约转旁观不改变本手底牌和行动权；弃牌/all-in 后仍等到账务结算，再释放座位。 参数：false。 |
-| UT-112 | [SitOut_PreservesFoldedOrAllInRightsUntilSettlement(true)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:201) | 预约转旁观不改变本手底牌和行动权；弃牌/all-in 后仍等到账务结算，再释放座位。 参数：true。 |
-| UT-113 | [SitOut_DisconnectAndReconnectKeepsIntentAndCurrentHandRights](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:219) | 预约转旁观后断线重连保留原预约和本手底牌。 |
-| UT-114 | [DepartedSeat_IsNotReusedAndSpectatorReentryGetsANewNumber](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:229) | 转旁观者释放旧座位；新成员和原玩家重新参战时得到递增的新号。 |
-| UT-115 | [CompactSeats_OnlyAboveHalfEmptyAndOnlyBeforeANewHand(4, false)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:249) | 2/4 空座不压缩；3/5 空座在新手前压缩；本手进行中不能重新开手或重编号。 参数：4, false。 |
-| UT-116 | [CompactSeats_OnlyAboveHalfEmptyAndOnlyBeforeANewHand(5, true)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:249) | 2/4 空座不压缩；3/5 空座在新手前压缩；本手进行中不能重新开手或重编号。 参数：5, true。 |
-| UT-117 | [SparseSeats_BlindsRotatePastGapsAcrossMultipleHands](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:264) | 座位 0、2、4 连续六手：大盲依次 4、0、2、4、0、2，所有按钮/盲注跳过空座。 |
-| UT-118 | [OldTurnRequest_IsRejectedWhenSamePlayerActsOnTheNextStreet(PlayerOperationType.Check)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:290) | 真实超时回调后推进至下一下注街，同一玩家再行动时拒绝旧请求，奖池与行动编号不变。 参数：PlayerOperationType.Check。 |
-| UT-119 | [OldTurnRequest_IsRejectedWhenSamePlayerActsOnTheNextStreet(PlayerOperationType.Call)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:290) | 真实超时回调后推进至下一下注街，同一玩家再行动时拒绝旧请求，奖池与行动编号不变。 参数：PlayerOperationType.Call。 |
-| UT-120 | [OldTurnRequest_IsRejectedWhenSamePlayerActsOnTheNextStreet(PlayerOperationType.Fold)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:290) | 真实超时回调后推进至下一下注街，同一玩家再行动时拒绝旧请求，奖池与行动编号不变。 参数：PlayerOperationType.Fold。 |
-| UT-121 | [OldTurnRequest_IsRejectedWhenSamePlayerActsOnTheNextStreet(PlayerOperationType.AllIn)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:290) | 真实超时回调后推进至下一下注街，同一玩家再行动时拒绝旧请求，奖池与行动编号不变。 参数：PlayerOperationType.AllIn。 |
-| UT-122 | [DuplicateAndPreviousHandOperations_AreRejectedWithoutChangingBalances](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:310) | 同一有效请求仅执行一次；即使下一手 TurnId 相同，旧 HandId 仍被拒绝；客户端 JSON 保留编号。 |
-| UT-123 | [OldParticipationIntent_CannotUndoANewerChoice](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:332) | 参战状态请求含手牌及修订号；旧取消不能覆盖新的申请。 |
-| UT-124 | [SpectatorSettlement_ContainsNoHoleCardsWithoutMutatingPlayerResult](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:343) | 旁观结算投影没有任何玩家底牌，且不修改参赛者的正常结算视图。 |
+| UT-104 | [CreateJoinReadyStart_DealsOnlyTheTwoPlayers](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:227) | 建房、另一玩家加入并准备、房主开局；只给两名参赛者发牌并正确收盲注。 |
+| UT-105 | [FullRoom_AllowsUnlimitedUnseatedObserversButRejectsParticipation](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:237) | 满桌接收多个无座旁观者；拒绝满额参战、低余额参战；JSON 不含其他底牌或服务器秘密。 |
+| UT-106 | [Observer_ContinuesWatchingAcrossThreeHandsWithoutAutomaticEntry](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:257) | 明确继续旁观后跨三手保持无座、无底牌，不自动入座。 |
+| UT-107 | [JoinNextHand_CanCancelAndAllocatesOnlyWhenTheNextHandBegins](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:273) | 申请和取消都不占座；重新申请后仅在下一手开始分配新座号并获得两张底牌。 |
+| UT-108 | [Reservations_PreventOverbookingAndGuardCancellingSitOut](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:293) | 转旁观释放的下一手名额可预留；不超订，取消转旁观不能抢占已预留名额。 |
+| UT-109 | [CancelDeparture_CannotTakeAPlaceAlreadyReservedByAnObserver](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:308) | 预约离房者取消时同样检查预留名额；申请者取消后允许取消离房。 |
+| UT-110 | [WaitingApplicant_LeavesImmediatelyAndReleasesReservation](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:321) | 申请参战的旁观者立即离房，清理预留及账户关联，不改变当前手或奖池。 |
+| UT-111 | [SitOut_PreservesFoldedOrAllInRightsUntilSettlement(false)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:337) | 预约转旁观不改变本手底牌和行动权；弃牌/all-in 后仍等到账务结算，再释放座位。 参数：false。 |
+| UT-112 | [SitOut_PreservesFoldedOrAllInRightsUntilSettlement(true)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:337) | 预约转旁观不改变本手底牌和行动权；弃牌/all-in 后仍等到账务结算，再释放座位。 参数：true。 |
+| UT-113 | [SitOut_DisconnectAndReconnectKeepsIntentAndCurrentHandRights](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:355) | 预约转旁观后断线重连保留原预约和本手底牌。 |
+| UT-114 | [DepartedSeat_IsNotReusedAndSpectatorReentryGetsANewNumber](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:365) | 转旁观者释放旧座位；新成员和原玩家重新参战时得到递增的新号。 |
+| UT-115 | [CompactSeats_OnlyAboveHalfEmptyAndOnlyBeforeANewHand(4, false)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:385) | 2/4 空座不压缩；3/5 空座在新手前压缩；本手进行中不能重新开手或重编号。 参数：4, false。 |
+| UT-116 | [CompactSeats_OnlyAboveHalfEmptyAndOnlyBeforeANewHand(5, true)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:385) | 2/4 空座不压缩；3/5 空座在新手前压缩；本手进行中不能重新开手或重编号。 参数：5, true。 |
+| UT-117 | [SparseSeats_BlindsRotatePastGapsAcrossMultipleHands](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:400) | 座位 0、2、4 连续六手：大盲依次 4、0、2、4、0、2，所有按钮/盲注跳过空座。 |
+| UT-118 | [OldTurnRequest_IsRejectedWhenSamePlayerActsOnTheNextStreet(PlayerOperationType.Check)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:426) | 真实超时回调后推进至下一下注街，同一玩家再行动时拒绝旧请求，奖池与行动编号不变。 参数：PlayerOperationType.Check。 |
+| UT-119 | [OldTurnRequest_IsRejectedWhenSamePlayerActsOnTheNextStreet(PlayerOperationType.Call)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:426) | 真实超时回调后推进至下一下注街，同一玩家再行动时拒绝旧请求，奖池与行动编号不变。 参数：PlayerOperationType.Call。 |
+| UT-120 | [OldTurnRequest_IsRejectedWhenSamePlayerActsOnTheNextStreet(PlayerOperationType.Fold)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:426) | 真实超时回调后推进至下一下注街，同一玩家再行动时拒绝旧请求，奖池与行动编号不变。 参数：PlayerOperationType.Fold。 |
+| UT-121 | [OldTurnRequest_IsRejectedWhenSamePlayerActsOnTheNextStreet(PlayerOperationType.AllIn)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:426) | 真实超时回调后推进至下一下注街，同一玩家再行动时拒绝旧请求，奖池与行动编号不变。 参数：PlayerOperationType.AllIn。 |
+| UT-122 | [DuplicateAndPreviousHandOperations_AreRejectedWithoutChangingBalances](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:446) | 同一有效请求仅执行一次；即使下一手 TurnId 相同，旧 HandId 仍被拒绝；客户端 JSON 保留编号。 |
+| UT-123 | [OldParticipationIntent_CannotUndoANewerChoice](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:468) | 参战状态请求含手牌及修订号；旧取消不能覆盖新的申请。 |
+| UT-124 | [SpectatorSettlement_ContainsNoHoleCardsWithoutMutatingPlayerResult](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:479) | 旁观结算投影没有任何玩家底牌，且不修改参赛者的正常结算视图。 |
 
 ### UIInteractionTest（原有 21 项；新增一项见 UT-157）
 
@@ -233,12 +236,12 @@
 | UT-137 | [GameResults_SortsUnsignedChipTotalsWithoutOverflow](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:176) | 按 uint 筹码大小正确排序，避免转成有符号整数后溢出。 |
 | UT-138 | [RoomList_PeriodicRefreshPreservesExistingJoinButtons](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:192) | 相同房间 ID 刷新后复用同一条目，保持按钮对象及焦点；不验证真实网络点击。 |
 | UT-139 | [DepartureControls_UseServerStateAndKeepBettingAvailableWhileQueued](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:204) | 预约时显示取消与提示、仍可下注；请求处理中禁用按钮，等待者显示立即离房。 |
-| UT-140 | [HidingGamePanel_StopsSeatTimersAndClearsInterHandCountdown](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:224) | 隐藏牌桌时停止所有座位计时，并隐藏局间倒计时。 |
-| UT-141 | [SpectatorControls_ClearPrivateCardsAndReflectAvailableSeats(false)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:236) | 真实 GamePanel 从玩家切到旁观后清空私牌、隐藏下注控件；满额/有位分别显示正确按钮。 参数：false。 |
-| UT-142 | [SpectatorControls_ClearPrivateCardsAndReflectAvailableSeats(true)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:236) | 真实 GamePanel 从玩家切到旁观后清空私牌、隐藏下注控件；满额/有位分别显示正确按钮。 参数：true。 |
-| UT-143 | [PendingParticipation_UIAllowsContinuingToWatchAndClearsOnDisable](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:264) | 已申请时禁用重复参战按钮，继续旁观可取消；等待响应禁用操作，隐藏界面清理等待状态。 |
-| UT-144 | [SitOutControls_KeepCurrentBettingRightsAndDisplayCancellation](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:284) | 预约转旁观显示取消及结算后提示，同时保留本手跟注操作。 |
-| UT-145 | [FullActiveRoom_StillHasAnEnabledLobbyEntryForSpectators](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:298) | 满桌在大厅仍有可用加入条目，参战人数与旁观人数分开显示。 |
+| UT-140 | [HidingGamePanel_StopsSeatTimersAndClearsInterHandCountdown](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:260) | 隐藏牌桌时停止所有座位计时，并隐藏局间倒计时。 |
+| UT-141 | [SpectatorControls_ClearPrivateCardsAndReflectAvailableSeats(false)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:272) | 真实 GamePanel 从玩家切到旁观后清空私牌、隐藏下注控件；满额/有位分别显示正确按钮。 参数：false。 |
+| UT-142 | [SpectatorControls_ClearPrivateCardsAndReflectAvailableSeats(true)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:272) | 真实 GamePanel 从玩家切到旁观后清空私牌、隐藏下注控件；满额/有位分别显示正确按钮。 参数：true。 |
+| UT-143 | [PendingParticipation_UIAllowsContinuingToWatchAndClearsOnDisable](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:300) | 已申请时禁用重复参战按钮，继续旁观可取消；等待响应禁用操作，隐藏界面清理等待状态。 |
+| UT-144 | [SitOutControls_KeepCurrentBettingRightsAndDisplayCancellation](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:320) | 预约转旁观显示取消及结算后提示，同时保留本手跟注操作。 |
+| UT-145 | [FullActiveRoom_StillHasAnEnabledLobbyEntryForSpectators](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:334) | 满桌在大厅仍有可用加入条目，参战人数与旁观人数分开显示。 |
 
 ## 本次新增停服用例（12 项）
 
@@ -255,7 +258,7 @@
 | UT-154 | [RoomAssociationWriteFailure_StopsActiveHand](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/FatalStorageTest.cs:177) | 保存上次房间关联失败会停止正在进行的手牌及计时。 |
 | UT-155 | [ExpectedRejections_DoNotStopStorageOrServer](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/FatalStorageTest.cs:188) | 错误登录、无效名称、重名、筹码不足属于正常拒绝，不停服，后续正常写入仍成功。 |
 | UT-156 | [DatabaseInitializationFailure_IsFatalAndReportedOnce](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/FatalStorageTest.cs:202) | 数据库路径实际为目录导致初始化失败；只报告一次，后续访问直接阻止。 |
-| UT-157 | [ServerShutdownNotice_ShowsStorageReasonWithoutRecoveryPromises](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:314) | 正式 MsgBox prefab 显示保存失败原因、单个“知道了”按钮，不含普通网络提示或保存成功承诺。 |
+| UT-157 | [ServerShutdownNotice_ShowsStorageReasonWithoutRecoveryPromises](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:350) | 正式 MsgBox prefab 显示保存失败原因、单个“知道了”按钮，不含普通网络提示或保存成功承诺。 |
 
 ## 既有测试资料与历史记录
 
@@ -369,28 +372,28 @@
 
 | 编号 | 方法 / 参数 | 输入与预期结果 |
 | --- | --- | --- |
-| UT-158 | [AllInConfirmation_IncludesPriorStageBetAndShortCalls](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:334) / AllIn | 全下按钮必须确认。 |
-| UT-159 | [AllInConfirmation_IncludesPriorStageBetAndShortCalls](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:334) / Call / 刚好耗尽 | 跟注刚好耗尽剩余筹码须确认。 |
-| UT-160 | [AllInConfirmation_IncludesPriorStageBetAndShortCalls](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:334) / Call / 短码 | 不足额跟注耗尽筹码须确认。 |
-| UT-161 | [AllInConfirmation_IncludesPriorStageBetAndShortCalls](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:334) / Call / 有剩余 | 普通跟注不要求全下确认。 |
-| UT-162 | [AllInConfirmation_IncludesPriorStageBetAndShortCalls](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:334) / Bet / 全部 | 下注总额包含本阶段已投入，全部可用筹码须确认。 |
-| UT-163 | [AllInConfirmation_IncludesPriorStageBetAndShortCalls](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:334) / Bet / 有剩余 | 未耗尽筹码的下注不要求全下确认。 |
-| UT-164 | [AllInConfirmation_IncludesPriorStageBetAndShortCalls](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:334) / Fold | 弃牌不使用全下确认。 |
-| UT-165 | [BetInput_CorrectionExplainsReasonAndNewTurnClearsIt](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:353) / 1 | 低于最低金额时解释修正，轮次变化后清除。 |
-| UT-166 | [BetInput_CorrectionExplainsReasonAndNewTurnClearsIt](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:353) / 9000 | 超出可用金额时解释全下上限。 |
-| UT-167 | [BetInput_CorrectionExplainsReasonAndNewTurnClearsIt](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:353) / invalid | 格式错误时解释恢复金额。 |
-| UT-168 | [RoomInput_InvalidValueExplainsCorrection](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:372) / 小盲 0 | 小盲输入无效时提示恢复原值。 |
-| UT-169 | [RoomInput_InvalidValueExplainsCorrection](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:372) / 思考时间 NaN | 思考时间输入无效时提示恢复原值。 |
-| UT-170 | [RoomInput_InvalidValueExplainsCorrection](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:372) / 人数 1 | 人数输入无效时提示恢复原值。 |
-| UT-171 | [InsufficientPlayers_ExplainsCorrectDestination](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:384) / 参战玩家 | 人数不足提示说明返回房间等待。 |
-| UT-172 | [InsufficientPlayers_ExplainsCorrectDestination](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:384) / 旁观玩家 | 人数不足提示说明返回房间列表。 |
-| UT-173 | [SpectatorIntro_ExplainsExplicitEntryAndSeatLimit](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:394) | 首次旁观说明主动申请和名额限制。 |
-| UT-174 | [RiskConfirmation_DefaultFocusIsCancel](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:404) | 风险确认默认键盘焦点位于取消按钮。 |
-| UT-175 | [TransitionMessages_RoundTripExplicitReasonThroughMirror](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:430) | 房间同步和离开响应经 Mirror 序列化后保留原因。 |
+| UT-158 | [AllInConfirmation_IncludesPriorStageBetAndShortCalls](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:370) / AllIn | 全下按钮必须确认。 |
+| UT-159 | [AllInConfirmation_IncludesPriorStageBetAndShortCalls](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:370) / Call / 刚好耗尽 | 跟注刚好耗尽剩余筹码须确认。 |
+| UT-160 | [AllInConfirmation_IncludesPriorStageBetAndShortCalls](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:370) / Call / 短码 | 不足额跟注耗尽筹码须确认。 |
+| UT-161 | [AllInConfirmation_IncludesPriorStageBetAndShortCalls](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:370) / Call / 有剩余 | 普通跟注不要求全下确认。 |
+| UT-162 | [AllInConfirmation_IncludesPriorStageBetAndShortCalls](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:370) / Bet / 全部 | 下注总额包含本阶段已投入，全部可用筹码须确认。 |
+| UT-163 | [AllInConfirmation_IncludesPriorStageBetAndShortCalls](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:370) / Bet / 有剩余 | 未耗尽筹码的下注不要求全下确认。 |
+| UT-164 | [AllInConfirmation_IncludesPriorStageBetAndShortCalls](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:370) / Fold | 弃牌不使用全下确认。 |
+| UT-165 | [BetInput_CorrectionExplainsReasonAndNewTurnClearsIt](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:389) / 1 | 低于最低金额时解释修正，轮次变化后清除。 |
+| UT-166 | [BetInput_CorrectionExplainsReasonAndNewTurnClearsIt](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:389) / 9000 | 超出可用金额时解释全下上限。 |
+| UT-167 | [BetInput_CorrectionExplainsReasonAndNewTurnClearsIt](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:389) / invalid | 格式错误时解释恢复金额。 |
+| UT-168 | [RoomInput_InvalidValueExplainsCorrection](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:408) / 小盲 0 | 小盲输入无效时提示恢复原值。 |
+| UT-169 | [RoomInput_InvalidValueExplainsCorrection](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:408) / 思考时间 NaN | 思考时间输入无效时提示恢复原值。 |
+| UT-170 | [RoomInput_InvalidValueExplainsCorrection](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:408) / 人数 1 | 人数输入无效时提示恢复原值。 |
+| UT-171 | [InsufficientPlayers_ExplainsCorrectDestination](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:420) / 参战玩家 | 人数不足提示说明返回房间等待。 |
+| UT-172 | [InsufficientPlayers_ExplainsCorrectDestination](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:420) / 旁观玩家 | 人数不足提示说明返回房间列表。 |
+| UT-173 | [SpectatorIntro_ExplainsExplicitEntryAndSeatLimit](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:430) | 首次旁观说明主动申请和名额限制。 |
+| UT-174 | [RiskConfirmation_DefaultFocusIsCancel](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:440) | 风险确认默认键盘焦点位于取消按钮。 |
+| UT-175 | [TransitionMessages_RoundTripExplicitReasonThroughMirror](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:466) | 房间同步和离开响应经 Mirror 序列化后保留原因。 |
 
 实际联机与视觉检查见 [UI 提示说明](D:/GitHubRepos/Poker/Docs/UIFeedback.md)。
 
-### UINavigationTest（18 项）
+### UINavigationTest（28 项，原有 18 项列于此处，新增 10 项见文末）
 
 | 编号 | 方法 / 参数 | 输入与预期结果 |
 | --- | --- | --- |
@@ -442,3 +445,68 @@
 | UT-216 | [Server_RejectsInvalidConnectionLimit](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:118) | 总连接上限必须为正整数。 |
 | UT-217 | [ServerJson_IsAlsoTheMirrorCertificateConfiguration](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:124) | Mirror 直接读取同一 JSON 的 path/password，转义密码保持一致。 |
 | UT-218 | [Apply_OverridesPrefabSslPortAndCapacityWithoutCouplingClientPortToListener](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/NetworkConfigurationTest.cs:147) | 实际组件应用配置覆盖旧地址、SSL、端口模式与总连接数；客户端端口独立于监听端口。 |
+
+### 每日任务与相关导航新增用例（39 项）
+
+| 编号 | 方法 / 参数 | 输入与预期结果 |
+| --- | --- | --- |
+| UT-219 | [LowBalanceThresholdIsStrict](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:47) / 0u, DailyTaskAvailability.Claimable | 余额 0 / 999 可领补助，1,000 / 1,001 拒绝；状态和实际领取结果一致。 |
+| UT-220 | [LowBalanceThresholdIsStrict](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:47) / 999u, DailyTaskAvailability.Claimable | 余额 0 / 999 可领补助，1,000 / 1,001 拒绝；状态和实际领取结果一致。 |
+| UT-221 | [LowBalanceThresholdIsStrict](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:47) / 1000u, DailyTaskAvailability.BalanceTooHigh | 余额 0 / 999 可领补助，1,000 / 1,001 拒绝；状态和实际领取结果一致。 |
+| UT-222 | [LowBalanceThresholdIsStrict](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:47) / 1001u, DailyTaskAvailability.BalanceTooHigh | 余额 0 / 999 可领补助，1,000 / 1,001 拒绝；状态和实际领取结果一致。 |
+| UT-223 | [BothRewardsHaveSeparateQuotasAndPersistAcrossRestart](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:59) | 先补助再补给，两项分别限领一次；重开数据库保持已领取，余额与账本一致。 |
+| UT-224 | [ClaimRechecksBalanceInsteadOfTrustingOpenedPanel](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:76) | 打开页面后的余额变化会影响实际领取；拒绝不会消耗当天额度。 |
+| UT-225 | [UtcPlusEightMidnightResetsBothQuotasAndRejectsOldPackets](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:88) | UTC 16:00 即 UTC+8 零点；两项重置，昨日请求被拒绝而不消耗今日额度。 |
+| UT-226 | [ResetUsesFixedTimezoneRegardlessOfClockOffset](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:111) / -10 | 同一时刻无论时钟携带 -10 / 0 / 8 / 14 小时偏移，业务日期和下一次重置时间一致。 |
+| UT-227 | [ResetUsesFixedTimezoneRegardlessOfClockOffset](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:111) / 0 | 同一时刻无论时钟携带 -10 / 0 / 8 / 14 小时偏移，业务日期和下一次重置时间一致。 |
+| UT-228 | [ResetUsesFixedTimezoneRegardlessOfClockOffset](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:111) / 8 | 同一时刻无论时钟携带 -10 / 0 / 8 / 14 小时偏移，业务日期和下一次重置时间一致。 |
+| UT-229 | [ResetUsesFixedTimezoneRegardlessOfClockOffset](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:111) / 14 | 同一时刻无论时钟携带 -10 / 0 / 8 / 14 小时偏移，业务日期和下一次重置时间一致。 |
+| UT-230 | [InvalidTaskOrPeriodCannotMintChips](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:123) / 0, 20260905, DailyTaskResult.InvalidRequest | 非法任务编号、过去或未来业务日期不增加余额或账本条目。 |
+| UT-231 | [InvalidTaskOrPeriodCannotMintChips](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:123) / 255, 20260905, DailyTaskResult.InvalidRequest | 非法任务编号、过去或未来业务日期不增加余额或账本条目。 |
+| UT-232 | [InvalidTaskOrPeriodCannotMintChips](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:123) / 1, 20260904, DailyTaskResult.PeriodChanged | 非法任务编号、过去或未来业务日期不增加余额或账本条目。 |
+| UT-233 | [InvalidTaskOrPeriodCannotMintChips](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:123) / 2, 20260906, DailyTaskResult.PeriodChanged | 非法任务编号、过去或未来业务日期不增加余额或账本条目。 |
+| UT-234 | [ActiveHandRejectsClaimsAndNeverQueuesPayment](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:132) / false | 未结算手牌期间直接拒绝两项奖励，连已领取重放也拒绝；手牌结束不会补发。 |
+| UT-235 | [ActiveHandRejectsClaimsAndNeverQueuesPayment](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:132) / true | 未结算手牌期间直接拒绝两项奖励，连已领取重放也拒绝；手牌结束不会补发。 |
+| UT-236 | [ConcurrentClaimsAcrossRepositoriesCreditExactlyOnce](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:149) | 两个数据库实例并发申请同一补助，只成功发放一次，账本保持一致。 |
+| UT-237 | [StorageFailureRollsBackBalanceAndQuotaAndTriggersFatalGuard](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:166) / "player_accounts", "UPDATE OF chips" | 余额更新或奖励账本写入失败时整个事务回滚，致命存储回调恰好触发一次。 |
+| UT-238 | [StorageFailureRollsBackBalanceAndQuotaAndTriggersFatalGuard](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:166) / "chip_ledger", "INSERT" | 余额更新或奖励账本写入失败时整个事务回滚，致命存储回调恰好触发一次。 |
+| UT-239 | [OverflowDoesNotConsumeDailyQuota](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:185) | 余额溢出拒绝且不消耗额度；刚好能容纳奖励时允许领取。 |
+| UT-240 | [AccountsHaveIndependentDailyQuotas](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:196) | 不同账号的每日额度独立。 |
+| UT-241 | [ServerRejectsRoomMembersAndConnectionsWithoutAccountOwnership](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:209) / "waiting" | 等待房间成员、旁观成员、残留房间关联、未认证及被替换连接不能读取或领取任务。 |
+| UT-242 | [ServerRejectsRoomMembersAndConnectionsWithoutAccountOwnership](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:209) / "spectating" | 等待房间成员、旁观成员、残留房间关联、未认证及被替换连接不能读取或领取任务。 |
+| UT-243 | [ServerRejectsRoomMembersAndConnectionsWithoutAccountOwnership](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:209) / "last-room" | 等待房间成员、旁观成员、残留房间关联、未认证及被替换连接不能读取或领取任务。 |
+| UT-244 | [ServerRejectsRoomMembersAndConnectionsWithoutAccountOwnership](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:209) / "unauthenticated" | 等待房间成员、旁观成员、残留房间关联、未认证及被替换连接不能读取或领取任务。 |
+| UT-245 | [ServerRejectsRoomMembersAndConnectionsWithoutAccountOwnership](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:209) / "replaced" | 等待房间成员、旁观成员、残留房间关联、未认证及被替换连接不能读取或领取任务。 |
+| UT-246 | [ServerRejectsOutOfOrderRequestAndAcceptsFreshRetryWithoutDuplicateCredit](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:252) | 旧编号及相同编号拒绝；新编号重试返回已领取而不重复发奖。 |
+| UT-247 | [MirrorRoundTripPreservesTaskSnapshotAndRequestCorrelation](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:273) | 四种 Mirror 消息往返后保留编号、账号、业务日期、中文任务、奖励金额与状态。 |
+| UT-248 | [DailyTasksPrefabHasCompleteEntryCardsAndNavigationReferences](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UINavigationTest.cs:271) | 标题入口、两张任务卡、领取与返回刷新按钮及文本引用全部有效。 |
+| UT-249 | [TaskLoginReturnsToTaskPanelUnlessRoomRecoveryHasPriority](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UINavigationTest.cs:292) / false | 任务入口登录返回任务页；存在上一房间时仍进入既有恢复流程。 |
+| UT-250 | [TaskLoginReturnsToTaskPanelUnlessRoomRecoveryHasPriority](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UINavigationTest.cs:292) / true | 任务入口登录返回任务页；存在上一房间时仍进入既有恢复流程。 |
+| UT-251 | [CancellingTaskLoginDoesNotRedirectLaterNormalLogin](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UINavigationTest.cs:309) | 取消任务登录清理意图，不影响随后普通登录的目的地。 |
+| UT-252 | [TasksBackAndDisconnectPreserveTitleDestination](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UINavigationTest.cs:318) | 任务返回与任务页断线均正确回到标题，清空无效导航层级。 |
+| UT-253 | [TasksCannotOpenDuringRoomEntryOrFromInsideRoom](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UINavigationTest.cs:334) / "pending" | 入房请求中、当前房间内或仍关联上次房间时，客户端阻止打开任务及领取。 |
+| UT-254 | [TasksCannotOpenDuringRoomEntryOrFromInsideRoom](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UINavigationTest.cs:334) / "active" | 入房请求中、当前房间内或仍关联上次房间时，客户端阻止打开任务及领取。 |
+| UT-255 | [TasksCannotOpenDuringRoomEntryOrFromInsideRoom](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UINavigationTest.cs:334) / "last-room" | 入房请求中、当前房间内或仍关联上次房间时，客户端阻止打开任务及领取。 |
+| UT-256 | [ReopeningLoginImmediatelyRestoresControlsAfterPreviousPendingRequest](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UINavigationTest.cs:346) | 复用登录面板时立即恢复按钮状态，不保留上次请求的禁用状态。 |
+| UT-257 | [TaskResponsesIgnoreEarlierOpenAndClosedPanel](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UINavigationTest.cs:358) | 忽略上一轮打开的查询、旧领取响应与关页后到达的消息，保持当前余额和页面。 |
+
+### 结果查看期新增用例（12 项）
+
+本轮针对性 EditMode **17/17 通过**（新增 10 项及既有相关 7 项），作业 `fc28eae951304d59a3d8ed8d34b2912d`。随后补充延迟预约边界并定向复跑 **7/7 通过**，作业 `87f31c2fe1e44dd880ffb9b8e392988d`。最后补查筹码不足座位与取消预约的名额计算，2/2 通过，作业 `36d87393695840cf8558d6c56c514dc3`。共覆盖 19 个不同用例，未运行 269 项全量套件。
+
+| 编号 | 方法 / 参数 | 输入与预期结果 |
+| --- | --- | --- |
+| UT-258 | [ResultReview_PreservesBothReservationsAndSeatsUntilPreparation](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:101) | 结算事件保留离开和观战预约、座位与成员；下一手准备时才自动执行。 |
+| UT-259 | [ResultReview_ImmediateChoiceOverridesExistingDeparture(false)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:124) | 已有离开预约的玩家在查看期间立即离房，剩余成员继续查看。 |
+| UT-260 | [ResultReview_ImmediateChoiceOverridesExistingDeparture(true)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:124) | 已有离开预约的玩家可以立即转旁观，原预约不再自动将其移出房间。 |
+| UT-261 | [ResultReview_CanCancelSitOutOrExecuteItImmediately](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:149) | 查看期间可取消观战预约，也可直接执行转旁观。 |
+| UT-262 | [ResultReview_LowBalanceSeatStaysVisibleButDoesNotBlockReplacement](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:162) | 筹码不足者查看期间保留座位，但不占下一手预约名额；准备时才释放座位。 |
+| UT-263 | [ResultReview_PreviousHandLeaveAndParticipationCannotAffectNewHand(false)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:185) | 下一手已开始时拒绝上一手的立即离开与转旁观请求，不变成新预约。 |
+| UT-264 | [ResultReview_PreviousHandLeaveAndParticipationCannotAffectNewHand(true)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:185) | 上一手的取消离开请求不能影响新一手状态。 |
+| UT-265 | [ResultReview_ButtonsOfferImmediateActionsAndSeparateCancellation(false)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:225) | 保留观战预约时仍显示立即离开、转旁观及独立取消入口；下注按钮隐藏。 |
+| UT-266 | [ResultReview_ButtonsOfferImmediateActionsAndSeparateCancellation(true)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:225) | 保留离开预约时仍显示立即离开、转旁观及独立取消入口；下注按钮隐藏。 |
+| UT-267 | [ResultReview_CountdownExplainsInsufficientPlayersAndClearsForNewHand](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/UIInteractionTest.cs:247) | 倒计时区分继续开局与人数不足返回，开始新手时清除旧倒计时。 |
+| UT-268 | [ResultReview_ReservationArrivingAfterSettlementRemainsDeferred(false)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:204) | 本手结束前发出的离开预约延迟到查看期才抵达时，仍保留预约而不立即离房。 |
+| UT-269 | [ResultReview_ReservationArrivingAfterSettlementRemainsDeferred(true)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:204) | 本手结束前发出的观战预约延迟到查看期才抵达时，仍保留座位和预约。 |
+
+相关生命周期说明及一服三端执行记录见 [结果查看期验证](D:/GitHubRepos/Poker/Docs/ResultReview.md)。

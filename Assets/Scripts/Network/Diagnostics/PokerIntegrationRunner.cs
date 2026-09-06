@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Game.Network.Diagnostics
 {
-    public sealed class PokerIntegrationRunner : MonoBehaviour
+    public sealed partial class PokerIntegrationRunner : MonoBehaviour
     {
         private const string Password = "Integration123!";
         private const float TimeoutSeconds = 120f;
@@ -53,6 +53,11 @@ namespace Game.Network.Diagnostics
         private int _waitingLeavePhase;
         private bool _testSpectators;
         private bool _testStorage;
+        private bool _testTasks;
+        private bool _taskRoomRejectionSent;
+        private bool _taskRoomRejectionReceived;
+        private int _taskPeriod;
+        private DailyTaskClaimResponse _lastDailyClaimResponse;
         private bool _storageAllIn;
         private bool _storageNotice;
         private bool _storageFaultArmed;
@@ -80,8 +85,11 @@ namespace Game.Network.Diagnostics
 
             var runner = controller.gameObject.AddComponent<PokerIntegrationRunner>();
             runner._role = role;
+            runner._reviewScenario = GetArgument("-pokerIntegrationScenario");
+            runner._testResultReview = runner._reviewScenario == "review-bust" || runner._reviewScenario == "review-actions";
             runner._testDepartures = GetArgument("-pokerIntegrationScenario") == "departures";
-            runner._testSpectators = GetArgument("-pokerIntegrationScenario") == "spectators";
+            runner._testTasks = GetArgument("-pokerIntegrationScenario") == "tasks";
+            runner._testSpectators = GetArgument("-pokerIntegrationScenario") == "spectators" || runner._testTasks;
             runner._testStorage = (GetArgument("-pokerIntegrationScenario") ?? "").StartsWith("storage-");
             runner._storageAllIn = GetArgument("-pokerIntegrationScenario") == "storage-allin";
             runner._runId = SanitizeFileName(runId);
@@ -116,6 +124,9 @@ namespace Game.Network.Diagnostics
         {
             _authenticator.ConfigureDatabaseFileName($"PokerIntegration-{_runId}.db");
             NetworkConfigurationLoader.LoadAndApplyServer(_networkRoom);
+            if (_testTasks)
+                typeof(AccountAuthenticator).GetField("_initialChips", System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.NonPublic).SetValue(_authenticator, (uint)900);
             _networkRoom.StartServer();
             if (_testStorage)
             {
@@ -162,7 +173,7 @@ namespace Game.Network.Diagnostics
                         Fail("Final chip reconciliation failed: " + JsonSerializer.Serialize(report));
                         yield break;
                     }
-                    if (report.ActiveHandCount != 0 || report.AccountBalanceTotal != 30000)
+                    if (report.ActiveHandCount != 0 || report.AccountBalanceTotal != (_testTasks ? 7700 : 30000))
                     {
                         Fail("Unexpected final chip totals: " + JsonSerializer.Serialize(report));
                         yield break;
@@ -261,15 +272,32 @@ namespace Game.Network.Diagnostics
                 yield break;
             }
 
+            if (_testTasks && _clientIndex > 0)
+            {
+                var previousDeadline = Time.realtimeSinceStartup + 30;
+                while (!File.Exists(Path.Combine(_outputDirectory, "tasks-" + (_clientIndex - 1) + ".ready")) &&
+                    Time.realtimeSinceStartup < previousDeadline)
+                    yield return null;
+            }
             LoginCredentialStore.Clear();
             var userNameRunId = _runId.Length <= 8 ? _runId : _runId.Substring(0, 8);
             _userName = $"Smoke{userNameRunId}_{_clientIndex}";
             var configurationPath = NetworkConfigurationLoader.GetClientPath();
             _networkRoom.ConfigureClient(NetworkConfiguration.ParseClient(File.ReadAllText(configurationPath)));
             _authenticator.AuthenticationResponseReceived += OnAuthenticationResponse;
-            _networkRoom.StartConfiguredClientConnection();
-            RegisterClientHandlers();
-            _authenticator.Register(_userName, Password);
+            if (_testTasks)
+            {
+                _networkRoom.StartSilentClientConnection(3);
+                RegisterClientHandlers();
+                yield return RunDailyTaskPreflight();
+                if (_finishing) yield break;
+            }
+            else
+            {
+                _networkRoom.StartConfiguredClientConnection();
+                RegisterClientHandlers();
+                _authenticator.Register(_userName, Password);
+            }
 
             var deadline = Time.realtimeSinceStartup + TimeoutSeconds;
             while (!_finishing && Time.realtimeSinceStartup < deadline)
@@ -305,8 +333,133 @@ namespace Game.Network.Diagnostics
                 Fail("Timed out before completing the scripted client flow.");
         }
 
+        private IEnumerator RunDailyTaskPreflight()
+        {
+            var deadline = Time.realtimeSinceStartup + 10;
+            while (!NetworkClient.isConnected && Time.realtimeSinceStartup < deadline)
+                yield return null;
+            Framework.UI.UIManager.Instance.ResetPanels<UI.TitlePanel>();
+            Click(UI.TitlePanel.Instance, "_tasks");
+            if (_finishing) yield break;
+            Field<TMPro.TMP_InputField>(UI.LoginPanel.Instance, "_userName").text = _userName;
+            Field<TMPro.TMP_InputField>(UI.LoginPanel.Instance, "_password").text = Password;
+            Click(UI.LoginPanel.Instance, "_register");
+            yield return WaitForDailyTaskBalance(900);
+            if (_finishing) yield break;
+            _taskPeriod = Field<DailyTasksSnapshot>(UI.DailyTaskPanel.Instance, "_snapshot").Period;
+            if (_clientIndex == 1)
+            {
+                yield return ClaimDailyTaskThroughUI(DailyTaskId.Comeback, 2900);
+                if (_finishing) yield break;
+            }
+            uint expected = _clientIndex == 1 ? 3900u : 1900u;
+            yield return ClaimDailyTaskThroughUI(DailyTaskId.DailySupply, expected);
+            if (_finishing) yield break;
+            if (_clientIndex != 1)
+            {
+                var card = Field<UI.DailyTaskCard[]>(UI.DailyTaskPanel.Instance, "_cards")[1];
+                if (Field<UnityEngine.UI.Button>(card, "_claim").interactable)
+                {
+                    Fail("Low-balance UI remained claimable after the daily supply raised the balance.");
+                    yield break;
+                }
+                var request = _networkRoom.RequestDailyTaskClaim(DailyTaskId.Comeback, _taskPeriod);
+                yield return WaitForDailyTaskClaim(request, DailyTaskResult.BalanceTooHigh);
+                if (_finishing) yield break;
+            }
+            var duplicate = _networkRoom.RequestDailyTaskClaim(DailyTaskId.DailySupply, _taskPeriod);
+            yield return WaitForDailyTaskClaim(duplicate, DailyTaskResult.AlreadyClaimed);
+            if (_finishing) yield break;
+            Click(UI.DailyTaskPanel.Instance, "_back");
+            if (Framework.UI.UIManager.Instance.TopPanelIdentifier != nameof(UI.TitlePanel))
+            {
+                Fail("Tasks back did not return to the title.");
+                yield break;
+            }
+            Click(UI.TitlePanel.Instance, "_tasks");
+            yield return WaitForDailyTaskBalance(expected);
+            if (_finishing) yield break;
+            if (_clientIndex == 2)
+            {
+                _networkRoom.HandleClientLogout();
+                _authenticated = false;
+                yield return null;
+                // Do not use another simultaneously running client's shared saved token.
+                LoginCredentialStore.Clear();
+                Click(UI.TitlePanel.Instance, "_tasks");
+                if (_finishing) yield break;
+                Field<TMPro.TMP_InputField>(UI.LoginPanel.Instance, "_userName").text = _userName;
+                Field<TMPro.TMP_InputField>(UI.LoginPanel.Instance, "_password").text = Password;
+                Click(UI.LoginPanel.Instance, "_login");
+                RegisterClientHandlers();
+                yield return WaitForDailyTaskBalance(expected);
+                if (_finishing) yield break;
+                if (Field<DailyTasksSnapshot>(UI.DailyTaskPanel.Instance, "_snapshot").Tasks[0].Availability != DailyTaskAvailability.Claimed)
+                {
+                    Fail("Relogin lost the persisted daily claim.");
+                    yield break;
+                }
+            }
+            Click(UI.DailyTaskPanel.Instance, "_back");
+            Click(UI.TitlePanel.Instance, "_start");
+            WriteResult("tasks-" + _clientIndex + ".ready", "Title entry, registration, claim, refresh, duplicate rejection and back navigation passed; balance=" + expected);
+        }
+
+        private IEnumerator ClaimDailyTaskThroughUI(DailyTaskId id, uint balance)
+        {
+            var panel = UI.DailyTaskPanel.Instance;
+            var card = Field<UI.DailyTaskCard[]>(panel, "_cards").First(item => item.TaskId == id);
+            var before = Field<ulong>(_networkRoom, "_nextDailyTaskRequest");
+            Click(card, "_claim");
+            // Force a second event even though the button is disabled, modelling a queued double click.
+            Field<UnityEngine.UI.Button>(card, "_claim").onClick.Invoke();
+            if (Field<ulong>(_networkRoom, "_nextDailyTaskRequest") != before + 1)
+            {
+                Fail("A double click sent more than one claim request.");
+                yield break;
+            }
+            yield return WaitForDailyTaskBalance(balance);
+            if (!_finishing && !Field<TMPro.TextMeshProUGUI>(panel, "_feedback").text.Contains("领取成功"))
+                Fail("Reward success was not displayed after refreshing the panel.");
+        }
+
+        private IEnumerator WaitForDailyTaskBalance(uint expected)
+        {
+            var deadline = Time.realtimeSinceStartup + 10;
+            while (!_finishing && Time.realtimeSinceStartup < deadline)
+            {
+                var panel = UI.DailyTaskPanel.Instance;
+                if (panel != null && panel.isActiveAndEnabled && Field<bool>(panel, "_hasSnapshot") &&
+                    Field<DailyTasksSnapshot>(panel, "_snapshot").Balance == expected &&
+                    GameController.Instance.State.Chips == expected)
+                    yield break;
+                yield return null;
+            }
+            if (!_finishing) Fail("Task UI did not refresh from the server with balance " + expected + ".");
+        }
+
+        private IEnumerator WaitForDailyTaskClaim(ulong request, DailyTaskResult expected)
+        {
+            var deadline = Time.realtimeSinceStartup + 10;
+            while (_lastDailyClaimResponse.RequestId != request && Time.realtimeSinceStartup < deadline)
+                yield return null;
+            if (_lastDailyClaimResponse.RequestId != request || _lastDailyClaimResponse.Result != expected || _lastDailyClaimResponse.GrantedAmount != 0)
+                Fail("Unexpected claim response: " + JsonSerializer.Serialize(_lastDailyClaimResponse, new JsonSerializerOptions { IncludeFields = true }));
+        }
+
         private void RegisterClientHandlers()
         {
+            ObserveAudioRequests();
+            if (_testTasks)
+            {
+                RegisterClientHandler<DailyTasksResponse>("DailyTasksResponseHandler", _ => { });
+                RegisterClientHandler<DailyTaskClaimResponse>("DailyTaskClaimResponseHandler", response =>
+                {
+                    _lastDailyClaimResponse = response;
+                    if (_taskRoomRejectionSent && response.Result == DailyTaskResult.OutsideRoomRequired && response.GrantedAmount == 0)
+                        _taskRoomRejectionReceived = true;
+                });
+            }
             if (_testStorage)
                 RegisterClientHandler<ServerShutdownNotice>("ServerShutdownNoticeHandler", notice =>
                 {
@@ -379,6 +532,21 @@ namespace Game.Network.Diagnostics
 
             _roomId = room.Id;
             _joined = room.ContainsMember(_userName);
+            if (_testResultReview && _roundsCompleted > 0 && room.IsWaiting)
+            {
+                if (Time.realtimeSinceStartup - _lastResultTime < 9.5f ||
+                    message.TransitionReason != RoomTransitionReason.InsufficientPlayers || !AcknowledgeTransition(false))
+                {
+                    Fail("Waiting room transition interrupted result viewing.");
+                    return;
+                }
+                _sawWaitingRoom = true;
+                Click(UI.RoomPanel.Instance, "_back");
+                return;
+            }
+            if (_testSpectators && room.IsWaiting && _roundsCompleted > 0 &&
+                Time.realtimeSinceStartup - _lastResultTime < 9.5f)
+                Fail("Spectator scenario returned before the review interval elapsed.");
             if (_testSpectators && room.IsWaiting && _roundsCompleted >= 3)
             {
                 if (_clientIndex != 1 || !UI.RoomPanel.Instance.gameObject.activeInHierarchy ||
@@ -393,14 +561,14 @@ namespace Game.Network.Diagnostics
                 Click(UI.RoomPanel.Instance, "_back");
                 return;
             }
-            if (_testSpectators && _clientIndex == 0 && !_startSent && room.MaxPlayerCount != 2)
+            if ((_testSpectators || _testResultReview) && _clientIndex == 0 && !_startSent && room.MaxPlayerCount != 2)
             {
                 if (!_roomSettingsSent)
                 {
                     _roomSettingsSent = true;
                     NetworkClient.Send(new RoomInfoChange
                     {
-                        RoomId = room.Id, MaxPlayer = 2, SmallBlindChips = 1, ThinkingTime = 120,
+                        RoomId = room.Id, MaxPlayer = 2, SmallBlindChips = _reviewScenario == "review-bust" ? 4000 : 1, ThinkingTime = 120,
                     });
                 }
                 return;
@@ -452,16 +620,17 @@ namespace Game.Network.Diagnostics
         private void OnGameInfoSync(GameInfoSync message)
         {
             var info = message.Info;
+            if (info.RoomInfo != null)
+                VerifyRemoteAudio(info);
             if (info.RoomInfo == null)
                 return;
 
             if (_testDepartures)
             {
                 var panel = UI.GamePanel.Instance;
-                var leaveButton = panel == null ? null : panel.transform.Find("LeaveButton");
-                var label = leaveButton == null ? null : leaveButton.GetComponentInChildren<TMPro.TMP_Text>();
-                var expectedLabel = message.LeaveAfterHand ? "取消离开" :
-                    message.CanLeaveImmediately ? "离开房间" : "本手后离开";
+                var label = panel == null ? null : Field<TMPro.TMP_Text>(panel, "_leaveButtonLabel");
+                var expectedLabel = message.CanLeaveImmediately ? "离开房间" :
+                    message.LeaveAfterHand ? "取消离开" : "本手后离开";
                 if (panel == null || !panel.gameObject.activeInHierarchy || label == null || label.text != expectedLabel)
                 {
                     Fail("Built game panel is missing the synchronized departure control.");
@@ -485,6 +654,16 @@ namespace Game.Network.Diagnostics
                 (player.LastOperation.Type == PlayerOperationType.Bet || player.LastOperation.Type == PlayerOperationType.Raise));
             if (_roundsCompleted == 0 && _clientIndex == 0)
                 File.WriteAllText(Path.Combine(_outputDirectory, "hand-1.started"), "started");
+
+            if (_testResultReview)
+            {
+                InspectResultReview(message);
+                TryReviewOperate(message);
+                return;
+            }
+            if (_testSpectators && _roundsCompleted > 0 && info.Round < GameStage.RoundOver &&
+                Time.realtimeSinceStartup - _lastResultTime < 9.5f)
+                Fail("Next hand started before result viewing completed.");
 
             if (_clientIndex == 2 && _roundsCompleted == 0 &&
                 message.ParticipationStatus == TableParticipationStatus.WaitingForNextHand &&
@@ -576,6 +755,8 @@ namespace Game.Network.Diagnostics
                 // Deliberately wrong: the server must use the authenticated identity.
                 PlayerName = _testDepartures ? "NotTheAuthenticatedPlayer" : _userName,
                 CancelPending = cancelPending,
+                HandId = _latestGameInfo?.Info.HandId,
+                RequireImmediate = _latestGameInfo?.CanLeaveImmediately == true,
             });
         }
 
@@ -606,6 +787,15 @@ namespace Game.Network.Diagnostics
             if (response.TransitionReason != RoomTransitionReason.None && !AcknowledgeTransition(true))
                 return;
             _latestGameInfo = null;
+            if (_testResultReview)
+            {
+                if (response.TransitionReason == RoomTransitionReason.InsufficientPlayers &&
+                    Time.realtimeSinceStartup - _lastResultTime < 9.5f)
+                    Fail("Automatic observer exit interrupted result viewing.");
+                _leaveCompleted = true;
+                StartCoroutine(FinishResultReviewClient());
+                return;
+            }
             if (_testSpectators)
             {
                 if (_clientIndex == 2 && _spectatorPhase == 3)
@@ -670,7 +860,25 @@ namespace Game.Network.Diagnostics
 
         private void TryOperate(GameInfoSync message)
         {
+            if (_testResultReview)
+            {
+                TryReviewOperate(message);
+                return;
+            }
             var info = message.Info;
+            if (_testTasks && !_taskRoomRejectionSent && info.Round < GameStage.RoundOver)
+            {
+                if (_networkRoom.CanOpenDailyTasks || _networkRoom.RequestDailyTaskClaim(DailyTaskId.DailySupply, _taskPeriod) != 0)
+                {
+                    Fail("Client allowed a reward claim from inside a room.");
+                    return;
+                }
+                _taskRoomRejectionSent = true;
+                var sequence = Field<ulong>(_networkRoom, "_nextDailyTaskRequest") + 1;
+                typeof(NetworkRoom).GetField("_nextDailyTaskRequest", System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.NonPublic).SetValue(_networkRoom, sequence);
+                NetworkClient.Send(new DailyTaskClaimRequest { RequestId = sequence, TaskId = DailyTaskId.DailySupply, Period = _taskPeriod });
+            }
             if (_finishing || info.Round >= GameStage.RoundOver)
                 return;
             if (_testSpectators)
@@ -829,7 +1037,15 @@ namespace Game.Network.Diagnostics
         private void OnRoundResult(RoundResultNotification message)
         {
             _roundsCompleted++;
+            _lastResultTime = Time.realtimeSinceStartup;
             _actionPending = false;
+            if (_testResultReview)
+            {
+                if (_clientIndex == 2 && message.RoundResult.PlayerResults.Any(player => player.Hole.Count != 0))
+                    Fail("Result exposed hole cards to an observer.");
+                StartCoroutine(CheckResultViewing());
+                return;
+            }
             if (_testStorage)
             {
                 if (_roundsCompleted != 1) Fail("A failed hand incorrectly broadcast a completed result.");
@@ -874,7 +1090,8 @@ namespace Game.Network.Diagnostics
 
             if (!(_testDepartures && _clientIndex == 0) && !_leaveCompleted)
                 SendLeave(false);
-            var departureDeadline = Time.realtimeSinceStartup + 5f;
+            // Queued requests remain pending through the 10-second result review.
+            var departureDeadline = Time.realtimeSinceStartup + 15f;
             while (!_leaveCompleted && Time.realtimeSinceStartup < departureDeadline)
                 yield return null;
             if (!_leaveCompleted || (_testDepartures && _clientIndex == 0 &&
@@ -927,12 +1144,28 @@ namespace Game.Network.Diagnostics
             Click(item, "_join");
         }
 
-        private static T Field<T>(object target, string name) =>
-            (T)target.GetType().GetField(name, System.Reflection.BindingFlags.Instance |
-                System.Reflection.BindingFlags.NonPublic).GetValue(target);
+        private static bool IsTableSetting(object target, string name) => target is UI.GamePanel &&
+            (name == "_leaveButton" || name == "_leaveButtonLabel" || name == "_participationButton" ||
+                name == "_participationButtonLabel" || name == "_keepSpectatingButton");
+
+        private static T Field<T>(object target, string name)
+        {
+            if (IsTableSetting(target, name))
+                Framework.UI.UIManager.Instance.PushPanel<UI.InGameOptionPanel>();
+            for (var type = target.GetType(); type != null; type = type.BaseType)
+            {
+                var field = type.GetField(name, System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.NonPublic);
+                if (field != null)
+                    return (T)field.GetValue(target);
+            }
+            throw new MissingFieldException(target.GetType().Name, name);
+        }
 
         private void Click(UnityEngine.Component target, string name)
         {
+            if (target is UI.GamePanelElement.OperationArea)
+                Framework.UI.UIManager.Instance.PopPanel<UI.InGameOptionPanel>();
             var button = target == null ? null : Field<UnityEngine.UI.Button>(target, name);
             var result = UI.GamePanelElement.RoundResultMsgBox.Instance;
             if (button != null && !button.IsInteractable() && result != null && result.IsShowing && target != result)
@@ -943,6 +1176,8 @@ namespace Game.Network.Diagnostics
                 return;
             }
             button.onClick.Invoke();
+            if (IsTableSetting(target, name))
+                Framework.UI.UIManager.Instance.PopPanel<UI.InGameOptionPanel>();
         }
 
         private void InspectSpectatorState(GameInfoSync message)
@@ -1030,6 +1265,11 @@ namespace Game.Network.Diagnostics
 
         private IEnumerator FinishSpectatorClient()
         {
+            if (_testTasks && !_taskRoomRejectionReceived)
+            {
+                Fail("Server did not explicitly reject the in-room reward request.");
+                yield break;
+            }
             _finishing = true;
             if (_roundsCompleted != 3 || !_sawRiver || !_sawBet || !_sawCountdown ||
                 (_clientIndex == 0 && !_sawSitOut) || (_clientIndex == 1 && !_sawWaitingRoom) ||

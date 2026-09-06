@@ -11,7 +11,8 @@ namespace Game.Network.Accounts
     public sealed class SqliteAccountRepository :
         IHandAccountRepository,
         ISessionAccountRepository,
-        IPasswordAccountRepository
+        IPasswordAccountRepository,
+        IDailyRewardRepository
     {
         public const int SchemaVersion = 3;
 
@@ -349,6 +350,31 @@ WHERE token_hash = $tokenHash AND revoked_at_utc IS NULL;";
             }
         }
 
+        public DailyRewardAccountState ReadDailyRewards(string accountId, string supplyKey, string comebackKey)
+        {
+            lock (_syncRoot)
+            {
+                using var connection = OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                var state = new DailyRewardAccountState
+                {
+                    Account = FindById(connection, transaction, accountId),
+                    HasActiveHand = IsAccountInActiveHand(connection, transaction, accountId),
+                    SupplyClaimed = LedgerRequestExists(connection, transaction, supplyKey),
+                    ComebackClaimed = LedgerRequestExists(connection, transaction, comebackKey),
+                };
+                transaction.Commit();
+                return state;
+            }
+        }
+
+        public ChipMutationResult ClaimDailyReward(string accountId, string claimKey, uint amount,
+            uint? maximumBalanceExclusive, out PlayerAccount account)
+        {
+            return ApplyChipMutationCore(accountId, claimKey, "DailyTaskReward", amount, null, null,
+                maximumBalanceExclusive, true, out account);
+        }
+
         public ChipMutationResult ApplyChipMutation(
             string accountId,
             string requestId,
@@ -357,6 +383,14 @@ WHERE token_hash = $tokenHash AND revoked_at_utc IS NULL;";
             int? roomId,
             string handId,
             out PlayerAccount account)
+        {
+            return ApplyChipMutationCore(accountId, requestId, transactionType, amount, roomId, handId,
+                null, false, out account);
+        }
+
+        private ChipMutationResult ApplyChipMutationCore(string accountId, string requestId,
+            string transactionType, long amount, int? roomId, string handId,
+            uint? maximumBalanceExclusive, bool rejectActiveHandFirst, out PlayerAccount account)
         {
             account = null;
             if (string.IsNullOrEmpty(accountId))
@@ -371,6 +405,11 @@ WHERE token_hash = $tokenHash AND revoked_at_utc IS NULL;";
                 using (var connection = OpenConnection())
                 using (var transaction = connection.BeginTransaction())
                 {
+                    if (rejectActiveHandFirst && IsAccountInActiveHand(connection, transaction, accountId))
+                    {
+                        transaction.Rollback();
+                        return ChipMutationResult.AccountBusyInHand;
+                    }
                     if (LedgerRequestExists(connection, transaction, requestId))
                     {
                         account = FindById(connection, transaction, accountId);
@@ -388,6 +427,12 @@ WHERE token_hash = $tokenHash AND revoked_at_utc IS NULL;";
                     {
                         transaction.Rollback();
                         return ChipMutationResult.AccountBusyInHand;
+                    }
+
+                    if (maximumBalanceExclusive.HasValue && account.Chips >= maximumBalanceExclusive.Value)
+                    {
+                        transaction.Rollback();
+                        return ChipMutationResult.BalanceRequirementNotMet;
                     }
 
                     long newBalance;

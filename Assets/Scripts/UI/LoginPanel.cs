@@ -32,6 +32,8 @@ namespace Game.UI
         private bool _subscribed;
         private bool _savedLoginStarted;
 
+        internal bool OpenTasksAfterLogin { get; private set; }
+
         private void OnEnable()
         {
             _login.onClick.AddListener(Login);
@@ -42,9 +44,12 @@ namespace Game.UI
             _userName.text = LoginCredentialStore.SavedUserName;
             SetStatus(string.Empty);
             ResolveAuthenticator();
+            RefreshControls();
         }
 
-        private void Update()
+        private void Update() => RefreshControls();
+
+        private void RefreshControls()
         {
             ResolveAuthenticator();
             var pending = _authenticator != null && _authenticator.IsAuthenticationPending;
@@ -62,7 +67,14 @@ namespace Game.UI
             _back.onClick.RemoveListener(Back);
             Unsubscribe();
             _savedLoginStarted = false;
+            OpenTasksAfterLogin = false;
             _password.text = string.Empty;
+        }
+
+        public void BeginTaskLogin()
+        {
+            OpenTasksAfterLogin = true;
+            BeginSavedLogin();
         }
 
         public void BeginSavedLogin(string sessionToken = null)

@@ -40,6 +40,8 @@ namespace Game.Network
         public int RoomId;
         public bool IsActive;
         public int SecondsRemaining;
+        public string HandId;
+        public bool CanStartNextHand;
     }
 
     public struct AccountBalanceSync : NetworkMessage

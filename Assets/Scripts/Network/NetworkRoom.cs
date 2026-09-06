@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Game.Network
 {
-    public class NetworkRoom : NetworkManager
+    public partial class NetworkRoom : NetworkManager
     {
         #region Server Only
         // server only
@@ -166,8 +166,15 @@ namespace Game.Network
         {
             NetworkServer.RegisterHandler<T>((conn, message) =>
             {
-                if (!_serverStorageFailed)
-                    handler(conn, message);
+                try
+                {
+                    if (!_serverStorageFailed)
+                        handler(conn, message);
+                }
+                catch (Exception) when (_serverStorageFailed)
+                {
+                    // Keep connections alive until the fatal-storage notice has been flushed.
+                }
             }, requireAuthentication);
         }
 
@@ -238,6 +245,7 @@ namespace Game.Network
                 MonitorClientActivity(_serverActivityMonitorVersion).Forget();
             if (authenticator is AccountAuthenticator accountAuthenticator)
                 _gameManager.SetAccountRepository(accountAuthenticator.AccountRepository);
+            RegisterDailyTaskServerHandlers();
             RegisterServerHandler<PlayerChangeReadyMessage>(PlayerChangeReadyMessageHandler, requireAuthentication: true);
             RegisterServerHandler<PlayerCreateRoomRequest>(PlayerCreateRoomRequestHandler, requireAuthentication: true);
             RegisterServerHandler<PlayerJoinRoomRequest>(PlayerJoinRoomRequestHandler, requireAuthentication: true);
@@ -253,6 +261,8 @@ namespace Game.Network
         public override void OnStopServer()
         {
             _serverActivityMonitorVersion++;
+            _dailyTaskRequestSequences.Clear();
+            _dailyTaskService = null;
             _lastClientActivities.Clear();
             _idleDisconnectPending.Clear();
             base.OnStopServer();
@@ -355,6 +365,7 @@ namespace Game.Network
 
         public override void OnServerDisconnect(NetworkConnectionToClient conn)
         {
+            _dailyTaskRequestSequences.Remove(conn);
             _lastClientActivities.Remove(conn.connectionId);
             _idleDisconnectPending.Remove(conn.connectionId);
 
@@ -376,7 +387,8 @@ namespace Game.Network
                         _gameManager.SetDisconnected(roomId, name);
                         if (!_gameManager.IsHandInProgress(roomId))
                         {
-                            _roomManager.ReleaseWatchingSeats(roomId);
+                            if (_gameManager.GetGameInfo(roomId)?.Stage != GameStage.RoundOver)
+                                _roomManager.ReleaseWatchingSeats(roomId);
                             RefreshRoomAfterDeparture(roomId);
                         }
                     }
@@ -410,6 +422,7 @@ namespace Game.Network
             NetworkClient.RegisterHandler<RoundResultNotification>(RoundResultNotificationHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<InterHandCountdownSync>(InterHandCountdownSyncHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<AccountBalanceSync>(AccountBalanceSyncHandler, requireAuthentication: false);
+            RegisterDailyTaskClientHandlers();
             
             if (!_silentConnectionAttempt)
                 ShowConnectingMessage();
@@ -514,8 +527,16 @@ namespace Game.Network
             if (response.Code != AccountAuthenticationCode.Success)
                 return;
 
+            var openTasks = LoginPanel.Instance != null && LoginPanel.Instance.OpenTasksAfterLogin &&
+                !response.HasLastRoom;
             ClearClientRoomNavigation();
-            OpenLobby();
+            if (openTasks)
+            {
+                UIManager.Instance.ResetPanels<TitlePanel>();
+                UIManager.Instance.PushPanel<DailyTaskPanel>();
+            }
+            else
+                OpenLobby();
 
             if (!response.HasLastRoom)
             {
@@ -639,6 +660,7 @@ namespace Game.Network
             _intentionalLogout = false;
             _isConnected = false;
             ClearClientRoomNavigation();
+            GameAudioManager.Existing?.EnterLobby();
             _lastParticipationStatus = null;
             if (!shutdownReason.HasValue && silentDisconnect && !oldConnectedStatus)
                 return;
@@ -736,7 +758,8 @@ namespace Game.Network
                 UIManager.Instance.PopPanel<RoundResultMsgBox>();
             GamePanel.Instance.ApplySync(message);
 
-            if (message.ParticipationStatus == TableParticipationStatus.InsufficientChips &&
+            if (message.Info.Round != GameStage.RoundOver &&
+                message.ParticipationStatus == TableParticipationStatus.InsufficientChips &&
                 _lastParticipationStatus != TableParticipationStatus.InsufficientChips)
             {
                 ShowInsufficientChipsPrompt(message);
@@ -744,7 +767,8 @@ namespace Game.Network
             if (message.Info.IsSpectator && !_spectatorIntroShown)
             {
                 _spectatorIntroShown = true;
-                if (message.ParticipationStatus != TableParticipationStatus.InsufficientChips)
+                if (message.Info.Round != GameStage.RoundOver &&
+                    message.ParticipationStatus != TableParticipationStatus.InsufficientChips)
                     MsgBox.Create("SpectatorIntro", ConfigureSpectatorIntro);
             }
             else if (!message.Info.IsSpectator)
@@ -786,8 +810,9 @@ namespace Game.Network
         private void InterHandCountdownSyncHandler(InterHandCountdownSync message)
         {
             if (GameController.Available && GameController.Instance.State.LastRoomId == message.RoomId &&
-                GamePanel.Instance != null && GamePanel.Instance.Info.RoomInfo?.Id == message.RoomId)
-                GamePanel.Instance.SetInterHandCountdown(message.IsActive, message.SecondsRemaining);
+                UIManager.Instance.ContainsPanel<GamePanel>() && GamePanel.Instance.Info.RoomInfo?.Id == message.RoomId &&
+                GamePanel.Instance.Info.HandId == message.HandId)
+                GamePanel.Instance.SetInterHandCountdown(message.IsActive, message.SecondsRemaining, message.CanStartNextHand);
         }
 
         private void AccountBalanceSyncHandler(AccountBalanceSync message)
@@ -819,17 +844,22 @@ namespace Game.Network
             (singleton as NetworkRoom)?.RequestLeaveRoom(roomId);
         }
 
-        public bool RequestLeaveRoom(int roomId, bool cancelPending = false)
+        public bool RequestLeaveRoom(int roomId, bool cancelPending = false, string expectedHandId = null,
+            bool? requireImmediate = null)
         {
             if (!NetworkClient.isConnected || NetworkClient.connection == null ||
                 !NetworkClient.connection.isAuthenticated)
                 return false;
 
+            var panel = UIManager.Instance.ContainsPanel<GamePanel>() ? GamePanel.Instance : null;
+            var info = panel != null && panel.Info.RoomInfo?.Id == roomId ? panel.Info : default;
             NetworkClient.Send(new PlayerLeaveRoomRequest
             {
                 RoomId = roomId,
                 PlayerName = GameController.Instance.State.Nickname,
                 CancelPending = cancelPending,
+                HandId = expectedHandId ?? info.HandId,
+                RequireImmediate = requireImmediate ?? (info.RoomInfo == null || info.IsSpectator || info.Round == GameStage.RoundOver),
             });
             return true;
         }
@@ -853,6 +883,16 @@ namespace Game.Network
                 GameController.Instance.State.SetLastRoom(null);
                 OpenLobby();
                 ShowRoomTransition(response.TransitionReason, true);
+                return;
+            }
+
+            if (response.Status == RoomLeaveStatus.StaleRequest)
+            {
+                MsgBox.Create("LeaveRoomError", box =>
+                {
+                    box.Title = "牌局状态已变化";
+                    box.Message = "这次离开操作已过期，请根据当前界面重新操作。";
+                });
                 return;
             }
 
@@ -1156,13 +1196,28 @@ namespace Game.Network
             RecordClientActivity(conn);
             if (!TryGetAuthenticatedPlayer(conn, out var playerName))
                 return;
-            HandleRoomDeparture(conn, message.RoomId, playerName, message.CancelPending);
+            var status = _departures.RequestForHand(message.RoomId, playerName, message.HandId,
+                message.RequireImmediate, message.CancelPending);
+            if (status == RoomLeaveStatus.StaleRequest)
+            {
+                conn.Send(new PlayerLeaveRoomResponse { RoomId = message.RoomId, Status = status });
+                if (_roomManager.FindRoom(message.RoomId)?.ContainsMember(playerName) == true)
+                    BroadcastGameInfo(message.RoomId);
+                return;
+            }
+            SendDepartureResponse(conn, message.RoomId, playerName, status);
         }
 
         private RoomLeaveStatus HandleRoomDeparture(
             NetworkConnectionToClient conn, int roomId, string playerName, bool cancelPending)
         {
-            var status = _departures.Request(roomId, playerName, cancelPending);
+            return SendDepartureResponse(conn, roomId, playerName,
+                _departures.Request(roomId, playerName, cancelPending));
+        }
+
+        private RoomLeaveStatus SendDepartureResponse(NetworkConnectionToClient conn, int roomId,
+            string playerName, RoomLeaveStatus status)
+        {
             // A repeated request or a stale recovery bookmark can safely confirm departure,
             // but must never clear an association with a different room.
             if ((status == RoomLeaveStatus.NotMember || status == RoomLeaveStatus.RoomNotFound) &&
@@ -1198,7 +1253,9 @@ namespace Game.Network
             if (!room.IsWaiting)
             {
                 if (_gameManager.SynchronizeRoomSeats(roomId) != 0 ||
-                    (!_gameManager.IsHandInProgress(roomId) && _participation.CountNextHandPlayers(roomId) < 2))
+                    (!_gameManager.IsHandInProgress(roomId) &&
+                        _gameManager.GetGameInfo(roomId)?.Stage != GameStage.RoundOver &&
+                        _participation.CountNextHandPlayers(roomId) < 2))
                 {
                     ReturnRoomToLobby(roomId);
                     return;
@@ -1232,6 +1289,7 @@ namespace Game.Network
                 HandId = state.Info.HandId,
                 Revision = state.ParticipationRevision,
                 Action = action,
+                RequireImmediate = state.CanLeaveImmediately,
             });
             return true;
         }
@@ -1241,7 +1299,8 @@ namespace Game.Network
             RecordClientActivity(conn);
             if (!TryGetAuthenticatedPlayer(conn, out var name))
                 return;
-            var result = _participation.Request(request.RoomId, name, request.Action, request.HandId, request.Revision);
+            var result = _participation.Request(request.RoomId, name, request.Action, request.HandId, request.Revision,
+                request.RequireImmediate);
             conn.Send(new TableParticipationResponse { RoomId = request.RoomId, Result = result });
             if (result == TableParticipationResult.Success)
                 RefreshRoomAfterDeparture(request.RoomId);
@@ -1712,6 +1771,8 @@ namespace Game.Network
                 return;
             UIManager.Instance.PushPanel<RoundResultMsgBox>(UIManager.Layer.System);
             RoundResultMsgBox.Instance.Info = message.RoundResult;
+            GameAudioManager.EnsureClient()?.ShowResult(message.RoomId, GamePanel.Instance.Info.HandId,
+                GameController.Instance.State.UserName, RoundResultMsgBox.Instance.Info);
         }
 
         #endregion
@@ -1770,8 +1831,6 @@ namespace Game.Network
             }
 
             gameInfo.Timer.Stop();
-            CompletePendingDepartures(roomId);
-            _roomManager.ReleaseWatchingSeats(roomId);
             if (_roomManager.FindRoom(roomId) == null)
             {
                 _gameManager.CancelGame(roomId, "RoomEmpty");
@@ -1786,30 +1845,24 @@ namespace Game.Network
             }
             BroadcastRoomInfo(room);
             BroadcastGameInfo(roomId);
-            if (_participation.CountNextHandPlayers(roomId) < 2)
-            {
-                ReturnRoomToLobby(roomId);
-                return;
-            }
-
             var settledGame = gameInfo;
             var settledHandId = gameInfo.HandId;
             for (int secondsRemaining = 10; secondsRemaining > 0; secondsRemaining--)
             {
                 room = _roomManager.FindRoom(roomId);
                 gameInfo = _gameManager.GetGameInfo(roomId);
-                if (!NetworkServer.active || serverVersion != _serverActivityMonitorVersion ||
+                if (!NetworkServer.active || _serverStorageFailed || serverVersion != _serverActivityMonitorVersion ||
                     room == null || !ReferenceEquals(gameInfo, settledGame) ||
                     gameInfo.HandId != settledHandId || room.IsWaiting || gameInfo.Stage != GameStage.RoundOver)
                     return;
 
                 BroadcastInterHandCountdown(roomId, true, secondsRemaining);
-                await UniTask.WaitForSeconds(1);
+                await UniTask.Delay(1000, ignoreTimeScale: true);
             }
 
             room = _roomManager.FindRoom(roomId);
             gameInfo = _gameManager.GetGameInfo(roomId);
-            if (!NetworkServer.active || serverVersion != _serverActivityMonitorVersion ||
+            if (!NetworkServer.active || _serverStorageFailed || serverVersion != _serverActivityMonitorVersion ||
                     room == null || !ReferenceEquals(gameInfo, settledGame) ||
                     gameInfo.HandId != settledHandId || room.IsWaiting || gameInfo.Stage != GameStage.RoundOver)
                 return;
@@ -1820,10 +1873,15 @@ namespace Game.Network
                 _gameManager.CancelGame(roomId, "RoomEmpty");
                 return;
             }
+            _gameManager.PrepareNextHandSeats(roomId);
+            _roomManager.ReleaseWatchingSeats(roomId);
+            if (_participation.CountNextHandPlayers(roomId) < 2)
+            {
+                ReturnRoomToLobby(roomId);
+                return;
+            }
             _participation.AdmitForNextHand(roomId);
-            if (_gameManager.SynchronizeRoomSeats(roomId) != 0 ||
-                _participation.CountNextHandPlayers(roomId) < 2 ||
-                _gameManager.StartNew(roomId) != 0)
+            if (_gameManager.SynchronizeRoomSeats(roomId) != 0 || _gameManager.StartNew(roomId) != 0)
             {
                 ReturnRoomToLobby(roomId);
                 return;
@@ -1949,6 +2007,8 @@ namespace Game.Network
                 RoomId = roomId,
                 IsActive = isActive,
                 SecondsRemaining = secondsRemaining,
+                HandId = _gameManager.GetGameInfo(roomId)?.HandId,
+                CanStartNextHand = _participation.CountNextHandPlayers(roomId) >= 2,
             };
             foreach (var playerName in room.MemberNames)
                 _playerManager.GetConnection(playerName)?.Send(message);

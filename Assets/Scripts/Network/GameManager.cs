@@ -434,7 +434,6 @@ namespace Game.Network
                 });
             }
 
-            UpdateRoomSeatStatesAfterHand(info);
             OnRoomRoundEnded?.Invoke(info.RoomInfo.Id, roundResult);
         }
 
@@ -671,6 +670,13 @@ namespace Game.Network
                 SeatIndex = seatIndex,
                 IsFold = true,
             };
+        }
+
+        // Called after the result-viewing interval, immediately before preparing the next hand.
+        public void PrepareNextHandSeats(int roomId)
+        {
+            if (_games.TryGetValue(roomId, out var info) && info.Stage == GameStage.RoundOver)
+                UpdateRoomSeatStatesAfterHand(info);
         }
 
         private static void UpdateRoomSeatStatesAfterHand(ServerGameInfo info)
@@ -1013,7 +1019,7 @@ namespace Game.Network
             if (!CanAct(player) || player.StageBet != info.CurrentHighestPlayerBet)
                 return -4;
 
-            player.LastOperation = new PlayerOperation() { Type = PlayerOperationType.Check };
+            player.LastOperation = new PlayerOperation() { Type = PlayerOperationType.Check, TurnId = info.TurnId };
             player.HasActedThisStage = true;
             player.BetFacedAtLastAction = info.CurrentHighestPlayerBet;
             AdvanceAfterAction(info);
@@ -1056,6 +1062,7 @@ namespace Game.Network
 
             player.LastOperation = new PlayerOperation()
             {
+                TurnId = info.TurnId,
                 Type = previousBet == 0 ? PlayerOperationType.Bet : PlayerOperationType.Raise,
                 Number = num,
             };
@@ -1084,6 +1091,7 @@ namespace Game.Network
                 return -5;
             player.LastOperation = new PlayerOperation()
             {
+                TurnId = info.TurnId,
                 Type = committed < required ? PlayerOperationType.AllIn : PlayerOperationType.Call,
                 Number = player.StageBet,
             };
@@ -1123,6 +1131,7 @@ namespace Game.Network
 
             player.LastOperation = new PlayerOperation()
             {
+                TurnId = info.TurnId,
                 Type = PlayerOperationType.AllIn,
                 Number = player.StageBet,
             };
@@ -1146,7 +1155,7 @@ namespace Game.Network
                 return -4;
 
             player.IsFold = true;
-            player.LastOperation = new PlayerOperation() { Type = PlayerOperationType.Fold };
+            player.LastOperation = new PlayerOperation() { Type = PlayerOperationType.Fold, TurnId = info.TurnId };
             player.HasActedThisStage = true;
             player.BetFacedAtLastAction = info.CurrentHighestPlayerBet;
             AdvanceAfterAction(info);

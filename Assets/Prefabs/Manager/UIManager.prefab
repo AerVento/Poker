@@ -42,8 +42,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d2708df4ed2d4bd45b407bd6259d139c, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   _canvasPrefab: {fileID: 4597163636783435597, guid: ce945f2031f617d40825456213696e05, type: 3}
   _eventSystemPrefab: {fileID: 8814929906135635686, guid: ef18ad9b58141a4458a0d949c3d31d6d, type: 3}
   _panels:
@@ -56,3 +56,5 @@ MonoBehaviour:
   - {fileID: 3500243007069207270, guid: 4d82cfaf031808140ab38fb21694a179, type: 3}
   - {fileID: 3095584400419428466, guid: cb5d5ac6b16a5cf4491af82aaad40d43, type: 3}
   - {fileID: 4022197374001001704, guid: 6ec556cbc60e8774ea4ad5a63bf4bc85, type: 3}
+  - {fileID: 1431855893804380532, guid: 8e6ab64d153415749b39c5623646cd23, type: 3}
+  - {fileID: 832431018724604814, guid: ffa55a50edbc3794ebef04116ffaff2f, type: 3}

@@ -311,6 +311,7 @@ namespace Game.UI.GamePanelElement
                 Number = number,
             };
             NetworkClient.Send(request);
+            GameAudioManager.EnsureClient()?.PlayOperation(type, _info, number);
             Log.Write($"Send player operation request to the server: Type = {type}, Num = {number}");
         }
     }

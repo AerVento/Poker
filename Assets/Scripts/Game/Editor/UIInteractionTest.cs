@@ -220,6 +220,42 @@ namespace Game.Tests
             Assert.IsFalse(Field<TextMeshProUGUI>(panel, "_leaveStatus").gameObject.activeSelf);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ResultReview_ButtonsOfferImmediateActionsAndSeparateCancellation(bool leave)
+        {
+            var panel = CreateGamePanel();
+            var info = CreateInfo();
+            info.Round = GameStage.RoundOver;
+            info.OperatingPlayer = -1;
+            panel.ApplySync(new GameInfoSync
+            {
+                Info = info, LeaveAfterHand = leave, SitOutAfterHand = !leave,
+                CanLeaveImmediately = true,
+            });
+            Assert.AreEqual("离开房间", Field<TextMeshProUGUI>(panel, "_leaveButtonLabel").text);
+            Assert.AreEqual("转为旁观", Field<TextMeshProUGUI>(panel, "_participationButtonLabel").text);
+            Assert.IsTrue(Field<Button>(panel, "_participationButton").interactable);
+            var cancel = Field<Button>(panel, "_keepSpectatingButton");
+            Assert.IsTrue(cancel.gameObject.activeSelf);
+            Assert.AreEqual(leave ? "取消离开预约" : "取消观战预约", cancel.GetComponentInChildren<TMP_Text>().text);
+            Assert.IsFalse(Field<OperationArea>(panel, "_operationArea").GetComponentsInChildren<Button>(true)
+                .Any(button => button.gameObject.activeSelf));
+        }
+
+        [Test]
+        public void ResultReview_CountdownExplainsInsufficientPlayersAndClearsForNewHand()
+        {
+            var panel = CreateGamePanel();
+            panel.Info = CreateInfo();
+            panel.SetInterHandCountdown(true, 7, false);
+            Assert.AreEqual("当前可参战人数不足，7 秒后返回", Field<TextMeshProUGUI>(panel, "_countdownStatus").text);
+            panel.SetInterHandCountdown(true, 6, true);
+            Assert.AreEqual("下一手将在 6 秒后开始", Field<TextMeshProUGUI>(panel, "_countdownStatus").text);
+            panel.ApplySync(new GameInfoSync { Info = CreateInfo() });
+            Assert.IsFalse(Field<TextMeshProUGUI>(panel, "_countdownStatus").gameObject.activeSelf);
+        }
+
         [Test]
         public void HidingGamePanel_StopsSeatTimersAndClearsInterHandCountdown()
         {
@@ -289,7 +325,7 @@ namespace Game.Tests
                 Info = CreateInfo(), SitOutAfterHand = true, ParticipationStatus = TableParticipationStatus.Playing,
             });
             Assert.AreEqual("取消转旁观", Field<TextMeshProUGUI>(panel, "_participationButtonLabel").text);
-            Assert.IsTrue(Field<TextMeshProUGUI>(panel, "_tableStatus").text.Contains("结算后"));
+            Assert.IsTrue(Field<TextMeshProUGUI>(panel, "_tableStatus").text.Contains("查看结果结束后"));
             Assert.IsTrue(Field<Button>(Field<OperationArea>(panel, "_operationArea"), "_callButton").gameObject.activeSelf);
             Assert.IsFalse(Field<Button>(panel, "_keepSpectatingButton").gameObject.activeSelf);
         }
@@ -443,7 +479,12 @@ namespace Game.Tests
             Assert.AreEqual(RoomLeaveStatus.Left, leave.Status);
         }
 
-        private GamePanel CreateGamePanel() => Create<GamePanel>("GamePanel/GamePanel.prefab");
+        private GamePanel CreateGamePanel()
+        {
+            var panel = Create<GamePanel>("GamePanel/GamePanel.prefab");
+            Create<InGameOptionPanel>("InGameOptionPanel.prefab").Bind(panel);
+            return panel;
+        }
 
         private T Create<T>(string path) where T : Component
         {
@@ -472,7 +513,13 @@ namespace Game.Tests
 
         private static T Field<T>(object target, string name)
         {
-            return (T)target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(target);
+            for (var type = target.GetType(); type != null; type = type.BaseType)
+            {
+                var field = type.GetField(name, BindingFlags.Instance | BindingFlags.NonPublic);
+                if (field != null)
+                    return (T)field.GetValue(target);
+            }
+            throw new MissingFieldException(target.GetType().Name, name);
         }
 
         private static void Invoke(object target, string name, params object[] args)
