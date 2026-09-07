@@ -141,7 +141,7 @@ namespace Game.Tests
 
         [TestCase(false)]
         [TestCase(true)]
-        public void DebitStorageFailure_StopsPlayWithoutAdditionalLedgerWrites(bool blinds)
+        public void Wagers_DoNotWriteAccountBalancesOrLedger(bool blinds)
         {
             var info = Start();
             if (blinds)
@@ -153,10 +153,10 @@ namespace Game.Tests
             var before = _raw.ReconcileChips();
             if (blinds) _games.StartNew(42);
             else _games.Call(42, info.OperatingPlayer);
-            Assert.AreEqual(1, _failures);
-            Assert.IsTrue(_guard.HasFailed);
-            Assert.IsNull(_games.GetGameInfo(42));
-            Assert.IsFalse(info.Timer.IsCounting);
+            Assert.AreEqual(0, _failures);
+            Assert.IsFalse(_guard.HasFailed);
+            Assert.NotNull(_games.GetGameInfo(42));
+            Assert.IsTrue(info.Timer.IsCounting);
             var after = _raw.ReconcileChips();
             Assert.AreEqual(before.AccountBalanceTotal, after.AccountBalanceTotal);
             Assert.AreEqual(before.LedgerEntryCount, after.LedgerEntryCount);
@@ -168,7 +168,7 @@ namespace Game.Tests
         {
             Start();
             Assert.Throws<InvalidOperationException>(() => _guard.SettleHand(
-                "missing-hand", "missing-hand:settlement", new HandChipCredit[0], out _));
+                "missing-hand", "missing-hand:settlement", new HandSettlementEntry[0], out _));
             Assert.AreEqual(1, _failures);
             Assert.IsNull(_games.GetGameInfo(42));
         }

@@ -91,6 +91,10 @@ namespace Game.Network.Diagnostics
             runner._testTasks = GetArgument("-pokerIntegrationScenario") == "tasks";
             runner._testSpectators = GetArgument("-pokerIntegrationScenario") == "spectators" || runner._testTasks;
             runner._testStorage = (GetArgument("-pokerIntegrationScenario") ?? "").StartsWith("storage-");
+            runner._testLeaderboard = runner._reviewScenario == "leaderboard" || runner._reviewScenario == "idle";
+            runner._testIdle = runner._reviewScenario == "idle";
+            runner._testShop = runner._reviewScenario == "shop";
+            runner._testSpectators |= runner._testShop;
             runner._storageAllIn = GetArgument("-pokerIntegrationScenario") == "storage-allin";
             runner._runId = SanitizeFileName(runId);
             runner._outputDirectory = Path.GetFullPath(outputDirectory);
@@ -128,6 +132,7 @@ namespace Game.Network.Diagnostics
                 typeof(AccountAuthenticator).GetField("_initialChips", System.Reflection.BindingFlags.Instance |
                     System.Reflection.BindingFlags.NonPublic).SetValue(_authenticator, (uint)900);
             _networkRoom.StartServer();
+            if (_testLeaderboard) SeedLeaderboard();
             if (_testStorage)
             {
 #if UNITY_EDITOR || UNITY_STANDALONE_LINUX || UNITY_STANDALONE_WIN
@@ -145,7 +150,7 @@ namespace Game.Network.Diagnostics
                 };
 #endif
             }
-            var deadline = Time.realtimeSinceStartup + TimeoutSeconds;
+            var deadline = Time.realtimeSinceStartup + (_testIdle ? 400f : TimeoutSeconds);
             while (Time.realtimeSinceStartup < deadline)
             {
                 var failure = Enumerable.Range(0, 3)
@@ -173,7 +178,7 @@ namespace Game.Network.Diagnostics
                         Fail("Final chip reconciliation failed: " + JsonSerializer.Serialize(report));
                         yield break;
                     }
-                    if (report.ActiveHandCount != 0 || report.AccountBalanceTotal != (_testTasks ? 7700 : 30000))
+                    if (report.ActiveHandCount != 0 || report.AccountBalanceTotal != (_testTasks ? 7700 : _testShop ? 12000 : _testLeaderboard ? 5530000 : 30000))
                     {
                         Fail("Unexpected final chip totals: " + JsonSerializer.Serialize(report));
                         yield break;
@@ -299,7 +304,23 @@ namespace Game.Network.Diagnostics
                 _authenticator.Register(_userName, Password);
             }
 
-            var deadline = Time.realtimeSinceStartup + TimeoutSeconds;
+            if (_testShop)
+            {
+                yield return CheckShopUI(_roundsCompleted == 0);
+                if (_finishing) yield break;
+            }
+            if (_testLeaderboard)
+            {
+                yield return CheckLeaderboardUI();
+                if (_finishing) yield break;
+                if (_testIdle)
+                {
+                    yield return CheckIdleConnection();
+                    yield break;
+                }
+            }
+
+            var deadline = Time.realtimeSinceStartup + (_testIdle ? 400f : TimeoutSeconds);
             while (!_finishing && Time.realtimeSinceStartup < deadline)
             {
                 if (_authenticated && NetworkClient.connection != null && NetworkClient.connection.isAuthenticated)
@@ -530,6 +551,7 @@ namespace Game.Network.Diagnostics
             if (room == null)
                 return;
 
+            if (_testShop) CheckShopRoom(room);
             _roomId = room.Id;
             _joined = room.ContainsMember(_userName);
             if (_testResultReview && _roundsCompleted > 0 && room.IsWaiting)
@@ -647,6 +669,7 @@ namespace Game.Network.Diagnostics
                 Click(intro, "_confirmButton");
                 WriteResult($"client-{_clientIndex}.intro.checked", "First observer introduction acknowledged");
             }
+            if (_testShop) CheckShopGame(message);
             _latestGameInfo = message;
             _roomId = info.RoomInfo.Id;
             _sawRiver |= info.Round == GameStage.River;
@@ -1036,13 +1059,13 @@ namespace Game.Network.Diagnostics
 
         private void OnRoundResult(RoundResultNotification message)
         {
+            InspectPublicResult(message.RoundResult);
+            if (_finishing) return;
             _roundsCompleted++;
             _lastResultTime = Time.realtimeSinceStartup;
             _actionPending = false;
             if (_testResultReview)
             {
-                if (_clientIndex == 2 && message.RoundResult.PlayerResults.Any(player => player.Hole.Count != 0))
-                    Fail("Result exposed hole cards to an observer.");
                 StartCoroutine(CheckResultViewing());
                 return;
             }
@@ -1054,9 +1077,6 @@ namespace Game.Network.Diagnostics
             }
             if (_testSpectators)
             {
-                if (_latestGameInfo.HasValue && _latestGameInfo.Value.Info.IsSpectator &&
-                    message.RoundResult.PlayerResults.Any(player => player.Hole.Count != 0))
-                    Fail("Spectator received another player's showdown hole cards.");
                 return;
             }
             if (_testDepartures && _clientIndex == 2 && _roundsCompleted == 1 && _waitingLeavePhase == 1)
@@ -1101,6 +1121,16 @@ namespace Game.Network.Diagnostics
                 Fail("The complete departure and recovery flow was not observed.");
                 yield break;
             }
+            if (_testShop)
+            {
+                yield return CheckShopUI(_roundsCompleted == 0);
+                if (_finishing) yield break;
+            }
+            if (_testLeaderboard)
+            {
+                yield return CheckLeaderboardUI();
+                if (File.Exists(ResultPath(_clientIndex, "fail"))) yield break;
+            }
             yield return new WaitForSecondsRealtime(0.2f);
             LoginCredentialStore.Clear();
             _networkRoom.StopClient();
@@ -1144,14 +1174,8 @@ namespace Game.Network.Diagnostics
             Click(item, "_join");
         }
 
-        private static bool IsTableSetting(object target, string name) => target is UI.GamePanel &&
-            (name == "_leaveButton" || name == "_leaveButtonLabel" || name == "_participationButton" ||
-                name == "_participationButtonLabel" || name == "_keepSpectatingButton");
-
         private static T Field<T>(object target, string name)
         {
-            if (IsTableSetting(target, name))
-                Framework.UI.UIManager.Instance.PushPanel<UI.InGameOptionPanel>();
             for (var type = target.GetType(); type != null; type = type.BaseType)
             {
                 var field = type.GetField(name, System.Reflection.BindingFlags.Instance |
@@ -1176,8 +1200,6 @@ namespace Game.Network.Diagnostics
                 return;
             }
             button.onClick.Invoke();
-            if (IsTableSetting(target, name))
-                Framework.UI.UIManager.Instance.PopPanel<UI.InGameOptionPanel>();
         }
 
         private void InspectSpectatorState(GameInfoSync message)
@@ -1265,6 +1287,11 @@ namespace Game.Network.Diagnostics
 
         private IEnumerator FinishSpectatorClient()
         {
+            if (_testShop)
+            {
+                yield return CheckShopUI(false);
+                if (_finishing) yield break;
+            }
             if (_testTasks && !_taskRoomRejectionReceived)
             {
                 Fail("Server did not explicitly reject the in-room reward request.");

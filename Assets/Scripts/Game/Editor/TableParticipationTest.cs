@@ -479,13 +479,19 @@ namespace Game.Tests
         }
 
         [Test]
-        public void SpectatorSettlement_ContainsNoHoleCardsWithoutMutatingPlayerResult()
+        public void SpectatorSettlement_PreservesPublicCardsAndKeepsFoldedCardsPrivate()
         {
             var result = new RoundResult();
             result.PlayerResults.Add(new RoundResult.Player { PlayerName = "A", Hole = Info.Players[0].Hole });
+            result.PlayerResults.Add(new RoundResult.Player { PlayerName = "B", IsFold = true, Hole = Info.Players[1].Hole });
+            result.PlayerResults.Add(new RoundResult.Player { PlayerName = "NotRevealed" });
             var projected = result.ForSpectator();
-            Assert.IsTrue(projected.PlayerResults.All(player => player.Hole.Count == 0));
+            CollectionAssert.AreEqual(result.PlayerResults[0].Hole, projected.PlayerResults[0].Hole);
+            Assert.AreEqual(0, projected.PlayerResults[1].Hole.Count);
+            Assert.AreEqual(0, projected.PlayerResults[2].Hole.Count);
+            projected.PlayerResults[0].Hole.Clear();
             Assert.AreEqual(2, result.PlayerResults[0].Hole.Count);
+            Assert.AreEqual(2, result.PlayerResults[1].Hole.Count);
         }
     }
 }

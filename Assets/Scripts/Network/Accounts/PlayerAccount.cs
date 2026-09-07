@@ -16,6 +16,8 @@ namespace Game.Network.Accounts
 
         public int PasswordIterations { get; set; }
 
+        public string EquippedNamecardId { get; set; } = string.Empty;
+
         public uint Chips { get; set; }
 
         public int? LastRoomId { get; set; }
@@ -37,6 +39,7 @@ namespace Game.Network.Accounts
                 PasswordSalt = PasswordSalt == null ? null : (byte[])PasswordSalt.Clone(),
                 PasswordIterations = PasswordIterations,
                 Chips = Chips,
+                EquippedNamecardId = EquippedNamecardId,
                 LastRoomId = LastRoomId,
                 Version = Version,
                 CreatedAtUtc = CreatedAtUtc,

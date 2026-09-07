@@ -173,7 +173,8 @@ namespace Game.Tests
             Assert.IsFalse(_ui.ContainsPanel<OptionPanel>());
             var settings = _ui.GetPanel<InGameOptionPanel>();
             Assert.IsNull(settings.transform.Find("Buttons/LogoutButton"));
-            Assert.NotNull(settings.transform.Find("TableActions/LeaveButton"));
+            Assert.IsNull(settings.transform.Find("TableActions"));
+            Assert.NotNull(game.transform.Find("TableActions/LeaveButton"));
             Assert.IsNull(game.transform.Find("LeaveButton"));
             Invoke(settings, "Back");
             Assert.AreEqual(nameof(GamePanel), _ui.TopPanelIdentifier);
@@ -312,7 +313,7 @@ namespace Game.Tests
             _ui.PushPanel<TitlePanel>();
             var login = _ui.PushPanel<LoginPanel>();
             Invoke(login, "Awake");
-            Set(login, "<OpenTasksAfterLogin>k__BackingField", true);
+            Set(login, "<DestinationAfterLogin>k__BackingField", Enum.Parse(typeof(LoginPanel).GetProperty("DestinationAfterLogin", Private).PropertyType, "DailyTasks"));
             Invoke(_network, "HandleClientAuthentication", new Game.Network.AccountAuthenticationResponse
             {
                 Code = Game.Network.Accounts.AccountAuthenticationCode.Success,
@@ -327,9 +328,9 @@ namespace Game.Tests
         public void CancellingTaskLoginDoesNotRedirectLaterNormalLogin()
         {
             var login = _ui.PushPanel<LoginPanel>();
-            Set(login, "<OpenTasksAfterLogin>k__BackingField", true);
+            Set(login, "<DestinationAfterLogin>k__BackingField", Enum.Parse(typeof(LoginPanel).GetProperty("DestinationAfterLogin", Private).PropertyType, "DailyTasks"));
             Invoke(login, "OnDisable");
-            Assert.IsFalse((bool)typeof(LoginPanel).GetProperty("OpenTasksAfterLogin", Private).GetValue(login));
+            Assert.AreEqual("Lobby", typeof(LoginPanel).GetProperty("DestinationAfterLogin", Private).GetValue(login).ToString());
         }
 
         [Test]
@@ -416,6 +417,117 @@ namespace Game.Tests
                 Assert.AreEqual(nameof(TitlePanel), _ui.TopPanelIdentifier);
             }
             finally { panel.transform.SetParent(_root.transform); }
+        }
+
+        [Test]
+        public void AccountFeaturesExistOnlyOnTitle()
+        {
+            var title = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Panels/TitlePanel.prefab").GetComponent<TitlePanel>();
+            foreach (var field in new[] { "_shop", "_leaderboard" })
+                Assert.IsNotNull(Field<UnityEngine.UI.Button>(title, field));
+            var lobby = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Panels/RoomListPanel/RoomListPanel.prefab");
+            Assert.IsNull(lobby.transform.Find("ShopButton"));
+            Assert.IsNull(lobby.transform.Find("LeaderboardButton"));
+        }
+
+        [TestCase("Shop", false)]
+        [TestCase("Shop", true)]
+        [TestCase("Leaderboard", false)]
+        [TestCase("Leaderboard", true)]
+        public void FeatureLoginRoutesToSelectionButRoomRecoveryTakesPriority(string destination, bool hasRoom)
+        {
+            _ui.PushPanel<TitlePanel>();
+            var login = _ui.PushPanel<LoginPanel>();
+            Invoke(login, "Awake");
+            SetLoginDestination(login, destination);
+            Invoke(_network, "HandleClientAuthentication", new AccountAuthenticationResponse
+            {
+                Code = Game.Network.Accounts.AccountAuthenticationCode.Success,
+                HasLastRoom = hasRoom,
+                LastRoomId = 42,
+            });
+            Assert.AreEqual(hasRoom ? nameof(RoomListPanel) : destination + "Panel", _ui.TopPanelIdentifier);
+            Assert.IsFalse(_ui.ContainsPanel<LoginPanel>());
+        }
+
+        [TestCase("Shop")]
+        [TestCase("Leaderboard")]
+        public void CancelledFeatureLoginCannotRedirectNextNormalLogin(string destination)
+        {
+            var login = _ui.PushPanel<LoginPanel>();
+            SetLoginDestination(login, destination);
+            Invoke(login, "OnDisable");
+            Assert.AreEqual("Lobby", typeof(LoginPanel).GetProperty("DestinationAfterLogin", Private).GetValue(login).ToString());
+            Invoke(_network, "HandleClientAuthentication", new AccountAuthenticationResponse
+            {
+                Code = Game.Network.Accounts.AccountAuthenticationCode.Success,
+            });
+            Assert.AreEqual(nameof(RoomListPanel), _ui.TopPanelIdentifier);
+        }
+
+        [TestCase("Shop")]
+        [TestCase("Leaderboard")]
+        public void FeatureBackAndDisconnectReturnToTitle(string destination)
+        {
+            _ui.PushPanel<TitlePanel>();
+            BasePanel panel = destination == "Shop" ? (BasePanel)_ui.PushPanel<ShopPanel>() : _ui.PushPanel<LeaderboardPanel>();
+            Invoke(panel, "Back");
+            Assert.AreEqual(nameof(TitlePanel), _ui.TopPanelIdentifier);
+            if (destination == "Shop") _ui.PushPanel<ShopPanel>();
+            else _ui.PushPanel<LeaderboardPanel>();
+            Set(_network, "_silentDisconnect", true);
+            Set(_network, "_isConnected", true);
+            _network.OnClientDisconnect();
+            CollectionAssert.AreEqual(new[] { nameof(TitlePanel) }, _ui.PanelOrder);
+        }
+
+        [TestCase("Shop", "pending")]
+        [TestCase("Shop", "active")]
+        [TestCase("Shop", "last-room")]
+        [TestCase("Leaderboard", "pending")]
+        [TestCase("Leaderboard", "active")]
+        [TestCase("Leaderboard", "last-room")]
+        public void TitleFeatureCannotBypassRoomRestrictions(string destination, string state)
+        {
+            var singleton = typeof(NetworkManager).GetProperty("singleton");
+            var previous = singleton.GetValue(null);
+            try
+            {
+                singleton.SetValue(null, _network);
+                var title = _ui.PushPanel<TitlePanel>();
+                if (state == "pending") Set(_network, "_roomEntryPending", true);
+                if (state == "active") Set(_network, "_activeClientRoomId", (int?)42);
+                if (state == "last-room") _controller.State.SetLastRoom(42);
+                Invoke(title, destination);
+                Assert.AreEqual(nameof(TitlePanel), _ui.TopPanelIdentifier);
+            }
+            finally { singleton.SetValue(null, previous); }
+        }
+
+        [TestCase("Shop")]
+        [TestCase("Leaderboard")]
+        public void UnauthenticatedTitleEntryRemembersLoginDestination(string destination)
+        {
+            var singleton = typeof(NetworkManager).GetProperty("singleton");
+            var previous = singleton.GetValue(null);
+            try
+            {
+                singleton.SetValue(null, _network);
+                ((NetworkConnectionToServer)Connection.GetValue(null)).isAuthenticated = false;
+                _controller.State.ClearAuthenticatedAccount();
+                var title = _ui.PushPanel<TitlePanel>();
+                Invoke(title, destination);
+                Assert.AreEqual(nameof(LoginPanel), _ui.TopPanelIdentifier);
+                var login = _ui.GetPanel<LoginPanel>();
+                Assert.AreEqual(destination, typeof(LoginPanel).GetProperty("DestinationAfterLogin", Private).GetValue(login).ToString());
+            }
+            finally { singleton.SetValue(null, previous); }
+        }
+
+        private static void SetLoginDestination(LoginPanel login, string destination)
+        {
+            var type = typeof(LoginPanel).GetProperty("DestinationAfterLogin", Private).PropertyType;
+            Set(login, "<DestinationAfterLogin>k__BackingField", Enum.Parse(type, destination));
         }
 
         private static RoomInfo CreateRoom(int id, string owner)

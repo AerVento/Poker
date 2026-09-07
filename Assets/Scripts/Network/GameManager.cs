@@ -171,19 +171,22 @@ namespace Game.Network
             IReadOnlyList<uint> earned,
             PotCalculator.Result calculation)
         {
-            var credits = new List<HandChipCredit>();
+            var entries = new List<HandSettlementEntry>();
             ulong totalCredit = 0;
             for (int playerIndex = 0; playerIndex < calculation.Refunds.Length; playerIndex++)
             {
                 var credit = checked(calculation.Refunds[playerIndex] + earned[playerIndex]);
                 totalCredit = checked(totalCredit + credit);
-                if (credit == 0)
+                var player = info.Players[playerIndex];
+                if (!player.ParticipatedThisHand)
                     continue;
 
-                credits.Add(new HandChipCredit
+                entries.Add(new HandSettlementEntry
                 {
-                    AccountId = info.Players[playerIndex].AccountId,
-                    Amount = credit,
+                    AccountId = player.AccountId,
+                    Contribution = player.RoundBet,
+                    Award = earned[playerIndex],
+                    Refund = calculation.Refunds[playerIndex],
                 });
             }
 
@@ -191,13 +194,13 @@ namespace Game.Network
                 throw new InvalidOperationException("The hand settlement does not conserve the pot.");
 
             HandSettlementResult result;
-            IReadOnlyDictionary<string, PlayerAccount> accounts;
+            IReadOnlyDictionary<string, HandSettlementBalance> accounts;
             try
             {
                 result = _accountRepository.SettleHand(
                     info.HandId,
                     info.HandId + ":settlement",
-                    credits,
+                    entries,
                     out accounts);
             }
             catch (Exception exception)
@@ -215,6 +218,7 @@ namespace Game.Network
                     accounts.TryGetValue(player.AccountId, out var account))
                 {
                     player.Chips = account.Chips;
+                    player.AccountChips = account.Chips;
                 }
             }
 
@@ -222,89 +226,39 @@ namespace Game.Network
             return true;
         }
 
-        private bool CommitChips(ServerGameInfo info, ServerGameInfo.PlayerInfo player, uint chipCount)
+        private static bool CommitChips(ServerGameInfo info, ServerGameInfo.PlayerInfo player, uint chipCount)
         {
-            if (chipCount > player.Chips)
-                throw new InvalidOperationException("A player cannot commit more chips than are in their stack.");
-
-            var requestId = info.HandId + ":action:" + info.ActionSequence.ToString();
-            HandDebitResult result;
-            IReadOnlyDictionary<string, PlayerAccount> accounts;
-            try
-            {
-                result = _accountRepository.ApplyHandDebits(
-                    info.HandId,
-                    requestId,
-                    new[]
-                    {
-                        new HandChipDebit { AccountId = player.AccountId, Amount = chipCount },
-                    },
-                    out accounts);
-            }
-            catch (Exception exception)
-            {
-                Log.WriteError($"Unable to persist an action for hand {info.HandId}: {exception}");
-                return false;
-            }
-            if ((result != HandDebitResult.Applied && result != HandDebitResult.AlreadyApplied) ||
-                !accounts.TryGetValue(player.AccountId, out var account))
-                return false;
-
-            info.ActionSequence++;
-            player.Chips = account.Chips;
-            player.StageBet = checked(player.StageBet + chipCount);
-            player.RoundBet = checked(player.RoundBet + chipCount);
-            info.TotalPot = checked(info.TotalPot + chipCount);
-            if (player.Chips == 0)
-                player.IsAllIn = true;
+            if (chipCount > player.Chips || (ulong)player.RoundBet + chipCount > player.HandStartingChips)
+                throw new InvalidOperationException("A player cannot commit more than their starting stack.");
+            // Compute every checked value before mutating the hand.
+            var stageBet = checked(player.StageBet + chipCount);
+            var roundBet = checked(player.RoundBet + chipCount);
+            var pot = checked(info.TotalPot + chipCount);
+            var sequence = checked(info.ActionSequence + 1);
+            player.Chips -= chipCount;
+            player.StageBet = stageBet;
+            player.RoundBet = roundBet;
+            info.TotalPot = pot;
+            info.ActionSequence = sequence;
+            player.IsAllIn = player.Chips == 0;
             return true;
         }
 
-        private bool PostBlinds(ServerGameInfo info, uint smallBlindAmount, uint bigBlindAmount)
+        private static bool PostBlinds(ServerGameInfo info, uint smallBlindAmount, uint bigBlindAmount)
         {
             var smallBlind = info.Players[info.SmallBlind];
             var bigBlind = info.Players[info.BigBlind];
             var smallCommit = Math.Min(smallBlind.Chips, smallBlindAmount);
             var bigCommit = Math.Min(bigBlind.Chips, bigBlindAmount);
-            HandDebitResult result;
-            IReadOnlyDictionary<string, PlayerAccount> accounts;
-            try
-            {
-                result = _accountRepository.ApplyHandDebits(
-                    info.HandId,
-                    info.HandId + ":blinds",
-                    new[]
-                    {
-                        new HandChipDebit { AccountId = smallBlind.AccountId, Amount = smallCommit },
-                        new HandChipDebit { AccountId = bigBlind.AccountId, Amount = bigCommit },
-                    },
-                    out accounts);
-            }
-            catch (Exception exception)
-            {
-                Log.WriteError($"Unable to persist blinds for hand {info.HandId}: {exception}");
-                return false;
-            }
-            if (result != HandDebitResult.Applied && result != HandDebitResult.AlreadyApplied)
-                return false;
-
-            ApplyCommittedBlind(info, smallBlind, smallCommit, accounts[smallBlind.AccountId]);
-            ApplyCommittedBlind(info, bigBlind, bigCommit, accounts[bigBlind.AccountId]);
+            if (ReferenceEquals(smallBlind, bigBlind) ||
+                (ulong)info.TotalPot + smallCommit + bigCommit > uint.MaxValue ||
+                smallCommit > smallBlind.HandStartingChips || bigCommit > bigBlind.HandStartingChips ||
+                smallBlind.RoundBet != 0 || bigBlind.RoundBet != 0 ||
+                smallBlind.StageBet != 0 || bigBlind.StageBet != 0)
+                throw new InvalidOperationException("The blind posting state is invalid.");
+            CommitChips(info, smallBlind, smallCommit);
+            CommitChips(info, bigBlind, bigCommit);
             return true;
-        }
-
-        private static void ApplyCommittedBlind(
-            ServerGameInfo info,
-            ServerGameInfo.PlayerInfo player,
-            uint chipCount,
-            PlayerAccount account)
-        {
-            player.Chips = account.Chips;
-            player.StageBet = checked(player.StageBet + chipCount);
-            player.RoundBet = checked(player.RoundBet + chipCount);
-            info.TotalPot = checked(info.TotalPot + chipCount);
-            if (player.Chips == 0)
-                player.IsAllIn = true;
         }
 
         private static void ResetActionTimer(ServerGameInfo info)
@@ -774,6 +728,7 @@ namespace Game.Network
                     if (account == null)
                         return -7;
                     player.Chips = account.Chips;
+                    player.AccountChips = account.Chips;
                 }
             }
             catch (Exception exception)

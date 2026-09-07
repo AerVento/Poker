@@ -1,0 +1,106 @@
+{
+  "date": "2026-09-07",
+  "tool": "built-in image_gen.imagegen",
+  "purpose": "Remaining ten independently composed 4:3 companions; Galaxy reference created in v5.",
+  "requested_display_size": [
+    1024,
+    768
+  ],
+  "actual_source_size": [
+    1448,
+    1086
+  ],
+  "processing": "Original generated PNG copied unchanged. Unity TextureImporter maxTextureSize=1024, npotScale=None imports 1024x768.",
+  "generations": [
+    {
+      "id": "ember",
+      "prompt": "Use case: precise-object-edit, game namecard aspect-ratio adaptation. Input image 1 is this skin's final WIDE art: use its theme, colors, background content, materials and border design. Input image 2 is a finished 4:3 Galaxy card: use ONLY its LANDSCAPE 4:3 canvas proportions and thin-frame / quiet-interior layout, do NOT copy its galaxy theme or stars. Make a new LANDSCAPE 4:3 companion composition of input 1. Width must be 4 units and height 3 units, not square, not portrait, not a wide 8:3 panorama. Target display 1024 pixels wide x 768 pixels high. Recompose the background and relocate small frame details to the new canvas instead of stretching or cropping the wide image. Full opaque, dark colored, low-contrast thematic background, clearly visible but calm under warm-white names and gold amounts. Refined thin rim at the outer edge; all bright metal ornaments, gems, corner decorations and obvious frame glow confined to the outer 48 pixels on a 1024x768 canvas, with 64 px absolute limit. Keep a safe interior inset of 96px, especially calm upper-left and middle-left. No thick corner masses, no bright white background highlights, no text, numbers, price, labels, UI, watermark, guides, external margins, mockup context or checkerboard. Naturally proportioned forms. One 4:3 namecard filling the entire image.\nPreserve charcoal volcanic rock, dark burgundy smoke and subdued orange molten veins, with thin obsidian/ember metal rim. Recompose broad rock plates and a warm red-orange haze along the lower/right area; no blazing yellow patch behind text.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-2fa73589-9f02-48cf-81f0-fff9f80641d9.png",
+      "inputs": [
+        "Assets/Sprites/Namecards/ember-v2.png",
+        "Assets/Sprites/Namecards/galaxy-4x3-v1.png"
+      ]
+    },
+    {
+      "id": "neon",
+      "prompt": "Use case: precise-object-edit, game namecard aspect-ratio adaptation. Input image 1 is this skin's final WIDE art: use its theme, colors, background content, materials and border design. Input image 2 is a finished 4:3 Galaxy card: use ONLY its LANDSCAPE 4:3 canvas proportions and thin-frame / quiet-interior layout, do NOT copy its galaxy theme or stars. Make a new LANDSCAPE 4:3 companion composition of input 1. Width must be 4 units and height 3 units, not square, not portrait, not a wide 8:3 panorama. Target display 1024 pixels wide x 768 pixels high. Recompose the background and relocate small frame details to the new canvas instead of stretching or cropping the wide image. Full opaque, dark colored, low-contrast thematic background, clearly visible but calm under warm-white names and gold amounts. Refined thin rim at the outer edge; all bright metal ornaments, gems, corner decorations and obvious frame glow confined to the outer 48 pixels on a 1024x768 canvas, with 64 px absolute limit. Keep a safe interior inset of 96px, especially calm upper-left and middle-left. No thick corner masses, no bright white background highlights, no text, numbers, price, labels, UI, watermark, guides, external margins, mockup context or checkerboard. Naturally proportioned forms. One 4:3 namecard filling the entire image.\nPreserve razor-thin cyan-left/magenta-right futuristic frame. Interior: dim indigo/violet cyberpunk skyline silhouettes with soft cyan and magenta reflected light and faint circuits. Recompose the city for a 4:3 landscape card.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-769ca89b-9add-4f23-aae5-f0865b71f7dc.png",
+      "inputs": [
+        "Assets/Sprites/Namecards/neon-v2.png",
+        "Assets/Sprites/Namecards/galaxy-4x3-v1.png"
+      ]
+    },
+    {
+      "id": "gilded",
+      "prompt": "Use case: precise-object-edit, game namecard aspect-ratio adaptation. Input image 1 is this skin's final WIDE art: use its theme, colors, background content, materials and border design. Input image 2 is a finished 4:3 Galaxy card: use ONLY its LANDSCAPE 4:3 canvas proportions and thin-frame / quiet-interior layout, do NOT copy its galaxy theme or stars. Make a new LANDSCAPE 4:3 companion composition of input 1. Width must be 4 units and height 3 units, not square, not portrait, not a wide 8:3 panorama. Target display 1024 pixels wide x 768 pixels high. Recompose the background and relocate small frame details to the new canvas instead of stretching or cropping the wide image. Full opaque, dark colored, low-contrast thematic background, clearly visible but calm under warm-white names and gold amounts. Refined thin rim at the outer edge; all bright metal ornaments, gems, corner decorations and obvious frame glow confined to the outer 48 pixels on a 1024x768 canvas, with 64 px absolute limit. Keep a safe interior inset of 96px, especially calm upper-left and middle-left. No thick corner masses, no bright white background highlights, no text, numbers, price, labels, UI, watermark, guides, external margins, mockup context or checkerboard. Naturally proportioned forms. One 4:3 namecard filling the entire image.\nPreserve slim antique gold/emerald jewel rim, deep emerald satin folds and muted Art Deco fan/leaf embossing. Rich green velvet background in a new 4:3 composition, no bright gold center decoration.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-c42a5f04-0949-4efd-b425-9857d99b6033.png",
+      "inputs": [
+        "Assets/Sprites/Namecards/gilded-v2.png",
+        "Assets/Sprites/Namecards/galaxy-4x3-v1.png"
+      ]
+    },
+    {
+      "id": "frost",
+      "prompt": "Use case: precise-object-edit, game namecard aspect-ratio adaptation. Input image 1 is this skin's final WIDE art: use its theme, colors, background content, materials and border design. Input image 2 is a finished 4:3 Galaxy card: use ONLY its LANDSCAPE 4:3 canvas proportions and thin-frame / quiet-interior layout, do NOT copy its galaxy theme or stars. Make a new LANDSCAPE 4:3 companion composition of input 1. Width must be 4 units and height 3 units, not square, not portrait, not a wide 8:3 panorama. Target display 1024 pixels wide x 768 pixels high. Recompose the background and relocate small frame details to the new canvas instead of stretching or cropping the wide image. Full opaque, dark colored, low-contrast thematic background, clearly visible but calm under warm-white names and gold amounts. Refined thin rim at the outer edge; all bright metal ornaments, gems, corner decorations and obvious frame glow confined to the outer 48 pixels on a 1024x768 canvas, with 64 px absolute limit. Keep a safe interior inset of 96px, especially calm upper-left and middle-left. No thick corner masses, no bright white background highlights, no text, numbers, price, labels, UI, watermark, guides, external margins, mockup context or checkerboard. Naturally proportioned forms. One 4:3 namecard filling the entire image.\nPreserve slim silver ice frame, tiny ice details and subdued cyan aurora over distant dark blue frozen mountain peaks. Recompose glacier valley and aurora for 4:3, with tranquil readable left region and no bright white snow behind labels.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-4bb1009c-2c4a-4fcc-ade9-34511d55fe2a.png",
+      "inputs": [
+        "Assets/Sprites/Namecards/frost-v2.png",
+        "Assets/Sprites/Namecards/galaxy-4x3-v1.png"
+      ]
+    },
+    {
+      "id": "abyss",
+      "prompt": "Use case: precise-object-edit, game namecard aspect-ratio adaptation. Input image 1 is this skin's final WIDE art: use its theme, colors, background content, materials and border design. Input image 2 is a finished 4:3 Galaxy card: use ONLY its LANDSCAPE 4:3 canvas proportions and thin-frame / quiet-interior layout, do NOT copy its galaxy theme or stars. Make a new LANDSCAPE 4:3 companion composition of input 1. Width must be 4 units and height 3 units, not square, not portrait, not a wide 8:3 panorama. Target display 1024 pixels wide x 768 pixels high. Recompose the background and relocate small frame details to the new canvas instead of stretching or cropping the wide image. Full opaque, dark colored, low-contrast thematic background, clearly visible but calm under warm-white names and gold amounts. Refined thin rim at the outer edge; all bright metal ornaments, gems, corner decorations and obvious frame glow confined to the outer 48 pixels on a 1024x768 canvas, with 64 px absolute limit. Keep a safe interior inset of 96px, especially calm upper-left and middle-left. No thick corner masses, no bright white background highlights, no text, numbers, price, labels, UI, watermark, guides, external margins, mockup context or checkerboard. Naturally proportioned forms. One 4:3 namecard filling the entire image.\nTheme preservation: Keep the deep-sea petroleum blue/teal palette, thin iridescent silver organic rim, tiny pearls, faint flowing underwater currents and distant coral silhouettes. Small dim translucent jellyfish at lower right, no bright jellyfish behind top-left text.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-8e334dce-0db5-40af-946d-7ede78da4703.png",
+      "inputs": [
+        "Assets/Sprites/Namecards/abyss-v2.png",
+        "Assets/Sprites/Namecards/galaxy-4x3-v1.png"
+      ]
+    },
+    {
+      "id": "jade",
+      "prompt": "Use case: precise-object-edit, game namecard aspect-ratio adaptation. Input image 1 is this skin's final WIDE art: use its theme, colors, background content, materials and border design. Input image 2 is a finished 4:3 Galaxy card: use ONLY its LANDSCAPE 4:3 canvas proportions and thin-frame / quiet-interior layout, do NOT copy its galaxy theme or stars. Make a new LANDSCAPE 4:3 companion composition of input 1. Width must be 4 units and height 3 units, not square, not portrait, not a wide 8:3 panorama. Target display 1024 pixels wide x 768 pixels high. Recompose the background and relocate small frame details to the new canvas instead of stretching or cropping the wide image. Full opaque, dark colored, low-contrast thematic background, clearly visible but calm under warm-white names and gold amounts. Refined thin rim at the outer edge; all bright metal ornaments, gems, corner decorations and obvious frame glow confined to the outer 48 pixels on a 1024x768 canvas, with 64 px absolute limit. Keep a safe interior inset of 96px, especially calm upper-left and middle-left. No thick corner masses, no bright white background highlights, no text, numbers, price, labels, UI, watermark, guides, external margins, mockup context or checkerboard. Naturally proportioned forms. One 4:3 namecard filling the entire image.\nTheme preservation: Keep the antique gold jade-cloud filigree rim, tiny green jade stones and dark layered jade-green mist. Preserve a subtle low-contrast embossed Chinese dragon curling at right, with quiet flowing clouds and stone texture elsewhere. Gold dragon must not become a large bright ornament.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-0c772b4f-c848-4d3b-b40e-deb327ae649f.png",
+      "inputs": [
+        "Assets/Sprites/Namecards/jade-v2.png",
+        "Assets/Sprites/Namecards/galaxy-4x3-v1.png"
+      ]
+    },
+    {
+      "id": "sakura",
+      "prompt": "Use case: precise-object-edit, game namecard aspect-ratio adaptation. Input image 1 is this skin's final WIDE art: use its theme, colors, background content, materials and border design. Input image 2 is a finished 4:3 Galaxy card: use ONLY its LANDSCAPE 4:3 canvas proportions and thin-frame / quiet-interior layout, do NOT copy its galaxy theme or stars. Make a new LANDSCAPE 4:3 companion composition of input 1. Width must be 4 units and height 3 units, not square, not portrait, not a wide 8:3 panorama. Target display 1024 pixels wide x 768 pixels high. Recompose the background and relocate small frame details to the new canvas instead of stretching or cropping the wide image. Full opaque, dark colored, low-contrast thematic background, clearly visible but calm under warm-white names and gold amounts. Refined thin rim at the outer edge; all bright metal ornaments, gems, corner decorations and obvious frame glow confined to the outer 48 pixels on a 1024x768 canvas, with 64 px absolute limit. Keep a safe interior inset of 96px, especially calm upper-left and middle-left. No thick corner masses, no bright white background highlights, no text, numbers, price, labels, UI, watermark, guides, external margins, mockup context or checkerboard. Naturally proportioned forms. One 4:3 namecard filling the entire image.\nTheme preservation: Keep the thin rose-gold rim with only tiny delicate corner cherry blossoms, wine/mauve background, faded cherry-tree branch silhouette and a few dim drifting petals. Keep large pink blossoms out of the interior, quiet upper-left.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-bafe8608-c3b0-4dfa-94f9-4bdba89e943c.png",
+      "inputs": [
+        "Assets/Sprites/Namecards/sakura-v2.png",
+        "Assets/Sprites/Namecards/galaxy-4x3-v1.png"
+      ]
+    },
+    {
+      "id": "clockwork",
+      "prompt": "Use case: precise-object-edit, game namecard aspect-ratio adaptation. Input image 1 is this skin's final WIDE art: use its theme, colors, background content, materials and border design. Input image 2 is a finished 4:3 Galaxy card: use ONLY its LANDSCAPE 4:3 canvas proportions and thin-frame / quiet-interior layout, do NOT copy its galaxy theme or stars. Make a new LANDSCAPE 4:3 companion composition of input 1. Width must be 4 units and height 3 units, not square, not portrait, not a wide 8:3 panorama. Target display 1024 pixels wide x 768 pixels high. Recompose the background and relocate small frame details to the new canvas instead of stretching or cropping the wide image. Full opaque, dark colored, low-contrast thematic background, clearly visible but calm under warm-white names and gold amounts. Refined thin rim at the outer edge; all bright metal ornaments, gems, corner decorations and obvious frame glow confined to the outer 48 pixels on a 1024x768 canvas, with 64 px absolute limit. Keep a safe interior inset of 96px, especially calm upper-left and middle-left. No thick corner masses, no bright white background highlights, no text, numbers, price, labels, UI, watermark, guides, external margins, mockup context or checkerboard. Naturally proportioned forms. One 4:3 namecard filling the entire image.\nTheme preservation: Keep the very thin antique brass rim and tiny restrained corner gear details. Dark bronze embossed clockwork mechanisms, faint interlocking gears and circular etched arcs predominantly at right and lower area. No big bright gears or clock faces and no digits.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-edd832ac-4d50-4820-a2b7-6c902fcd94df.png",
+      "inputs": [
+        "Assets/Sprites/Namecards/clockwork-v2.png",
+        "Assets/Sprites/Namecards/galaxy-4x3-v1.png"
+      ]
+    },
+    {
+      "id": "eclipse",
+      "prompt": "Use case: precise-object-edit, game namecard aspect-ratio adaptation. Input image 1 is this skin's final WIDE art: use its theme, colors, background content, materials and border design. Input image 2 is a finished 4:3 Galaxy card: use ONLY its LANDSCAPE 4:3 canvas proportions and thin-frame / quiet-interior layout, do NOT copy its galaxy theme or stars. Make a new LANDSCAPE 4:3 companion composition of input 1. Width must be 4 units and height 3 units, not square, not portrait, not a wide 8:3 panorama. Target display 1024 pixels wide x 768 pixels high. Recompose the background and relocate small frame details to the new canvas instead of stretching or cropping the wide image. Full opaque, dark colored, low-contrast thematic background, clearly visible but calm under warm-white names and gold amounts. Refined thin rim at the outer edge; all bright metal ornaments, gems, corner decorations and obvious frame glow confined to the outer 48 pixels on a 1024x768 canvas, with 64 px absolute limit. Keep a safe interior inset of 96px, especially calm upper-left and middle-left. No thick corner masses, no bright white background highlights, no text, numbers, price, labels, UI, watermark, guides, external margins, mockup context or checkerboard. Naturally proportioned forms. One 4:3 namecard filling the entire image.\nTheme preservation: Keep the thin elegant gold filament rim and tiny cosmic jewels. Deep violet-black cosmic dust with muted bronze/amber wisps, an eclipsed sun with a restrained dim amber corona on the right. Celestial body naturally round, not stretched. Avoid bright solar glow behind the text area.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-9317d6a9-4484-4b3e-9c30-36cf1d374dea.png",
+      "inputs": [
+        "Assets/Sprites/Namecards/eclipse-v2.png",
+        "Assets/Sprites/Namecards/galaxy-4x3-v1.png"
+      ]
+    },
+    {
+      "id": "prism",
+      "prompt": "Use case: precise-object-edit, game namecard aspect-ratio adaptation. Input image 1 is this skin's final WIDE art: use its theme, colors, background content, materials and border design. Input image 2 is a finished 4:3 Galaxy card: use ONLY its LANDSCAPE 4:3 canvas proportions and thin-frame / quiet-interior layout, do NOT copy its galaxy theme or stars. Make a new LANDSCAPE 4:3 companion composition of input 1. Width must be 4 units and height 3 units, not square, not portrait, not a wide 8:3 panorama. Target display 1024 pixels wide x 768 pixels high. Recompose the background and relocate small frame details to the new canvas instead of stretching or cropping the wide image. Full opaque, dark colored, low-contrast thematic background, clearly visible but calm under warm-white names and gold amounts. Refined thin rim at the outer edge; all bright metal ornaments, gems, corner decorations and obvious frame glow confined to the outer 48 pixels on a 1024x768 canvas, with 64 px absolute limit. Keep a safe interior inset of 96px, especially calm upper-left and middle-left. No thick corner masses, no bright white background highlights, no text, numbers, price, labels, UI, watermark, guides, external margins, mockup context or checkerboard. Naturally proportioned forms. One 4:3 namecard filling the entire image.\nTheme preservation: Keep the very thin opalescent silver rim with tiny prismatic facets at the edges. Dark lavender and teal background with overlapping large translucent crystal facets in subdued rose, violet and petrol blue. Gentle dim internal refractions predominantly lower-right, broad calm dark upper-left. No white sparkles in the text area.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-f0d24a98-09fa-40d1-b2c0-b90634d92981.png",
+      "inputs": [
+        "Assets/Sprites/Namecards/prism-v2.png",
+        "Assets/Sprites/Namecards/galaxy-4x3-v1.png"
+      ]
+    }
+  ]
+}

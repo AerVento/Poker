@@ -1,8 +1,10 @@
 # 当前测试用例总表
 
-更新：2026-09-06。本轮新增结果查看期的 12 项回归用例；按要求仅运行相关测试，不执行全量回归。
+更新：2026-09-06。本轮每手结算、排行榜、观战摊牌及 UI 调整后，Unity 2022.3.52f1c1 全量 EditMode **337/337 通过**，作业 `a630f1efb5fe44b3a1e11f455be96928`。包含新增 `HandSettlementAndLeaderboardTest` 的 33 个展开用例，覆盖完整净额清单、原子回滚、旧 schema 恢复和升级失败回滚、重放、排行榜身份／排序／协议、任务边界及金额格式。修改了旧测试中逐次扣款、严格小于 1,000、观战结算不显示公开牌的过时预期。
 
-## 当前结果
+最新联调及构建记录见 [本轮验证记录](HandSettlementValidation.md)，最终布局修改后 72 项 UI 测试再次通过。下列统计和编号清单来自此前版本，保留作历史索引，不能代替本轮 337 项的运行结果。
+
+## 此前版本记录
 
 - 自有 NUnit EditMode：**269 项、206 个方法、15 个测试类、13 个文件**。参数化用例按参数展开，循环断言不重复计数。
 - 上一版本在 Unity 2022.3.52f1c1 的完整结果：**257/257 通过**，作业 `46a221852c734f2aa15b10f24f533aef`。
@@ -56,8 +58,8 @@
 | UT-007 | [ChipMutationIsAtomicAndIdempotent](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/AccountServiceTest.cs:159) | 扣款成功后重放不重复扣款；余额不足的扣款不改变余额。 |
 | UT-008 | [LastRoomPersistsAcrossRepositoryInstances](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/AccountServiceTest.cs:200) | 保存 LastRoomId 后，由新的仓储实例读取同一房间关联。 |
 | UT-009 | [HandTransactionsAreAtomicConservativeAndIdempotent](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/AccountServiceTest.cs:215) | 一手内扣款与结算幂等、总筹码守恒；拒绝账户同时参加另一手及手内通用筹码变更。 |
-| UT-010 | [InitializeRefundsAnAbandonedActiveHand](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/AccountServiceTest.cs:283) | 数据库重新初始化时退回未结算投入；重复中止不重复退款，活动手牌及内部账本归零。 |
-| UT-011 | [ReconciliationTracksActiveContributionsSettlementAndRecovery](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/AccountServiceTest.cs:324) | 核对本测试实际执行的下注中与结算后余额、投入、账本和活动手牌；崩溃恢复另见上一用例。 |
+| UT-010 | [InitializeAbortsAnUnsettledHandWithoutChangingBalances](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/AccountServiceTest.cs:283) | 新模式重新初始化只作废未结算手牌，余额不变，不产生退款流水。旧 schema 退款另由新增迁移用例覆盖。 |
+| UT-011 | [ReconciliationTracksDeferredSettlementAndRecovery](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/AccountServiceTest.cs:324) | 核对本测试实际执行的下注中与结算后余额、投入、账本和活动手牌；崩溃恢复另见上一用例。 |
 
 ### PlayerManagerSessionTest（1 项）
 
@@ -215,7 +217,7 @@
 | UT-121 | [OldTurnRequest_IsRejectedWhenSamePlayerActsOnTheNextStreet(PlayerOperationType.AllIn)](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:426) | 真实超时回调后推进至下一下注街，同一玩家再行动时拒绝旧请求，奖池与行动编号不变。 参数：PlayerOperationType.AllIn。 |
 | UT-122 | [DuplicateAndPreviousHandOperations_AreRejectedWithoutChangingBalances](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:446) | 同一有效请求仅执行一次；即使下一手 TurnId 相同，旧 HandId 仍被拒绝；客户端 JSON 保留编号。 |
 | UT-123 | [OldParticipationIntent_CannotUndoANewerChoice](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:468) | 参战状态请求含手牌及修订号；旧取消不能覆盖新的申请。 |
-| UT-124 | [SpectatorSettlement_ContainsNoHoleCardsWithoutMutatingPlayerResult](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:479) | 旁观结算投影没有任何玩家底牌，且不修改参赛者的正常结算视图。 |
+| UT-124 | [SpectatorSettlement_PreservesPublicCardsAndKeepsFoldedCardsPrivate](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/TableParticipationTest.cs:479) | 旁观结算保留已公开的底牌，弃牌／未公开牌仍隐藏；复制结果不修改原始参赛者视图。 |
 
 ### UIInteractionTest（原有 21 项；新增一项见 UT-157）
 
@@ -450,10 +452,10 @@
 
 | 编号 | 方法 / 参数 | 输入与预期结果 |
 | --- | --- | --- |
-| UT-219 | [LowBalanceThresholdIsStrict](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:47) / 0u, DailyTaskAvailability.Claimable | 余额 0 / 999 可领补助，1,000 / 1,001 拒绝；状态和实际领取结果一致。 |
-| UT-220 | [LowBalanceThresholdIsStrict](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:47) / 999u, DailyTaskAvailability.Claimable | 余额 0 / 999 可领补助，1,000 / 1,001 拒绝；状态和实际领取结果一致。 |
-| UT-221 | [LowBalanceThresholdIsStrict](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:47) / 1000u, DailyTaskAvailability.BalanceTooHigh | 余额 0 / 999 可领补助，1,000 / 1,001 拒绝；状态和实际领取结果一致。 |
-| UT-222 | [LowBalanceThresholdIsStrict](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:47) / 1001u, DailyTaskAvailability.BalanceTooHigh | 余额 0 / 999 可领补助，1,000 / 1,001 拒绝；状态和实际领取结果一致。 |
+| UT-219 | [LowBalanceThresholdIsStrict](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:47) / 0u, DailyTaskAvailability.Claimable | 余额 0 / 999 / 1,000 可领补助，1,001 拒绝；状态和实际领取结果一致。 |
+| UT-220 | [LowBalanceThresholdIsStrict](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:47) / 999u, DailyTaskAvailability.Claimable | 余额 0 / 999 / 1,000 可领补助，1,001 拒绝；状态和实际领取结果一致。 |
+| UT-221 | [LowBalanceThresholdIsStrict](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:47) / 1000u, DailyTaskAvailability.Claimable | 余额 0 / 999 / 1,000 可领补助，1,001 拒绝；状态和实际领取结果一致。 |
+| UT-222 | [LowBalanceThresholdIsStrict](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:47) / 1001u, DailyTaskAvailability.BalanceTooHigh | 余额 0 / 999 / 1,000 可领补助，1,001 拒绝；状态和实际领取结果一致。 |
 | UT-223 | [BothRewardsHaveSeparateQuotasAndPersistAcrossRestart](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:59) | 先补助再补给，两项分别限领一次；重开数据库保持已领取，余额与账本一致。 |
 | UT-224 | [ClaimRechecksBalanceInsteadOfTrustingOpenedPanel](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:76) | 打开页面后的余额变化会影响实际领取；拒绝不会消耗当天额度。 |
 | UT-225 | [UtcPlusEightMidnightResetsBothQuotasAndRejectsOldPackets](D:/GitHubRepos/Poker/Assets/Scripts/Game/Editor/DailyTaskTest.cs:88) | UTC 16:00 即 UTC+8 零点；两项重置，昨日请求被拒绝而不消耗今日额度。 |

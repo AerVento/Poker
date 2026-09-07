@@ -61,7 +61,7 @@ namespace Game.Network.Accounts
     {
         DailyRewardAccountState ReadDailyRewards(string accountId, string supplyKey, string comebackKey);
         ChipMutationResult ClaimDailyReward(string accountId, string claimKey, uint amount,
-            uint? maximumBalanceExclusive, out PlayerAccount account);
+            uint? maximumBalanceInclusive, out PlayerAccount account);
     }
 
     public sealed class DailyTaskService
@@ -101,8 +101,8 @@ namespace Game.Network.Accounts
                 {
                     CreateState(DailyTaskId.DailySupply, "每日补给", "每日领取一份筹码补给，开启今日牌局。",
                         SupplyReward, state, state.SupplyClaimed, false),
-                    CreateState(DailyTaskId.Comeback, "东山再起", $"余额低于 ${ComebackThreshold:N0} 时，可领取应急筹码。",
-                        ComebackReward, state, state.ComebackClaimed, state.Account.Chips >= ComebackThreshold),
+                    CreateState(DailyTaskId.Comeback, "东山再起", $"余额不高于 ${ComebackThreshold:N0} 时，可领取应急筹码。",
+                        ComebackReward, state, state.ComebackClaimed, state.Account.Chips > ComebackThreshold),
                 },
             };
         }

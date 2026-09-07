@@ -8,13 +8,14 @@ using System.Linq;
 
 namespace Game.Network.Accounts
 {
-    public sealed class SqliteAccountRepository :
+    public sealed partial class SqliteAccountRepository :
         IHandAccountRepository,
         ISessionAccountRepository,
         IPasswordAccountRepository,
-        IDailyRewardRepository
+        IDailyRewardRepository,
+        ILeaderboardRepository
     {
-        public const int SchemaVersion = 3;
+        public const int SchemaVersion = 5;
 
         private static readonly object RuntimeInitializationLock = new object();
         private static bool _runtimeInitialized;
@@ -69,12 +70,75 @@ namespace Game.Network.Accounts
                     if (version < 3)
                         CreateSessionSchema(connection, transaction);
 
+                    if (version < 4)
+                        CreateDeferredSettlementSchema(connection, transaction);
+
+                    if (version < 5)
+                        CreateShopSchema(connection, transaction);
+
                     SetSchemaVersion(connection, transaction, SchemaVersion);
 
                     transaction.Commit();
                 }
 
                 RecoverAbandonedHands();
+            }
+        }
+
+        public LeaderboardSnapshot ReadLeaderboard(string accountId)
+        {
+            if (string.IsNullOrEmpty(accountId))
+                throw new ArgumentException("An authenticated account is required.", nameof(accountId));
+            lock (_syncRoot)
+            {
+                using (var connection = OpenConnection())
+                using (var transaction = connection.BeginTransaction(deferred: true))
+                {
+                    var top = new List<LeaderboardEntry>(10);
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.Transaction = transaction;
+                        command.CommandText = @"
+SELECT account_id, user_name, chips, equipped_namecard FROM player_accounts
+ORDER BY chips DESC, created_at_utc ASC, account_id COLLATE BINARY ASC LIMIT 10;";
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                                top.Add(new LeaderboardEntry
+                                {
+                                    Rank = top.Count + 1, UserName = reader.GetString(1),
+                                    NamecardId = reader.GetString(3),
+                                    Chips = checked((uint)reader.GetInt64(2)), IsSelf = reader.GetString(0) == accountId,
+                                });
+                        }
+                    }
+                    LeaderboardEntry self;
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.Transaction = transaction;
+                        command.CommandText = @"
+SELECT me.user_name, me.chips, 1 + (
+    SELECT COUNT(*) FROM player_accounts AS other
+    WHERE other.chips > me.chips
+       OR (other.chips = me.chips AND other.created_at_utc < me.created_at_utc)
+       OR (other.chips = me.chips AND other.created_at_utc = me.created_at_utc
+           AND other.account_id COLLATE BINARY < me.account_id COLLATE BINARY)), me.equipped_namecard
+FROM player_accounts AS me WHERE me.account_id = $accountId;";
+                        command.Parameters.AddWithValue("$accountId", accountId);
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (!reader.Read())
+                                throw new InvalidOperationException("The authenticated account no longer exists.");
+                            self = new LeaderboardEntry
+                            {
+                                UserName = reader.GetString(0), Chips = checked((uint)reader.GetInt64(1)),
+                                Rank = reader.GetInt64(2), IsSelf = true, NamecardId = reader.GetString(3),
+                            };
+                        }
+                    }
+                    transaction.Commit();
+                    return new LeaderboardSnapshot { TopPlayers = top.ToArray(), Self = self };
+                }
             }
         }
 
@@ -369,10 +433,10 @@ WHERE token_hash = $tokenHash AND revoked_at_utc IS NULL;";
         }
 
         public ChipMutationResult ClaimDailyReward(string accountId, string claimKey, uint amount,
-            uint? maximumBalanceExclusive, out PlayerAccount account)
+            uint? maximumBalanceInclusive, out PlayerAccount account)
         {
             return ApplyChipMutationCore(accountId, claimKey, "DailyTaskReward", amount, null, null,
-                maximumBalanceExclusive, true, out account);
+                maximumBalanceInclusive, true, out account);
         }
 
         public ChipMutationResult ApplyChipMutation(
@@ -390,7 +454,7 @@ WHERE token_hash = $tokenHash AND revoked_at_utc IS NULL;";
 
         private ChipMutationResult ApplyChipMutationCore(string accountId, string requestId,
             string transactionType, long amount, int? roomId, string handId,
-            uint? maximumBalanceExclusive, bool rejectActiveHandFirst, out PlayerAccount account)
+            uint? maximumBalanceInclusive, bool rejectActiveHandFirst, out PlayerAccount account)
         {
             account = null;
             if (string.IsNullOrEmpty(accountId))
@@ -429,7 +493,7 @@ WHERE token_hash = $tokenHash AND revoked_at_utc IS NULL;";
                         return ChipMutationResult.AccountBusyInHand;
                     }
 
-                    if (maximumBalanceExclusive.HasValue && account.Chips >= maximumBalanceExclusive.Value)
+                    if (maximumBalanceInclusive.HasValue && account.Chips > maximumBalanceInclusive.Value)
                     {
                         transaction.Rollback();
                         return ChipMutationResult.BalanceRequirementNotMet;
@@ -562,8 +626,8 @@ WHERE account_id = $accountId AND version = $version;";
                     {
                         command.Transaction = transaction;
                         command.CommandText = @"
-INSERT INTO poker_hands (hand_id, room_id, status, created_at_utc, completed_at_utc)
-VALUES ($handId, $roomId, 'Active', $createdAtUtc, NULL);";
+INSERT INTO poker_hands (hand_id, room_id, status, created_at_utc, completed_at_utc, accounting_mode)
+VALUES ($handId, $roomId, 'Active', $createdAtUtc, NULL, 1);";
                         command.Parameters.AddWithValue("$handId", handId);
                         command.Parameters.AddWithValue("$roomId", roomId);
                         command.Parameters.AddWithValue("$createdAtUtc", FormatDateTime(now));
@@ -592,177 +656,118 @@ VALUES ($handId, $accountId, $startingChips, 0);";
             }
         }
 
-        public HandDebitResult ApplyHandDebits(
-            string handId,
-            string requestId,
-            IReadOnlyList<HandChipDebit> debits,
-            out IReadOnlyDictionary<string, PlayerAccount> accounts)
-        {
-            accounts = new Dictionary<string, PlayerAccount>();
-            if (string.IsNullOrEmpty(handId) || string.IsNullOrEmpty(requestId))
-                throw new ArgumentException("Hand and request IDs are required.");
-            if (debits == null || debits.Count == 0 ||
-                debits.Any(debit => debit == null || string.IsNullOrEmpty(debit.AccountId) || debit.Amount == 0) ||
-                debits.Select(debit => debit.AccountId).Distinct().Count() != debits.Count)
-            {
-                throw new ArgumentException("Hand debits must be positive and have unique accounts.", nameof(debits));
-            }
-
-            lock (_syncRoot)
-            {
-                using (var connection = OpenConnection())
-                using (var transaction = connection.BeginTransaction())
-                {
-                    if (HandRequestExists(connection, transaction, requestId))
-                    {
-                        accounts = ReadAccounts(connection, transaction, debits.Select(debit => debit.AccountId));
-                        transaction.Commit();
-                        return HandDebitResult.AlreadyApplied;
-                    }
-                    if (GetHandStatus(connection, transaction, handId) != "Active")
-                    {
-                        transaction.Rollback();
-                        return HandDebitResult.HandNotActive;
-                    }
-
-                    var roomId = GetHandRoomId(connection, transaction, handId);
-                    var updated = new Dictionary<string, PlayerAccount>(StringComparer.Ordinal);
-                    var now = DateTime.UtcNow;
-                    for (int index = 0; index < debits.Count; index++)
-                    {
-                        var debit = debits[index];
-                        if (!IsHandParticipant(connection, transaction, handId, debit.AccountId))
-                        {
-                            transaction.Rollback();
-                            return HandDebitResult.AccountNotInHand;
-                        }
-
-                        var account = FindById(connection, transaction, debit.AccountId);
-                        if (account == null || account.Chips < debit.Amount)
-                        {
-                            transaction.Rollback();
-                            return HandDebitResult.InsufficientChips;
-                        }
-
-                        var newBalance = checked(account.Chips - debit.Amount);
-                        UpdateAccountBalance(connection, transaction, account, newBalance, now);
-                        AddContribution(connection, transaction, handId, account.AccountId, debit.Amount);
-                        InsertLedger(
-                            connection,
-                            transaction,
-                            Guid.NewGuid().ToString("N"),
-                            requestId + ":" + index.ToString(CultureInfo.InvariantCulture),
-                            account.AccountId,
-                            "HandCommit",
-                            -(long)debit.Amount,
-                            account.Chips,
-                            newBalance,
-                            roomId,
-                            handId,
-                            now);
-                        account.Chips = newBalance;
-                        account.Version++;
-                        account.UpdatedAtUtc = now;
-                        updated.Add(account.AccountId, account);
-                    }
-
-                    InsertHandRequest(connection, transaction, requestId, handId, "Debit", now);
-                    transaction.Commit();
-                    accounts = updated;
-                    return HandDebitResult.Applied;
-                }
-            }
-        }
-
         public HandSettlementResult SettleHand(
             string handId,
             string requestId,
-            IReadOnlyList<HandChipCredit> credits,
-            out IReadOnlyDictionary<string, PlayerAccount> accounts)
+            IReadOnlyList<HandSettlementEntry> entries,
+            out IReadOnlyDictionary<string, HandSettlementBalance> accounts)
         {
-            accounts = new Dictionary<string, PlayerAccount>();
+            accounts = new Dictionary<string, HandSettlementBalance>();
             if (string.IsNullOrEmpty(handId) || string.IsNullOrEmpty(requestId))
                 throw new ArgumentException("Hand and request IDs are required.");
-            if (credits == null || credits.Any(credit =>
-                credit == null || string.IsNullOrEmpty(credit.AccountId)) ||
-                credits.Select(credit => credit.AccountId).Distinct().Count() != credits.Count)
-            {
-                throw new ArgumentException("Hand credits must have non-empty, unique accounts.", nameof(credits));
-            }
+            if (entries == null || entries.Count < 2 || entries.Any(entry =>
+                entry == null || string.IsNullOrEmpty(entry.AccountId)) ||
+                entries.Select(entry => entry.AccountId).Distinct(StringComparer.Ordinal).Count() != entries.Count)
+                return HandSettlementResult.InvalidDistribution;
 
-            var groupedCredits = credits.ToDictionary(
-                credit => credit.AccountId,
-                credit => credit.Amount,
-                StringComparer.Ordinal);
             lock (_syncRoot)
             {
                 using (var connection = OpenConnection())
                 using (var transaction = connection.BeginTransaction())
                 {
                     var status = GetHandStatus(connection, transaction, handId);
+                    if ((status != "Active" && status != "Settled") ||
+                        GetHandAccountingMode(connection, transaction, handId) != 1)
+                        return HandSettlementResult.HandNotActive;
+
+                    var stored = new Dictionary<string, (uint Starting, uint Contribution, uint Award, uint Refund, uint? Final)>(StringComparer.Ordinal);
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.Transaction = transaction;
+                        command.CommandText = @"
+SELECT account_id, starting_chips, contributed_chips, awarded_chips, refunded_chips, settled_chips
+FROM poker_hand_participants WHERE hand_id = $handId;";
+                        command.Parameters.AddWithValue("$handId", handId);
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                                stored.Add(reader.GetString(0), (checked((uint)reader.GetInt64(1)),
+                                    checked((uint)reader.GetInt64(2)), checked((uint)reader.GetInt64(3)),
+                                    checked((uint)reader.GetInt64(4)), reader.IsDBNull(5) ? (uint?)null : checked((uint)reader.GetInt64(5))));
+                        }
+                    }
+                    if (stored.Count != entries.Count)
+                        return HandSettlementResult.InvalidDistribution;
+
+                    ulong contributions = 0;
+                    ulong credits = 0;
+                    var balances = new Dictionary<string, HandSettlementBalance>(StringComparer.Ordinal);
+                    foreach (var entry in entries)
+                    {
+                        if (!stored.TryGetValue(entry.AccountId, out var participant) ||
+                            entry.Contribution > participant.Starting || entry.Refund > entry.Contribution)
+                            return HandSettlementResult.InvalidDistribution;
+                        var final = (long)participant.Starting - entry.Contribution + entry.Award + entry.Refund;
+                        if (final < 0 || final > uint.MaxValue)
+                            return HandSettlementResult.InvalidDistribution;
+                        if (status == "Settled" && (participant.Contribution != entry.Contribution ||
+                            participant.Award != entry.Award || participant.Refund != entry.Refund || participant.Final != (uint)final))
+                            return HandSettlementResult.InvalidDistribution;
+                        contributions = checked(contributions + entry.Contribution);
+                        credits = checked(credits + entry.Award + entry.Refund);
+                        balances.Add(entry.AccountId, new HandSettlementBalance
+                        {
+                            AccountId = entry.AccountId, StartingChips = participant.Starting, Chips = (uint)final,
+                        });
+                    }
+                    if (contributions != credits)
+                        return HandSettlementResult.InvalidDistribution;
                     if (status == "Settled")
                     {
-                        accounts = ReadAccounts(connection, transaction, groupedCredits.Keys);
+                        // Return the recorded hand result, even if the account has since played again.
                         transaction.Commit();
+                        accounts = balances;
                         return HandSettlementResult.AlreadyApplied;
                     }
-                    if (status != "Active")
-                    {
-                        transaction.Rollback();
-                        return HandSettlementResult.HandNotActive;
-                    }
-
-                    var contributionTotal = GetContributionTotal(connection, transaction, handId);
-                    var creditTotal = groupedCredits.Values.Aggregate(0UL, (total, amount) => checked(total + amount));
-                    if (creditTotal != (ulong)contributionTotal ||
-                        groupedCredits.Keys.Any(accountId => !IsHandParticipant(connection, transaction, handId, accountId)))
-                    {
-                        transaction.Rollback();
+                    if (HandRequestExists(connection, transaction, requestId))
                         return HandSettlementResult.InvalidDistribution;
-                    }
 
-                    var roomId = GetHandRoomId(connection, transaction, handId);
-                    var updated = new Dictionary<string, PlayerAccount>(StringComparer.Ordinal);
                     var now = DateTime.UtcNow;
-                    var index = 0;
-                    foreach (var pair in groupedCredits)
+                    var roomId = GetHandRoomId(connection, transaction, handId);
+                    foreach (var entry in entries.OrderBy(entry => entry.AccountId, StringComparer.Ordinal))
                     {
-                        var account = FindById(connection, transaction, pair.Key);
-                        uint newBalance;
-                        try
-                        {
-                            newBalance = checked(account.Chips + pair.Value);
-                        }
-                        catch (OverflowException)
-                        {
-                            transaction.Rollback();
+                        var account = FindById(connection, transaction, entry.AccountId);
+                        var balance = balances[entry.AccountId];
+                        if (account == null || account.Chips != balance.StartingChips)
                             return HandSettlementResult.InvalidDistribution;
+                        if (balance.Chips != account.Chips)
+                        {
+                            UpdateAccountBalance(connection, transaction, account, balance.Chips, now);
+                            InsertLedger(connection, transaction, Guid.NewGuid().ToString("N"),
+                                "hand-net:" + handId + ":" + entry.AccountId, entry.AccountId, "HandNetSettlement",
+                                (long)balance.Chips - account.Chips, account.Chips, balance.Chips, roomId, handId, now);
                         }
-                        UpdateAccountBalance(connection, transaction, account, newBalance, now);
-                        InsertLedger(
-                            connection,
-                            transaction,
-                            Guid.NewGuid().ToString("N"),
-                            requestId + ":" + index.ToString(CultureInfo.InvariantCulture),
-                            account.AccountId,
-                            "HandSettlement",
-                            (long)pair.Value,
-                            account.Chips,
-                            newBalance,
-                            roomId,
-                            handId,
-                            now);
-                        account.Chips = newBalance;
-                        account.Version++;
-                        account.UpdatedAtUtc = now;
-                        updated.Add(account.AccountId, account);
-                        index++;
+                        using (var command = connection.CreateCommand())
+                        {
+                            command.Transaction = transaction;
+                            command.CommandText = @"
+UPDATE poker_hand_participants
+SET contributed_chips = $contribution, awarded_chips = $award, refunded_chips = $refund, settled_chips = $final
+WHERE hand_id = $handId AND account_id = $accountId;";
+                            command.Parameters.AddWithValue("$handId", handId);
+                            command.Parameters.AddWithValue("$accountId", entry.AccountId);
+                            command.Parameters.AddWithValue("$contribution", (long)entry.Contribution);
+                            command.Parameters.AddWithValue("$award", (long)entry.Award);
+                            command.Parameters.AddWithValue("$refund", (long)entry.Refund);
+                            command.Parameters.AddWithValue("$final", (long)balance.Chips);
+                            if (command.ExecuteNonQuery() != 1)
+                                throw new InvalidOperationException("The hand participant could not be settled.");
+                        }
                     }
-
                     MarkHandCompleted(connection, transaction, handId, "Settled", now);
-                    InsertHandRequest(connection, transaction, requestId, handId, "Settlement", now);
+                    InsertHandRequest(connection, transaction, requestId, handId, "NetSettlement", now);
                     transaction.Commit();
-                    accounts = updated;
+                    accounts = balances;
                     return HandSettlementResult.Applied;
                 }
             }
@@ -784,7 +789,7 @@ VALUES ($handId, $accountId, $startingChips, 0);";
                         return false;
                     }
 
-                    RefundAndAbortHand(connection, transaction, handId, reason, DateTime.UtcNow);
+                    AbortStoredHand(connection, transaction, handId, reason, DateTime.UtcNow);
                     transaction.Commit();
                     return true;
                 }
@@ -816,7 +821,7 @@ WHERE hand.status = 'Active';"),
                             @"SELECT COALESCE(SUM(amount), 0)
 FROM chip_ledger
 WHERE transaction_type IN (
-    'HandCommit', 'HandSettlement', 'CrashRecoveryRefund', 'HandAbortRefund');"),
+    'HandCommit', 'HandSettlement', 'HandNetSettlement', 'CrashRecoveryRefund', 'HandAbortRefund');"),
                         ActiveHandCount = ReadInt64(
                             connection,
                             "SELECT COUNT(*) FROM poker_hands WHERE status = 'Active';"),
@@ -982,6 +987,40 @@ CREATE TABLE hand_requests (
 
 CREATE INDEX ix_poker_hands_status ON poker_hands(status);";
                 command.ExecuteNonQuery();
+            }
+        }
+
+        private static void CreateDeferredSettlementSchema(SqliteConnection connection, SqliteTransaction transaction)
+        {
+            // Execute each DDL statement separately: this provider can stop a multi-statement
+            // command on a later schema error without propagating that error to ExecuteNonQuery.
+            var statements = new[]
+            {
+                "ALTER TABLE poker_hands ADD COLUMN accounting_mode INTEGER NOT NULL DEFAULT 0 CHECK (accounting_mode IN (0, 1));",
+                "ALTER TABLE poker_hand_participants ADD COLUMN awarded_chips INTEGER NOT NULL DEFAULT 0 CHECK (awarded_chips BETWEEN 0 AND 4294967295);",
+                "ALTER TABLE poker_hand_participants ADD COLUMN refunded_chips INTEGER NOT NULL DEFAULT 0 CHECK (refunded_chips BETWEEN 0 AND 4294967295);",
+                "ALTER TABLE poker_hand_participants ADD COLUMN settled_chips INTEGER NULL CHECK (settled_chips BETWEEN 0 AND 4294967295);",
+                "CREATE INDEX ix_player_accounts_leaderboard ON player_accounts(chips DESC, created_at_utc ASC, account_id ASC);",
+            };
+            foreach (var statement in statements)
+            {
+                using (var command = connection.CreateCommand())
+                {
+                    command.Transaction = transaction;
+                    command.CommandText = statement;
+                    command.ExecuteNonQuery();
+                }
+            }
+        }
+
+        private static int GetHandAccountingMode(SqliteConnection connection, SqliteTransaction transaction, string handId)
+        {
+            using (var command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "SELECT accounting_mode FROM poker_hands WHERE hand_id = $handId;";
+                command.Parameters.AddWithValue("$handId", handId);
+                return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
             }
         }
 
@@ -1159,6 +1198,7 @@ VALUES (
                 Version = reader.GetInt64(8),
                 CreatedAtUtc = ParseDateTime(reader.GetString(9)),
                 UpdatedAtUtc = ParseDateTime(reader.GetString(10)),
+                EquippedNamecardId = reader.GetString(11),
             };
         }
 
@@ -1183,7 +1223,7 @@ VALUES (
 
                     var now = DateTime.UtcNow;
                     foreach (var handId in handIds)
-                        RefundAndAbortHand(connection, transaction, handId, "ServerRestart", now);
+                        AbortStoredHand(connection, transaction, handId, "ServerRestart", now);
 
                     transaction.Commit();
                 }
@@ -1218,23 +1258,7 @@ VALUES (
             }
         }
 
-        private static bool IsHandParticipant(
-            SqliteConnection connection,
-            SqliteTransaction transaction,
-            string handId,
-            string accountId)
-        {
-            using (var command = connection.CreateCommand())
-            {
-                command.Transaction = transaction;
-                command.CommandText = @"
-SELECT 1 FROM poker_hand_participants
-WHERE hand_id = $handId AND account_id = $accountId LIMIT 1;";
-                command.Parameters.AddWithValue("$handId", handId);
-                command.Parameters.AddWithValue("$accountId", accountId);
-                return command.ExecuteScalar() != null;
-            }
-        }
+
 
         private static bool IsAccountInActiveHand(
             SqliteConnection connection,
@@ -1255,21 +1279,7 @@ LIMIT 1;";
             }
         }
 
-        private static long GetContributionTotal(
-            SqliteConnection connection,
-            SqliteTransaction transaction,
-            string handId)
-        {
-            using (var command = connection.CreateCommand())
-            {
-                command.Transaction = transaction;
-                command.CommandText = @"
-SELECT COALESCE(SUM(contributed_chips), 0)
-FROM poker_hand_participants WHERE hand_id = $handId;";
-                command.Parameters.AddWithValue("$handId", handId);
-                return Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture);
-            }
-        }
+
 
         private static bool HandRequestExists(
             SqliteConnection connection,
@@ -1330,43 +1340,9 @@ WHERE account_id = $accountId AND version = $version;";
             }
         }
 
-        private static void AddContribution(
-            SqliteConnection connection,
-            SqliteTransaction transaction,
-            string handId,
-            string accountId,
-            uint amount)
-        {
-            using (var command = connection.CreateCommand())
-            {
-                command.Transaction = transaction;
-                command.CommandText = @"
-UPDATE poker_hand_participants
-SET contributed_chips = contributed_chips + $amount
-WHERE hand_id = $handId AND account_id = $accountId;";
-                command.Parameters.AddWithValue("$amount", (long)amount);
-                command.Parameters.AddWithValue("$handId", handId);
-                command.Parameters.AddWithValue("$accountId", accountId);
-                if (command.ExecuteNonQuery() != 1)
-                    throw new InvalidOperationException("The account is not a participant in the hand.");
-            }
-        }
 
-        private static IReadOnlyDictionary<string, PlayerAccount> ReadAccounts(
-            SqliteConnection connection,
-            SqliteTransaction transaction,
-            IEnumerable<string> accountIds)
-        {
-            var accounts = new Dictionary<string, PlayerAccount>(StringComparer.Ordinal);
-            foreach (var accountId in accountIds.Distinct(StringComparer.Ordinal))
-            {
-                var account = FindById(connection, transaction, accountId);
-                if (account != null)
-                    accounts.Add(accountId, account);
-            }
 
-            return accounts;
-        }
+
 
         private static void MarkHandCompleted(
             SqliteConnection connection,
@@ -1389,13 +1365,19 @@ WHERE hand_id = $handId AND status = 'Active';";
             }
         }
 
-        private static void RefundAndAbortHand(
+        private static void AbortStoredHand(
             SqliteConnection connection,
             SqliteTransaction transaction,
             string handId,
             string reason,
             DateTime now)
         {
+            if (GetHandAccountingMode(connection, transaction, handId) == 1)
+            {
+                MarkHandCompleted(connection, transaction, handId, "Aborted", now);
+                return;
+            }
+            // Legacy hands debited each wager and still need exactly one recovery refund.
             var participants = new List<(string AccountId, uint Contribution)>();
             using (var command = connection.CreateCommand())
             {
@@ -1447,7 +1429,7 @@ WHERE hand_id = $handId AND contributed_chips > 0;";
 
         private const string AccountSelect = @"
 SELECT account_id, user_name, password_algorithm, password_hash, password_salt,
-       password_iterations, chips, last_room_id, version, created_at_utc, updated_at_utc
+       password_iterations, chips, last_room_id, version, created_at_utc, updated_at_utc, equipped_namecard
 FROM player_accounts";
     }
 }

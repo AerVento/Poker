@@ -42,7 +42,7 @@ namespace Game.Tests
 
         [TestCase(0u, DailyTaskAvailability.Claimable)]
         [TestCase(999u, DailyTaskAvailability.Claimable)]
-        [TestCase(1000u, DailyTaskAvailability.BalanceTooHigh)]
+        [TestCase(1000u, DailyTaskAvailability.Claimable)]
         [TestCase(1001u, DailyTaskAvailability.BalanceTooHigh)]
         public void LowBalanceThresholdIsStrict(uint balance, DailyTaskAvailability expected)
         {

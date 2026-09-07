@@ -10,6 +10,28 @@ namespace Game.UI.GamePanelElement
 {
     public class PlayerListItem : MonoBehaviour
     {
+        [SerializeField] private NamecardAppearance _namecard;
+        public void SetNamecard(string id) => _namecard?.Present(id);
+        public void SetNamecard(Game.SO.NamecardProductSO product) => SetNamecard(product != null ? product.Id : null);
+
+        [Tooltip("Spacing between instances of this layout prefab.")]
+        [SerializeField] private Vector2 _listSpacing = new Vector2(14, 14);
+        public Vector2 ListSpacing => _listSpacing;
+        public double CountdownRemaining => _timer.TimeRemaining;
+
+        // Rebuilding the view must not give the acting player a fresh countdown.
+        public void RestoreCountdown(double remaining)
+        {
+            if (!_isOperating)
+                return;
+            _timer.Stop();
+            if (remaining > 0)
+            {
+                _timer.Duration = System.Math.Min(remaining, _thinkingTime);
+                _timer.Start();
+            }
+        }
+
         [Header("GameObjects")]
         [SerializeField]
         private GameObject _disconnected;
@@ -60,6 +82,9 @@ namespace Game.UI.GamePanelElement
         [SerializeField]
         private CanvasGroup _canvasGroup;
 
+        [Range(0, 1)]
+        [SerializeField] private float _foldedAlpha = 0.4f;
+
         private uint _chips;
 
         private float _thinkingTime = 30;
@@ -84,7 +109,7 @@ namespace Game.UI.GamePanelElement
             set
             {
                 _chips = value;
-                _chipsText.text = "$" + BigNumberToString(value);
+                _chipsText.text = "$" + ChipAmountFormatter.Format(value);
             }
         }
 
@@ -136,14 +161,19 @@ namespace Game.UI.GamePanelElement
             get => _isOperating;
             set
             {
-                _timeText.gameObject.SetActive(value);
-                _background.sprite = value ? _opertingSprite : _nonOperatingSprite;
-                if (_isOperating == value)
-                    return;
+                bool changed = _isOperating != value;
                 _isOperating = value;
+                RefreshStatus();
+                _namecard?.SetHighlighted(value);
+                _background.sprite = value ? _opertingSprite : _nonOperatingSprite;
+                if (!changed)
+                    return;
 
                 if (value && !_timer.IsCounting)
+                {
+                    _timer.Duration = _thinkingTime;
                     _timer.Start();
+                }
                 else if (!value && _timer.IsCounting)
                     _timer.Stop();
             }
@@ -155,7 +185,7 @@ namespace Game.UI.GamePanelElement
             set
             {
                 _isFold = value;
-                _canvasGroup.alpha = value ? 0.4f : 1;
+                _canvasGroup.alpha = value ? _foldedAlpha : 1;
             }
         }
 
@@ -171,30 +201,37 @@ namespace Game.UI.GamePanelElement
             set
             {
                 _operation = value;
-                _checkIcon.gameObject.SetActive(false);
-                _betIcon.gameObject.SetActive(false);
-                _raiseIcon.gameObject.SetActive(false);
-                _callIcon.gameObject.SetActive(false);
-                _allInIcon.gameObject.SetActive(false);
-                _foldIcon.gameObject.SetActive(false);
-                
-
-                if (value != null)
-                {
-                    OperationIcon icon = value.Type switch
-                    {
-                        PlayerOperationType.Check => _checkIcon,
-                        PlayerOperationType.Bet => _betIcon,
-                        PlayerOperationType.Raise => _raiseIcon,
-                        PlayerOperationType.Call => _callIcon,
-                        PlayerOperationType.AllIn => _allInIcon,
-                        PlayerOperationType.Fold => _foldIcon,
-                        _ => throw new System.IndexOutOfRangeException()
-                    };
-                    icon.gameObject.SetActive(true);
-                    icon.Chips = value.Number;
-                }
+                RefreshStatus();
             }
+        }
+
+        // A player may retain their previous action when it becomes their turn again.
+        // The shared status slot shows the countdown until that turn has ended.
+        private void RefreshStatus()
+        {
+            _timeText.gameObject.SetActive(_isOperating);
+            _checkIcon.gameObject.SetActive(false);
+            _betIcon.gameObject.SetActive(false);
+            _raiseIcon.gameObject.SetActive(false);
+            _callIcon.gameObject.SetActive(false);
+            _allInIcon.gameObject.SetActive(false);
+            _foldIcon.gameObject.SetActive(false);
+
+            if (_isOperating || _operation == null)
+                return;
+
+            OperationIcon icon = _operation.Type switch
+            {
+                PlayerOperationType.Check => _checkIcon,
+                PlayerOperationType.Bet => _betIcon,
+                PlayerOperationType.Raise => _raiseIcon,
+                PlayerOperationType.Call => _callIcon,
+                PlayerOperationType.AllIn => _allInIcon,
+                PlayerOperationType.Fold => _foldIcon,
+                _ => throw new System.IndexOutOfRangeException()
+            };
+            icon.Chips = _operation.Number;
+            icon.gameObject.SetActive(true);
         }
 
         public void StartCountDown() => _timer.Start();
@@ -203,7 +240,8 @@ namespace Game.UI.GamePanelElement
         {
             _timer.Stop();
             _isOperating = false;
-            _timeText.gameObject.SetActive(false);
+            _namecard?.SetHighlighted(false);
+            RefreshStatus();
             _background.sprite = _nonOperatingSprite;
         }
 
@@ -212,20 +250,11 @@ namespace Game.UI.GamePanelElement
         {
 
             // 设置时间
-            _timeText.text = _timer.IsCounting ? System.Convert.ToInt32(System.Math.Ceiling(_timer.TimeRemaining)).ToString() : "0";
+            var seconds = _timer.IsCounting ? System.Convert.ToInt32(System.Math.Ceiling(_timer.TimeRemaining)) : 0;
+            _timeText.text = $"思考 {seconds}s";
         }
 
-        private string BigNumberToString(uint number)
-        {
-            if (number < 1000)
-                return number.ToString();
-            else if (number < 1000000)
-                return System.MathF.Round((float)number / 1000, 1).ToString() + "K";
-            else if (number < 1000000000)
-                return System.MathF.Round((float)number / 1000000, 1).ToString() + "M";
-            else
-                return System.MathF.Round((float)number / 1000000000, 1).ToString() + "B";
-        }
+
     }
 
 }

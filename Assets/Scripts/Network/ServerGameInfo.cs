@@ -196,6 +196,7 @@ namespace Game.Network
                 SeatIndex = seat.SeatIndex,
                 AccountId = account.AccountId,
                 Chips = account.Chips,
+                AccountChips = account.Chips,
                 PlayerName = seat.PlayerName,
                 IsOccupied = true,
                 IsLeaving = seat.State == RoomSeatState.Leaving,
@@ -226,6 +227,9 @@ namespace Game.Network
 
             [JsonIgnore]
             public uint HandStartingChips { get; set; }
+
+            [JsonIgnore]
+            public uint AccountChips { get; set; }
 
             /// <summary>
             /// 筹码量

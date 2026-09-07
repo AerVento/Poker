@@ -1,0 +1,119 @@
+[
+  {
+    "id": "frost",
+    "name": "极霜",
+    "description": "冰晶凝住锋芒，极光掠过桌沿。",
+    "price": 16000,
+    "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-1fce8421-9bc9-4bd2-a9d3-22ab5809a8d6.png",
+    "file": "frost-v1.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      253
+    ],
+    "sha256": "fc130677af1ebc052a6c831be7ca89d2520a07d6b5e94d89c3dbe8feaa85ebc9"
+  },
+  {
+    "id": "abyss",
+    "name": "幽海",
+    "description": "潜入无声深海，让幽光替你发声。",
+    "price": 20000,
+    "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-db46d2e6-ed20-4b72-b724-8185c74ff3ef.png",
+    "file": "abyss-v1.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      254
+    ],
+    "sha256": "e26cf8b0a8b63a832eb778b8347cc9ea15ad0aeaacb1c6a30b1f57e14bc90f8a"
+  },
+  {
+    "id": "jade",
+    "name": "龙珀",
+    "description": "青玉藏龙，云纹之间自有威仪。",
+    "price": 28000,
+    "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-64b352db-dea6-4755-bb86-26f738066506.png",
+    "file": "jade-v1.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      253
+    ],
+    "sha256": "fc25f254f26ecd5bf9be5cae35c1218ef2ae162e6fad6e6dc4b4e9165ab6d3e8"
+  },
+  {
+    "id": "sakura",
+    "name": "绯樱",
+    "description": "一席夜樱，把锋芒藏进温柔。",
+    "price": 14000,
+    "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-9ca70d20-e45a-46d2-9396-2a62390d14ce.png",
+    "file": "sakura-v1.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      254
+    ],
+    "sha256": "0de9e37087d7d257d11bf5ee50c3df0cdce0d7942ca6ac708cb9af0f49767e6a"
+  },
+  {
+    "id": "clockwork",
+    "name": "时轮",
+    "description": "黄铜齿轮转动，掌握自己的节奏。",
+    "price": 24000,
+    "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-41913566-0e50-4fad-a140-1e22db72848b.png",
+    "file": "clockwork-v1.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGB",
+    "alpha_range": null,
+    "sha256": "9832caab875d2ebc0a731ad879783096a00b2d2bad0daef902a99552fe439e28"
+  },
+  {
+    "id": "eclipse",
+    "name": "蚀日",
+    "description": "日冕划破暗夜，沉默亦有引力。",
+    "price": 36000,
+    "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-7af6c5e1-ca17-4e53-bed9-43e1b029e8fa.png",
+    "file": "eclipse-v1.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGB",
+    "alpha_range": null,
+    "sha256": "f8f5937fac43cf94f54b76d71eca0dfc6d3fd9246f72242686aedd53b9a029a5"
+  },
+  {
+    "id": "prism",
+    "name": "幻晶",
+    "description": "万色折光，让每次亮相都不同。",
+    "price": 32000,
+    "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-d60212f8-b814-4f33-bcdd-1f60f558b7bf.png",
+    "file": "prism-v1.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGB",
+    "alpha_range": null,
+    "sha256": "68083895899cffb71c1b40c66073b5438a572ad8e80f103ad0bdc8a6e33eaeb6"
+  }
+]

@@ -24,6 +24,8 @@ namespace Game.Network
                     PlayerName = player.PlayerName,
                     IsFold = player.IsFold,
                     IsDisconnected = player.IsDisconnected,
+                    // CompleteRound already includes only publicly revealed showdown cards.
+                    Hole = player.IsFold ? new List<Poker>() : new List<Poker>(player.Hole),
                     ChipEarned = player.ChipEarned,
                 }).ToList(),
             };

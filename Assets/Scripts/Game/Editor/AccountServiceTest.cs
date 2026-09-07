@@ -229,20 +229,8 @@ WHERE account_id = $accountId
                     100,
                     out _));
 
-            var debits = new[]
-            {
-                new HandChipDebit { AccountId = alice.AccountId, Amount = 150 },
-                new HandChipDebit { AccountId = bob.AccountId, Amount = 100 },
-            };
-            Assert.AreEqual(
-                HandDebitResult.Applied,
-                repository.ApplyHandDebits("hand-atomic", "debit-1", debits, out var debited));
-            Assert.AreEqual(9850, debited[alice.AccountId].Chips);
-            Assert.AreEqual(9900, debited[bob.AccountId].Chips);
-            Assert.AreEqual(
-                HandDebitResult.AlreadyApplied,
-                repository.ApplyHandDebits("hand-atomic", "debit-1", debits, out var repeatedDebit));
-            Assert.AreEqual(9850, repeatedDebit[alice.AccountId].Chips);
+            Assert.AreEqual(10000, repository.FindById(alice.AccountId).Chips);
+            Assert.AreEqual(10000, repository.FindById(bob.AccountId).Chips);
             Assert.AreEqual(
                 ChipMutationResult.AccountBusyInHand,
                 repository.ApplyChipMutation(
@@ -264,7 +252,8 @@ WHERE account_id = $accountId
 
             var credits = new[]
             {
-                new HandChipCredit { AccountId = alice.AccountId, Amount = 250 },
+                new HandSettlementEntry { AccountId = alice.AccountId, Contribution = 150, Award = 200, Refund = 50 },
+                new HandSettlementEntry { AccountId = bob.AccountId, Contribution = 100 },
             };
             Assert.AreEqual(
                 HandSettlementResult.Applied,
@@ -280,7 +269,7 @@ WHERE account_id = $accountId
         }
 
         [Test]
-        public void InitializeRefundsAnAbandonedActiveHand()
+        public void InitializeAbortsAnUnsettledHandWithoutChangingBalances()
         {
             var service = CreateService();
             var alice = service.Register("RecoveryAlice", "password123").Account;
@@ -295,17 +284,7 @@ WHERE account_id = $accountId
                     new[] { alice.AccountId, bob.AccountId },
                     100,
                     out _));
-            Assert.AreEqual(
-                HandDebitResult.Applied,
-                repository.ApplyHandDebits(
-                    "hand-recovery",
-                    "recovery-debit",
-                    new[]
-                    {
-                        new HandChipDebit { AccountId = alice.AccountId, Amount = 300 },
-                        new HandChipDebit { AccountId = bob.AccountId, Amount = 200 },
-                    },
-                    out _));
+
 
             var restartedRepository = new SqliteAccountRepository(_databasePath);
             restartedRepository.Initialize();
@@ -321,7 +300,7 @@ WHERE account_id = $accountId
         }
 
         [Test]
-        public void ReconciliationTracksActiveContributionsSettlementAndRecovery()
+        public void ReconciliationTracksDeferredSettlementAndRecovery()
         {
             var service = CreateService();
             var alice = service.Register("AuditAlice", "password123").Account;
@@ -337,24 +316,14 @@ WHERE account_id = $accountId
                     new[] { alice.AccountId, bob.AccountId },
                     100,
                     out _));
-            Assert.AreEqual(
-                HandDebitResult.Applied,
-                repository.ApplyHandDebits(
-                    "hand-audit",
-                    "audit-debit",
-                    new[]
-                    {
-                        new HandChipDebit { AccountId = alice.AccountId, Amount = 300 },
-                        new HandChipDebit { AccountId = bob.AccountId, Amount = 200 },
-                    },
-                    out _));
+
 
             var activeReport = repository.ReconcileChips();
             Assert.IsTrue(activeReport.IsConsistent);
-            Assert.AreEqual(19500, activeReport.AccountBalanceTotal);
-            Assert.AreEqual(19500, activeReport.LedgerNetTotal);
-            Assert.AreEqual(500, activeReport.ActiveContributionTotal);
-            Assert.AreEqual(-500, activeReport.InternalHandLedgerTotal);
+            Assert.AreEqual(20000, activeReport.AccountBalanceTotal);
+            Assert.AreEqual(20000, activeReport.LedgerNetTotal);
+            Assert.AreEqual(0, activeReport.ActiveContributionTotal);
+            Assert.AreEqual(0, activeReport.InternalHandLedgerTotal);
             Assert.AreEqual(1, activeReport.ActiveHandCount);
 
             Assert.AreEqual(
@@ -362,7 +331,8 @@ WHERE account_id = $accountId
                 repository.SettleHand(
                     "hand-audit",
                     "audit-settlement",
-                    new[] { new HandChipCredit { AccountId = bob.AccountId, Amount = 500 } },
+                    new[] { new HandSettlementEntry { AccountId = alice.AccountId, Contribution = 300, Refund = 100 },
+                        new HandSettlementEntry { AccountId = bob.AccountId, Contribution = 200, Award = 400 } },
                     out _));
 
             var settledReport = repository.ReconcileChips();

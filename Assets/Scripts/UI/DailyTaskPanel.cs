@@ -171,7 +171,7 @@ namespace Game.UI
         private static string ResultMessage(DailyTaskResult result) => result switch
         {
             DailyTaskResult.AlreadyClaimed => "该任务今日已经领取过了。",
-            DailyTaskResult.BalanceTooHigh => "当前余额不低于 $1,000，无法领取应急筹码。",
+            DailyTaskResult.BalanceTooHigh => "当前余额高于 $1,000，无法领取应急筹码。",
             DailyTaskResult.ActiveHand => "账号尚有未结算的手牌，无法领取奖励。",
             DailyTaskResult.OutsideRoomRequired => "请离开房间后再领取奖励。",
             DailyTaskResult.PeriodChanged => "已进入新的一天，任务状态正在刷新，请重新领取。",

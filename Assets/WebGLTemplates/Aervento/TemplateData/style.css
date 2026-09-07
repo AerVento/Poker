@@ -23,3 +23,10 @@ body { padding: 0; margin: 0; height: 100vh; height: 100dvh; min-height: 320px; 
     #unity-game-area { padding: 12px; }
     #unity-webgl-logo { display: none; }
 }
+body.mobile-landscape { min-height: 0; overflow: hidden; background: {{{ BACKGROUND_COLOR }}}; }
+.mobile-landscape #aervento-navigation, .mobile-landscape #unity-footer { display: none; }
+.mobile-landscape #unity-game-area {
+    min-height: 0;
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+.mobile-landscape #unity-loading-bar { top: 50%; }

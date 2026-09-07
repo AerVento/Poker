@@ -8,6 +8,14 @@ using UnityEngine.UI;
 
 namespace Game.UI
 {
+    internal enum LoginDestination
+    {
+        Lobby,
+        DailyTasks,
+        Leaderboard,
+        Shop
+    }
+
     public class LoginPanel : SingletonPanel<LoginPanel>
     {
         [Header("Inputs")]
@@ -32,7 +40,7 @@ namespace Game.UI
         private bool _subscribed;
         private bool _savedLoginStarted;
 
-        internal bool OpenTasksAfterLogin { get; private set; }
+        internal LoginDestination DestinationAfterLogin { get; private set; }
 
         private void OnEnable()
         {
@@ -67,13 +75,15 @@ namespace Game.UI
             _back.onClick.RemoveListener(Back);
             Unsubscribe();
             _savedLoginStarted = false;
-            OpenTasksAfterLogin = false;
+            DestinationAfterLogin = LoginDestination.Lobby;
             _password.text = string.Empty;
         }
 
-        public void BeginTaskLogin()
+        public void BeginTaskLogin() => BeginAccountLogin(LoginDestination.DailyTasks);
+
+        internal void BeginAccountLogin(LoginDestination destination)
         {
-            OpenTasksAfterLogin = true;
+            DestinationAfterLogin = destination;
             BeginSavedLogin();
         }
 

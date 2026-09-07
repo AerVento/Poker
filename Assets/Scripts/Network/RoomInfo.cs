@@ -43,6 +43,11 @@ namespace Game.Network
         /// </summary>
         public int Id { get; set; }
 
+        public Dictionary<string, string> Namecards { get; set; } = new Dictionary<string, string>();
+
+        public string GetNamecard(string playerName) => playerName != null && Namecards != null &&
+            Namecards.TryGetValue(playerName, out var id) ? id : string.Empty;
+
         /// <summary>
         /// 最大玩家数量
         /// </summary>

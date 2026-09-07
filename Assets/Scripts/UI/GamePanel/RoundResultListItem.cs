@@ -65,7 +65,7 @@ namespace Game.UI.GamePanelElement
             set
             {
                 _chipEarned = value;
-                _chipEarnedText.text = "+$" + BigNumberToString(value);
+                _chipEarnedText.text = "+$" + ChipAmountFormatter.Format(value);
             }
         }
 
@@ -105,16 +105,6 @@ namespace Game.UI.GamePanelElement
             _patternText.text = builder.ToString();
         }
 
-        private string BigNumberToString(uint number)
-        {
-            if (number < 1000)
-                return number.ToString();
-            else if (number < 1000000)
-                return System.MathF.Round((float)number / 1000, 1).ToString() + "K";
-            else if (number < 1000000000)
-                return System.MathF.Round((float)number / 1000000, 1).ToString() + "M";
-            else
-                return System.MathF.Round((float)number / 1000000000, 1).ToString() + "B";
-        }
+
     }
 }

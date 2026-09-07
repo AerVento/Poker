@@ -99,7 +99,6 @@ namespace Game.Network
                 conn.Send(new ServerShutdownNotice { Reason = ServerShutdownReason.StorageFailure });
                 return;
             }
-            _networkRoom.RecordClientActivity(conn);
             // Wait for an explicit register or login request from the client.
         }
 
@@ -258,7 +257,6 @@ namespace Game.Network
 
         private void OnRegisterRequest(NetworkConnectionToClient conn, AccountRegisterRequest request)
         {
-            _networkRoom.RecordClientActivity(conn);
             Authenticate(
                 conn,
                 AccountAuthenticationOperation.Register,
@@ -267,7 +265,6 @@ namespace Game.Network
 
         private void OnLoginRequest(NetworkConnectionToClient conn, AccountLoginRequest request)
         {
-            _networkRoom.RecordClientActivity(conn);
             Authenticate(
                 conn,
                 AccountAuthenticationOperation.Login,
@@ -276,7 +273,6 @@ namespace Game.Network
 
         private void OnTokenLoginRequest(NetworkConnectionToClient conn, AccountTokenLoginRequest request)
         {
-            _networkRoom.RecordClientActivity(conn);
             Authenticate(
                 conn,
                 AccountAuthenticationOperation.TokenLogin,
@@ -285,7 +281,6 @@ namespace Game.Network
 
         private void OnLogoutRequest(NetworkConnectionToClient conn, AccountLogoutRequest request)
         {
-            _networkRoom.RecordClientActivity(conn);
             if (_networkRoom.IsServerShuttingDown)
                 return;
             var revoked = false;

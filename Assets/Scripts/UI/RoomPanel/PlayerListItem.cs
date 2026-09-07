@@ -11,6 +11,9 @@ namespace Game.UI.RoomPanelElement
 {
     public class PlayerListItem : MonoBehaviour
     {
+        [SerializeField] private NamecardAppearance _namecard;
+        public void SetNamecard(string id) => _namecard?.Present(id);
+
         [SerializeField]
         private TextMeshProUGUI _playername;
 
@@ -51,6 +54,7 @@ namespace Game.UI.RoomPanelElement
             set
             {
                 _isReady = value;
+                _namecard?.SetHighlighted(value);
                 if (value)
                 {
                     _background.sprite = _readySprite;

@@ -30,15 +30,6 @@ namespace Game.Network.Accounts
         BalanceLimitExceeded,
     }
 
-    public enum HandDebitResult
-    {
-        Applied,
-        AlreadyApplied,
-        HandNotActive,
-        AccountNotInHand,
-        InsufficientChips,
-    }
-
     public enum HandSettlementResult
     {
         Applied,
@@ -54,18 +45,19 @@ namespace Game.Network.Accounts
         AccountNotFound,
     }
 
-    public sealed class HandChipDebit
+    public sealed class HandSettlementEntry
     {
         public string AccountId { get; set; }
-
-        public uint Amount { get; set; }
+        public uint Contribution { get; set; }
+        public uint Award { get; set; }
+        public uint Refund { get; set; }
     }
 
-    public sealed class HandChipCredit
+    public sealed class HandSettlementBalance
     {
         public string AccountId { get; set; }
-
-        public uint Amount { get; set; }
+        public uint StartingChips { get; set; }
+        public uint Chips { get; set; }
     }
 
     public sealed class ChipReconciliationReport
@@ -132,17 +124,11 @@ namespace Game.Network.Accounts
             uint minimumChips,
             out IReadOnlyList<PlayerAccount> accounts);
 
-        HandDebitResult ApplyHandDebits(
-            string handId,
-            string requestId,
-            IReadOnlyList<HandChipDebit> debits,
-            out IReadOnlyDictionary<string, PlayerAccount> accounts);
-
         HandSettlementResult SettleHand(
             string handId,
             string requestId,
-            IReadOnlyList<HandChipCredit> credits,
-            out IReadOnlyDictionary<string, PlayerAccount> accounts);
+            IReadOnlyList<HandSettlementEntry> entries,
+            out IReadOnlyDictionary<string, HandSettlementBalance> accounts);
 
         bool AbortHand(string handId, string reason);
     }

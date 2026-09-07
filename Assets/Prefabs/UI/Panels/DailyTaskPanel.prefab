@@ -440,7 +440,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u4F59\u989D\u4F4E\u4E8E $1,000 \u65F6\uFF0C\u53EF\u9886\u53D6\u5E94\u6025\u7B79\u7801\u3002"
+  m_text: "\u4F59\u989D\u4E0D\u9AD8\u4E8E $1,000 \u65F6\uFF0C\u53EF\u9886\u53D6\u5E94\u6025\u7B79\u7801\u3002"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: e07b8f1f395782449bad5feedd2b53a4, type: 2}
   m_sharedMaterial: {fileID: -2692176611403436400, guid: e07b8f1f395782449bad5feedd2b53a4, type: 2}

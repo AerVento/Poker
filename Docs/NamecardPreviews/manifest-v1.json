@@ -1,0 +1,66 @@
+[
+  {
+    "id": "galaxy",
+    "name": "星河",
+    "source": "C:/Users/jinshengkai/.codex/generated_images/01a07679-50e4-7931-9e47-bd92dbeab63b/exec-0c736765-a50e-4aad-a9ae-1895fa6ccd8e.png",
+    "file": "galaxy-v1.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      254
+    ],
+    "sha256": "78d2f90baf8b3af1d04403ecad0e9fa05ed4ca79065bbb9c47bf0e20560aa2cb"
+  },
+  {
+    "id": "ember",
+    "name": "赤焰",
+    "source": "C:/Users/jinshengkai/.codex/generated_images/01a07679-50e4-7931-9e47-bd92dbeab63b/exec-b7f4e293-436a-4de6-80f4-8666bf113cfc.png",
+    "file": "ember-v1.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      254
+    ],
+    "sha256": "09eeadca9e33dbde564031f88b0fd71f2b2cd4371ab3c412fd5a38d22baf6980"
+  },
+  {
+    "id": "neon",
+    "name": "霓虹",
+    "source": "C:/Users/jinshengkai/.codex/generated_images/01a07679-50e4-7931-9e47-bd92dbeab63b/exec-52cb1e25-9a6f-4d56-afad-d1593b9e3e76.png",
+    "file": "neon-v1.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      254
+    ],
+    "sha256": "ed48fc6b73866d7b4c8ddb068344f3651dc0e5ed5688e8b1bddd6957c00a8f77"
+  },
+  {
+    "id": "gilded",
+    "name": "鎏金",
+    "source": "C:/Users/jinshengkai/.codex/generated_images/01a07679-50e4-7931-9e47-bd92dbeab63b/exec-32d08bc0-bece-450a-b798-0f5b9b4cb9b3.png",
+    "file": "gilded-v1.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      254
+    ],
+    "sha256": "97cfeddfac9be69ae46fe5d383a0ab99ef9936fe8e511f371d13503ff2a0af19"
+  }
+]

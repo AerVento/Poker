@@ -33,7 +33,7 @@ namespace Game.UI
             set
             {
                 _chips = value;
-                _chipsText.text = "$" + BigNumberToString(value);
+                _chipsText.text = "$" + ChipAmountFormatter.Format(value);
             }
         }
 
@@ -43,16 +43,6 @@ namespace Game.UI
             set => _disconnectedIcon.gameObject.SetActive(value);
         }
 
-        private string BigNumberToString(uint number)
-        {
-            if (number < 1000)
-                return number.ToString();
-            else if (number < 1000000)
-                return System.MathF.Round((float)number / 1000, 1).ToString() + "K";
-            else if (number < 1000000000)
-                return System.MathF.Round((float)number / 1000000, 1).ToString() + "M";
-            else
-                return System.MathF.Round((float)number / 1000000000, 1).ToString() + "B";
-        }
+
     }
 }

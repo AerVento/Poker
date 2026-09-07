@@ -5,7 +5,7 @@ namespace Game.Network.Accounts
 {
     // Expected business rejections are return values. Unexpected repository failures stop the server.
     public sealed class GuardedAccountRepository : IHandAccountRepository,
-        IPasswordAccountRepository, ISessionAccountRepository, IDailyRewardRepository
+        IPasswordAccountRepository, ISessionAccountRepository, IDailyRewardRepository, ILeaderboardRepository, INamecardRepository
     {
         private readonly IHandAccountRepository _inner;
         private readonly IPasswordAccountRepository _passwords;
@@ -44,6 +44,23 @@ namespace Game.Network.Accounts
             Execute(() => { _inner.Initialize(); return true; });
         }
 
+        public NamecardInventory ReadNamecards(string accountId)
+        {
+            return Execute(() => ((INamecardRepository)_inner).ReadNamecards(accountId));
+        }
+
+        public ShopResult ChangeNamecard(string accountId, string operationId, ShopAction action,
+            string productId, string catalogRevision, NamecardServerCatalog catalog)
+        {
+            return Execute(() => ((INamecardRepository)_inner).ChangeNamecard(
+                accountId, operationId, action, productId, catalogRevision, catalog));
+        }
+
+        public LeaderboardSnapshot ReadLeaderboard(string accountId)
+        {
+            return Execute(() => ((ILeaderboardRepository)_inner).ReadLeaderboard(accountId));
+        }
+
         public PlayerAccount FindById(string accountId)
         {
             return Execute(() => _inner.FindById(accountId));
@@ -78,11 +95,11 @@ namespace Game.Network.Accounts
         }
 
         public ChipMutationResult ClaimDailyReward(string accountId, string claimKey, uint amount,
-            uint? maximumBalanceExclusive, out PlayerAccount account)
+            uint? maximumBalanceInclusive, out PlayerAccount account)
         {
             PlayerAccount snapshot = null;
             var result = Execute(() => ((IDailyRewardRepository)_inner).ClaimDailyReward(
-                accountId, claimKey, amount, maximumBalanceExclusive, out snapshot));
+                accountId, claimKey, amount, maximumBalanceInclusive, out snapshot));
             account = snapshot;
             return result;
         }
@@ -95,20 +112,12 @@ namespace Game.Network.Accounts
             return result;
         }
 
-        public HandDebitResult ApplyHandDebits(string handId, string requestId, IReadOnlyList<HandChipDebit> debits, out IReadOnlyDictionary<string, PlayerAccount> accounts)
+        public HandSettlementResult SettleHand(string handId, string requestId, IReadOnlyList<HandSettlementEntry> entries, out IReadOnlyDictionary<string, HandSettlementBalance> accounts)
         {
-            IReadOnlyDictionary<string, PlayerAccount> snapshot = null;
-            var result = Execute(() => _inner.ApplyHandDebits(handId, requestId, debits, out snapshot));
-            accounts = snapshot;
-            return result;
-        }
-
-        public HandSettlementResult SettleHand(string handId, string requestId, IReadOnlyList<HandChipCredit> credits, out IReadOnlyDictionary<string, PlayerAccount> accounts)
-        {
-            IReadOnlyDictionary<string, PlayerAccount> snapshot = null;
+            IReadOnlyDictionary<string, HandSettlementBalance> snapshot = null;
             var result = Execute(() =>
             {
-                var settlement = _inner.SettleHand(handId, requestId, credits, out snapshot);
+                var settlement = _inner.SettleHand(handId, requestId, entries, out snapshot);
                 if (settlement != HandSettlementResult.Applied && settlement != HandSettlementResult.AlreadyApplied)
                     throw new InvalidOperationException("Hand settlement was rejected: " + settlement);
                 return settlement;

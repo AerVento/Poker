@@ -1,0 +1,62 @@
+[
+  {
+    "Id": "default",
+    "Price": 0,
+    "Listed": true
+  },
+  {
+    "Id": "galaxy",
+    "Price": 50000,
+    "Listed": true
+  },
+  {
+    "Id": "ember",
+    "Price": 20000,
+    "Listed": true
+  },
+  {
+    "Id": "neon",
+    "Price": 30000,
+    "Listed": true
+  },
+  {
+    "Id": "gilded",
+    "Price": 30000,
+    "Listed": true
+  },
+  {
+    "Id": "frost",
+    "Price": 20000,
+    "Listed": true
+  },
+  {
+    "Id": "abyss",
+    "Price": 20000,
+    "Listed": true
+  },
+  {
+    "Id": "jade",
+    "Price": 30000,
+    "Listed": true
+  },
+  {
+    "Id": "sakura",
+    "Price": 40000,
+    "Listed": true
+  },
+  {
+    "Id": "clockwork",
+    "Price": 10000,
+    "Listed": true
+  },
+  {
+    "Id": "eclipse",
+    "Price": 30000,
+    "Listed": true
+  },
+  {
+    "Id": "prism",
+    "Price": 50000,
+    "Listed": true
+  }
+]

@@ -16,29 +16,40 @@ namespace Game.UI
         private Button _quit;
         [SerializeField]
         private Button _tasks;
+        [SerializeField] private Button _shop;
+        [SerializeField] private Button _leaderboard;
 
         private void OnEnable()
         {
             GameAudioManager.EnsureClient()?.EnterLobby();
             _start.onClick.AddListener(Play);
             _tasks.onClick.AddListener(Tasks);
+            _shop.onClick.AddListener(Shop);
+            _leaderboard.onClick.AddListener(Leaderboard);
             _option.onClick.AddListener(Option);
             _quit.onClick.AddListener(Quit);
+            RefreshControls();
         }
 
         private void OnDisable()
         {
             _start.onClick.RemoveListener(Play);
             _tasks.onClick.RemoveListener(Tasks);
+            _shop.onClick.RemoveListener(Shop);
+            _leaderboard.onClick.RemoveListener(Leaderboard);
             _option.onClick.RemoveListener(Option);
             _quit.onClick.RemoveListener(Quit);
         }
 
-        private void Update()
+        private void Update() => RefreshControls();
+
+        private void RefreshControls()
         {
             _start.interactable = !GameController.Available || !GameController.Instance.IsNetworkInitializing;
             _tasks.interactable = _start.interactable &&
                 !(NetworkManager.singleton is NetworkRoom room && room.IsRoomEntryPending);
+            _shop.interactable = _tasks.interactable;
+            _leaderboard.interactable = _tasks.interactable;
         }
 
         private void Play()
@@ -63,7 +74,11 @@ namespace Game.UI
             LoginPanel.Instance.BeginSavedLogin();
         }
 
-        private void Tasks()
+        private void Tasks() => OpenAccountPage(LoginDestination.DailyTasks);
+        private void Shop() => OpenAccountPage(LoginDestination.Shop);
+        private void Leaderboard() => OpenAccountPage(LoginDestination.Leaderboard);
+
+        private void OpenAccountPage(LoginDestination destination)
         {
             if (GameController.Available && GameController.Instance.HasNetworkInitializationStarted &&
                 !GameController.Instance.IsClientNetworkReady)
@@ -73,15 +88,33 @@ namespace Game.UI
             }
             if (!(NetworkManager.singleton is NetworkRoom room) || room.IsRoomEntryPending)
                 return;
-            if (room.CanOpenDailyTasks)
+            var canOpen = destination == LoginDestination.Shop ? room.CanOpenShop :
+                destination == LoginDestination.Leaderboard ? room.CanOpenLeaderboard : room.CanOpenDailyTasks;
+            if (canOpen)
             {
-                UIManager.Instance.PushPanel<DailyTaskPanel>();
+                ShowAccountPage(destination);
                 return;
             }
             if (NetworkClient.connection != null && NetworkClient.connection.isAuthenticated)
                 return;
-            UIManager.Instance.PushPanel<LoginPanel>();
-            LoginPanel.Instance.BeginTaskLogin();
+            var login = UIManager.Instance.PushPanel<LoginPanel>();
+            login.BeginAccountLogin(destination);
+        }
+
+        internal static void ShowAccountPage(LoginDestination destination)
+        {
+            switch (destination)
+            {
+                case LoginDestination.DailyTasks:
+                    UIManager.Instance.PushPanel<DailyTaskPanel>();
+                    break;
+                case LoginDestination.Leaderboard:
+                    UIManager.Instance.PushPanel<LeaderboardPanel>();
+                    break;
+                case LoginDestination.Shop:
+                    UIManager.Instance.PushPanel<ShopPanel>().BeginOnline();
+                    break;
+            }
         }
 
         private void Option()

@@ -482,7 +482,6 @@ namespace Game.Tests
         private GamePanel CreateGamePanel()
         {
             var panel = Create<GamePanel>("GamePanel/GamePanel.prefab");
-            Create<InGameOptionPanel>("InGameOptionPanel.prefab").Bind(panel);
             return panel;
         }
 

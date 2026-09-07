@@ -2,10 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{{{ PRODUCT_NAME }}}</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
-    <link rel="stylesheet" href="TemplateData/style.css">
+    <link rel="stylesheet" href="TemplateData/style.css?v=mobile-landscape-1">
     <link rel="stylesheet" href="navigation.css">
     <script src="navigation.js" defer></script>
 #if SHOW_DIAGNOSTICS
@@ -97,9 +97,31 @@
         });
         window.addEventListener("blur", function () { gameKeysDown.clear(); });
 
-        // Keep the build's aspect ratio and fit below the navigation, including its open menu.
+        var touchPointer = window.matchMedia("(pointer: coarse)");
+        function isMobileLandscape()
+        {
+            if (!touchPointer.matches)
+            {
+                return false;
+            }
+
+            // Use device orientation: opening a keyboard can make a portrait viewport wider than tall.
+            if (screen.orientation && screen.orientation.type)
+            {
+                return screen.orientation.type.indexOf("landscape") === 0;
+            }
+            if (typeof window.orientation === "number")
+            {
+                return Math.abs(window.orientation) === 90;
+            }
+            return screen.width > screen.height;
+        }
+
+        // Mobile landscape fills the available height; other layouts keep room for the page controls.
         function fitGame()
         {
+            var mobileLandscape = isMobileLandscape();
+            document.body.classList.toggle("mobile-landscape", mobileLandscape);
             if (document.fullscreenElement)
             {
                 return;
@@ -108,12 +130,19 @@
             var areaStyle = getComputedStyle(gameArea);
             var availableWidth = gameArea.clientWidth - parseFloat(areaStyle.paddingLeft) - parseFloat(areaStyle.paddingRight);
             var availableHeight = gameArea.clientHeight - parseFloat(areaStyle.paddingTop) - parseFloat(areaStyle.paddingBottom) - footer.offsetHeight;
-            var width = Math.max(1, Math.min({{{ WIDTH }}}, availableWidth, availableHeight * {{{ WIDTH / HEIGHT }}}));
+            var maxWidth = mobileLandscape ? availableWidth : Math.min({{{ WIDTH }}}, availableWidth);
+            var width = Math.max(1, Math.min(maxWidth, availableHeight * {{{ WIDTH / HEIGHT }}}));
             container.style.width = width + "px";
         }
 
         new ResizeObserver(fitGame).observe(gameArea);
         window.addEventListener("resize", fitGame);
+        window.addEventListener("orientationchange", fitGame);
+        if (screen.orientation && screen.orientation.addEventListener)
+        {
+            screen.orientation.addEventListener("change", fitGame);
+        }
+        touchPointer.addEventListener("change", fitGame);
         document.addEventListener("fullscreenchange", function () { requestAnimationFrame(fitGame); });
         fitGame();
 

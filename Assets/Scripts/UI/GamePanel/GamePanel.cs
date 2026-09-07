@@ -27,7 +27,19 @@ namespace Game.UI
         private TextMeshProUGUI _countdownStatus;
 
         [SerializeField]
+        [Tooltip("1-4 occupied seats. Edit the prefab to change its typography and artwork slot.")]
         private GameObject _playerPrefab;
+
+        [SerializeField] private GameObject _playerPrefab8;
+        [SerializeField] private GameObject _playerPrefab16;
+        [SerializeField] private PlayerListGrid _playerGrid;
+        private GameObject _activePlayerPrefab;
+
+        [Header("Table layout")]
+        [SerializeField] private RectTransform _playerRegion;
+        [SerializeField] private RectTransform _tableRegion;
+        [SerializeField] private Vector2 _singleColumnSplit = new Vector2(0.29385417f, 0.31885417f);
+        [SerializeField] private Vector2 _twoColumnSplit = new Vector2(0.29385417f, 0.31885417f);
         
         [SerializeField]
         private Transform _playerList;
@@ -35,17 +47,22 @@ namespace Game.UI
         [SerializeField]
         private OperationArea _operationArea;
 
+        [SerializeField]
         private Button _leaveButton;
 
+        [SerializeField]
         private TextMeshProUGUI _leaveButtonLabel;
 
         [SerializeField]
         private TextMeshProUGUI _leaveStatus;
 
+        [SerializeField]
         private Button _participationButton;
 
+        [SerializeField]
         private TextMeshProUGUI _participationButtonLabel;
 
+        [SerializeField]
         private Button _keepSpectatingButton;
 
         [SerializeField]
@@ -68,7 +85,9 @@ namespace Game.UI
             set
             {
                 if (_playerListItems != null && (_info.RoomInfo == null || value.RoomInfo == null ||
-                    _info.RoomInfo.Id != value.RoomInfo.Id || _info.Round != value.Round))
+                    _info.RoomInfo.Id != value.RoomInfo.Id || _info.Round != value.Round ||
+                    _info.HandId != value.HandId || _info.TurnId != value.TurnId ||
+                    _info.OperatingPlayer != value.OperatingPlayer))
                 {
                     foreach (var item in _playerListItems)
                         item.IsOperating = false;
@@ -101,6 +120,7 @@ namespace Game.UI
         {
             if (_settingsButton != null)
                 _settingsButton.onClick.AddListener(OpenSettings);
+            BindTableControls();
 
         }
 
@@ -110,7 +130,7 @@ namespace Game.UI
                 _settingsButton.onClick.RemoveListener(OpenSettings);
             if (UIManager.Available && UIManager.Instance.ContainsPanel<InGameOptionPanel>())
                 UIManager.Instance.PopPanel<InGameOptionPanel>();
-            DetachSettingsControls();
+            UnbindTableControls();
             _participationRequestInFlight = false;
             _leaveRequestInFlight = false;
             SetInterHandCountdown(false, 0);
@@ -121,16 +141,8 @@ namespace Game.UI
             }
         }
 
-        // Settings owns the controls; the live game retains request and authoritative state handling.
-        public void AttachSettingsControls(Button leave, TextMeshProUGUI leaveLabel,
-            Button participation, TextMeshProUGUI participationLabel, Button keepSpectating)
+        private void BindTableControls()
         {
-            DetachSettingsControls();
-            _leaveButton = leave;
-            _leaveButtonLabel = leaveLabel;
-            _participationButton = participation;
-            _participationButtonLabel = participationLabel;
-            _keepSpectatingButton = keepSpectating;
             _leaveButton.onClick.AddListener(LeaveRoom);
             _participationButton.onClick.AddListener(ChangeParticipation);
             _keepSpectatingButton.onClick.AddListener(KeepSpectating);
@@ -138,7 +150,7 @@ namespace Game.UI
             RefreshParticipationControls();
         }
 
-        public void DetachSettingsControls()
+        private void UnbindTableControls()
         {
             if (_leaveButton != null)
                 _leaveButton.onClick.RemoveListener(LeaveRoom);
@@ -146,11 +158,6 @@ namespace Game.UI
                 _participationButton.onClick.RemoveListener(ChangeParticipation);
             if (_keepSpectatingButton != null)
                 _keepSpectatingButton.onClick.RemoveListener(KeepSpectating);
-            _leaveButton = null;
-            _leaveButtonLabel = null;
-            _participationButton = null;
-            _participationButtonLabel = null;
-            _keepSpectatingButton = null;
         }
 
         public void SetLeaveRequestInFlight(bool inFlight)
@@ -287,7 +294,7 @@ namespace Game.UI
         {
             _accountChips = chips;
             if (_accountStatus != null)
-                _accountStatus.text = $"账户余额  ${chips:N0}";
+                _accountStatus.text = $"账户余额  ${ChipAmountFormatter.Format(chips)}";
         }
 
         public void SetInterHandCountdown(bool isActive, int secondsRemaining, bool canStartNextHand = true)
@@ -308,13 +315,44 @@ namespace Game.UI
                 return;
             if (_playerListItems == null)
                 _playerListItems = new List<PlayerListItem>();
+            int occupiedCount = _info.Players?.Count(player => player.IsOccupied) ?? 0;
+            var prefab = occupiedCount <= 4 ? _playerPrefab : occupiedCount <= 8 ? _playerPrefab8 : _playerPrefab16;
+            string countdownPlayer = null;
+            double countdownRemaining = 0;
+            bool layoutChanged = _activePlayerPrefab != prefab;
+            if (layoutChanged)
+            {
+                foreach (var item in _playerListItems)
+                {
+                    if (item.IsOperating)
+                    {
+                        countdownPlayer = item.PlayerName;
+                        countdownRemaining = item.CountdownRemaining;
+                    }
+                    item.IsOperating = false;
+                    item.gameObject.SetActive(false);
+                    if (Application.isPlaying)
+                        Destroy(item.gameObject);
+                    else
+                        DestroyImmediate(item.gameObject);
+                }
+                _playerListItems.Clear();
+                _activePlayerPrefab = prefab;
+                var split = occupiedCount <= 4 ? _singleColumnSplit : _twoColumnSplit;
+                _playerRegion.anchorMax = new Vector2(split.x, _playerRegion.anchorMax.y);
+                _tableRegion.anchorMin = new Vector2(split.y, _tableRegion.anchorMin.y);
+                _playerGrid.SetTemplate(prefab.GetComponent<PlayerListItem>(), occupiedCount <= 4 ? 1 : 2);
+            }
             while (_playerListItems.Count < _info.PlayersCount)
             {
-                var obj = Instantiate(_playerPrefab, _playerList);
+                var obj = Instantiate(prefab, _playerList);
                 _playerListItems.Add(obj.GetComponent<PlayerListItem>());
             }
             for (int i = _info.PlayersCount; i < _playerListItems.Count; i++)
+            {
+                _playerListItems[i].IsOperating = false;
                 _playerListItems[i].gameObject.SetActive(false);
+            }
 
             // 更新Player
             for(int i = 0; i < _info.PlayersCount; i++)
@@ -323,7 +361,10 @@ namespace Game.UI
                 var playerInfo = _info.Players[i];
                 listItem.gameObject.SetActive(playerInfo.IsOccupied);
                 if (!playerInfo.IsOccupied)
+                {
+                    listItem.IsOperating = false;
                     continue;
+                }
                 if (listItem.PlayerName != playerInfo.PlayerName)
                     listItem.IsOperating = false;
                 listItem.ThinkingTime = _info.RoomInfo.ThinkingTime;
@@ -334,8 +375,11 @@ namespace Game.UI
                 listItem.IsFold = playerInfo.IsFold;
                 listItem.IsDisconnected = playerInfo.IsDisconnected;
                 listItem.PlayerName = playerInfo.PlayerName;
+                listItem.SetNamecard(_info.RoomInfo.GetNamecard(playerInfo.PlayerName));
                 listItem.Chip = playerInfo.Chips;
                 listItem.Operation = playerInfo.LastOperation;
+                if (layoutChanged && listItem.IsOperating && playerInfo.PlayerName == countdownPlayer)
+                    listItem.RestoreCountdown(countdownRemaining);
             }
 
             // 更新操作区
@@ -354,33 +398,23 @@ namespace Game.UI
                 GameStage.RoundOver => "本手结束",
                 _ => "牌局结束",
             };
-            _title.text = $"房间 {_info.RoomInfo.Id} · {stage} · 奖池 ${BigNumberToString(_info.TotalPot)}";
+            _title.text = $"房间 {_info.RoomInfo.Id} · {stage} · 奖池 ${ChipAmountFormatter.Format(_info.TotalPot)}";
 
             if (_accountStatus != null)
-                _accountStatus.text = $"账户余额  ${_accountChips:N0}";
+                _accountStatus.text = $"账户余额  ${ChipAmountFormatter.Format(_accountChips)}";
             if (_tableStatus != null)
             {
                 _tableStatus.text = _leaveAfterHand ? string.Empty : _participationStatus switch
                 {
                     TableParticipationStatus.WaitingForNextHand => "等待下一手",
                     TableParticipationStatus.Spectating => "旁观中",
-                    TableParticipationStatus.InsufficientChips => $"筹码不足（至少需要 ${_bigBlind:N0}）",
+                    TableParticipationStatus.InsufficientChips => $"筹码不足（至少需要 ${ChipAmountFormatter.Format(_bigBlind)}）",
                     _ => _sync.SitOutAfterHand ? "已预约：查看结果结束后转为旁观" : string.Empty,
                 };
             }
         }
 
 
-        private string BigNumberToString(uint number)
-        {
-            if (number < 1000)
-                return number.ToString();
-            else if (number < 1000000)
-                return System.MathF.Round((float)number / 1000, 1).ToString() + "K";
-            else if (number < 1000000000)
-                return System.MathF.Round((float)number / 1000000, 1).ToString() + "M";
-            else
-                return System.MathF.Round((float)number / 1000000000, 1).ToString() + "B";
-        }
+
     }
 }

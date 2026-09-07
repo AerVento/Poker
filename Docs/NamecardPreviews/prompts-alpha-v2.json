@@ -1,0 +1,22 @@
+{
+  "tool": "built-in image_gen.imagegen",
+  "date": "2026-09-06",
+  "intent": "edit",
+  "items": [
+    {
+      "id": "clockwork",
+      "input": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-41913566-0e50-4fad-a140-1e22db72848b.png",
+      "prompt": "Use case: background-extraction.\nEdit target: the attached 时轮 player nameplate background. This is an existing finished game UI asset, not a style reference.\nChange ONLY the exterior background to true transparency. Preserve the entire existing nameplate artwork exactly: its rounded frame, all ornamental details, right-edge accent, colours, sharpness, composition, 2048x768 resolution and 8:3 aspect ratio. Keep the dark interior panel fully opaque; it is part of the nameplate, not the backdrop. Remove only pixels OUTSIDE the continuous outer contour of the rounded nameplate including outside rounded corners. Clean antialiased silhouette edges. The output must be a PNG with a real RGBA alpha channel, not RGB with a black/white matte and not a painted checkerboard. No redesign, added text, labels, extra objects, new background, drop shadow or layout change."
+    },
+    {
+      "id": "eclipse",
+      "input": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-7af6c5e1-ca17-4e53-bed9-43e1b029e8fa.png",
+      "prompt": "Use case: background-extraction.\nEdit target: the attached 蚀日 player nameplate background. This is an existing finished game UI asset, not a style reference.\nChange ONLY the exterior background to true transparency. Preserve the entire existing nameplate artwork exactly: its rounded frame, all ornamental details, right-edge accent, colours, sharpness, composition, 2048x768 resolution and 8:3 aspect ratio. Keep the dark interior panel fully opaque; it is part of the nameplate, not the backdrop. Remove only pixels OUTSIDE the continuous outer contour of the rounded nameplate including outside rounded corners. Clean antialiased silhouette edges. The output must be a PNG with a real RGBA alpha channel, not RGB with a black/white matte and not a painted checkerboard. No redesign, added text, labels, extra objects, new background, drop shadow or layout change."
+    },
+    {
+      "id": "prism",
+      "input": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a07679-50e4-7931-9e47-bd92dbeab63b\\exec-d60212f8-b814-4f33-bcdd-1f60f558b7bf.png",
+      "prompt": "Use case: background-extraction.\nEdit target: the attached 幻晶 player nameplate background. This is an existing finished game UI asset, not a style reference.\nChange ONLY the exterior background to true transparency. Preserve the entire existing nameplate artwork exactly: its rounded frame, all ornamental details, right-edge accent, colours, sharpness, composition, 2048x768 resolution and 8:3 aspect ratio. Keep the dark interior panel fully opaque; it is part of the nameplate, not the backdrop. Remove only pixels OUTSIDE the continuous outer contour of the rounded nameplate including outside rounded corners. Clean antialiased silhouette edges. The output must be a PNG with a real RGBA alpha channel, not RGB with a black/white matte and not a painted checkerboard. No redesign, added text, labels, extra objects, new background, drop shadow or layout change."
+    }
+  ]
+}

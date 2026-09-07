@@ -46,7 +46,6 @@ namespace Game.Network
             if (requestId == 0 || (_dailyTaskRequestSequences.TryGetValue(conn, out var last) && requestId <= last))
                 return DailyTaskResult.InvalidRequest;
             _dailyTaskRequestSequences[conn] = requestId;
-            RecordClientActivity(conn);
             if (_roomManager.WhichRoom(account.UserName, out _) || account.LastRoomId.HasValue)
                 return DailyTaskResult.OutsideRoomRequired;
             return _dailyTaskService == null ? DailyTaskResult.Unavailable : DailyTaskResult.Success;

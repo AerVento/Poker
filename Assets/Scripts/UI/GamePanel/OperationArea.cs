@@ -134,8 +134,8 @@ namespace Game.UI.GamePanelElement
             var maximum = AvailableTotal;
             var corrected = (uint)Math.Max(minimum, Math.Min(maximum, amount));
             SetBetHint(!valid ? "请输入有效的非负整数，已恢复金额。" :
-                amount < minimum ? $"已调整至最低可下注总额 ${minimum:N0}。" :
-                amount > maximum ? $"已调整至可用总额 ${maximum:N0}（全下）。" : string.Empty);
+                amount < minimum ? $"已调整至最低可下注总额 ${ChipAmountFormatter.Format(minimum)}。" :
+                amount > maximum ? $"已调整至可用总额 ${ChipAmountFormatter.Format(checked((uint)maximum))}（全下）。" : string.Empty);
             _betChips = corrected;
             _betInput.SetTextWithoutNotify(_betChips.ToString());
         }
@@ -155,17 +155,7 @@ namespace Game.UI.GamePanelElement
             Refresh();
         }
 
-        private string BigNumberToString(uint number)
-        {
-            if (number < 1000)
-                return number.ToString();
-            else if (number < 1000000)
-                return System.MathF.Round((float)number / 1000, 1).ToString() + "K";
-            else if (number < 1000000000)
-                return System.MathF.Round((float)number / 1000000, 1).ToString() + "M";
-            else
-                return System.MathF.Round((float)number / 1000000000, 1).ToString() + "B";
-        }
+
 
         public void Refresh()
         {
@@ -178,7 +168,7 @@ namespace Game.UI.GamePanelElement
                 : _info.CurrentPlayer.PlayerName;
             _playerChipsText.text = _info.IsSpectator
                 ? string.Empty
-                : "$" + BigNumberToString(_info.CurrentPlayer.Chips);
+                : "$" + ChipAmountFormatter.Format(_info.CurrentPlayer.Chips);
 
             // 卡牌信息
             _hole.ForEach(poker => poker.IsShowing = false);
@@ -270,7 +260,7 @@ namespace Game.UI.GamePanelElement
             box.Type = MsgboxType.ConfirmAndCancel;
             box.Title = allIn ? "确认全下" : "确认弃牌";
             box.Message = allIn
-                ? $"确定投入剩余全部 ${_info.CurrentPlayer.Chips:N0} 筹码？\n确认期间，操作倒计时仍会继续。"
+                ? $"确定投入剩余全部 ${ChipAmountFormatter.Format(_info.CurrentPlayer.Chips)} 筹码？\n确认期间，操作倒计时仍会继续。"
                 : "当前可以免费过牌，确定弃牌？\n确认期间，操作倒计时仍会继续。";
             box.ConfirmButtonText = allIn ? "确认全下" : "确认弃牌";
             box.CancelButtonText = "取消";

@@ -289,6 +289,7 @@ namespace Game.UI
                 GameObject obj = Instantiate(_player, parent:_playerList);
                 var component = obj.GetComponent<PlayerListItem>();
                 component.PlayerName = playerName;
+                component.SetNamecard(RoomInfo.GetNamecard(playerName));
                 component.IsOwner = _roomInfo.OwnerName == playerName;
                 component.IsReady = component.IsOwner ? false : RoomInfo.ReadyStatus[i];
                 _tmpPlayerItems.Add(component);
@@ -300,6 +301,7 @@ namespace Game.UI
                 component.PlayerName = spectatorName + "£®≈‘π€£©";
                 component.IsOwner = _roomInfo.OwnerName == spectatorName;
                 component.IsReady = false;
+                component.SetNamecard(RoomInfo.GetNamecard(spectatorName));
                 _tmpPlayerItems.Add(component);
             }
         }

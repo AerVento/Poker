@@ -207,7 +207,7 @@ namespace Game.Tests
         public void StartNew_DatabaseWriteFailureLeavesBalancesUnchangedAndCanRetry()
         {
             var manager = CreateManager(3, out var info);
-            manager.SetAccountRepository(new DebitFailureRepository(_repository));
+            manager.SetAccountRepository(new HandStartFailureRepository(_repository));
 
             Assert.AreEqual(-7, manager.StartNew(info.RoomInfo.Id));
             Assert.AreEqual(0, info.TotalPot);
@@ -539,11 +539,11 @@ namespace Game.Tests
                 File.Delete(path);
         }
 
-        private sealed class DebitFailureRepository : IHandAccountRepository
+        private sealed class HandStartFailureRepository : IHandAccountRepository
         {
             private readonly IHandAccountRepository _inner;
 
-            public DebitFailureRepository(IHandAccountRepository inner)
+            public HandStartFailureRepository(IHandAccountRepository inner)
             {
                 _inner = inner;
             }
@@ -584,25 +584,18 @@ namespace Game.Tests
                 uint minimumChips,
                 out IReadOnlyList<PlayerAccount> accounts)
             {
-                return _inner.BeginHand(handId, roomId, accountIds, minimumChips, out accounts);
+                throw new InvalidOperationException("Injected hand start write failure.");
             }
 
-            public HandDebitResult ApplyHandDebits(
-                string handId,
-                string requestId,
-                IReadOnlyList<HandChipDebit> debits,
-                out IReadOnlyDictionary<string, PlayerAccount> accounts)
-            {
-                throw new InvalidOperationException("Injected database write failure.");
-            }
+
 
             public HandSettlementResult SettleHand(
                 string handId,
                 string requestId,
-                IReadOnlyList<HandChipCredit> credits,
-                out IReadOnlyDictionary<string, PlayerAccount> accounts)
+                IReadOnlyList<HandSettlementEntry> entries,
+                out IReadOnlyDictionary<string, HandSettlementBalance> accounts)
             {
-                return _inner.SettleHand(handId, requestId, credits, out accounts);
+                return _inner.SettleHand(handId, requestId, entries, out accounts);
             }
 
             public bool AbortHand(string handId, string reason) => _inner.AbortHand(handId, reason);
@@ -656,20 +649,13 @@ namespace Game.Tests
                 return _inner.BeginHand(handId, roomId, accountIds, minimumChips, out accounts);
             }
 
-            public HandDebitResult ApplyHandDebits(
-                string handId,
-                string requestId,
-                IReadOnlyList<HandChipDebit> debits,
-                out IReadOnlyDictionary<string, PlayerAccount> accounts)
-            {
-                return _inner.ApplyHandDebits(handId, requestId, debits, out accounts);
-            }
+
 
             public HandSettlementResult SettleHand(
                 string handId,
                 string requestId,
-                IReadOnlyList<HandChipCredit> credits,
-                out IReadOnlyDictionary<string, PlayerAccount> accounts)
+                IReadOnlyList<HandSettlementEntry> entries,
+                out IReadOnlyDictionary<string, HandSettlementBalance> accounts)
             {
                 throw new InvalidOperationException("Injected settlement failure.");
             }
