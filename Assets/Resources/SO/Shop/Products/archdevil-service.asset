@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1954ec352f7042869473612a923ad2bc, type: 3}
+  m_Name: archdevil-service
+  m_EditorClassIdentifier: 
+  _id: archdevil-service
+  _displayName: "\u6DF1\u72F1\u9886\u4E3B"
+  _description: "\u670D\u5F79\u4E94\u767E\u5E74\uFF0C\u9501\u94FE\u94F8\u6210\u6DF1\u72F1\u7684\u6743\u5370\u3002"
+  _artwork: {fileID: 21300000, guid: 711e6b0151056a74194f02f426e07923, type: 3}
+  _artwork4x3: {fileID: 21300000, guid: 7761debaf7236914ebf0868ed4b8aa9e, type: 3}
+  _price: 0
+  _isDefault: 0
+  _isListed: 1
+  _canPurchase: 0

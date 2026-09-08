@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 2,
+  "revision": "daily-tasks-v5",
+  "capacity": 3,
+  "entries": [
+    {
+      "taskId": "set_of_set",
+      "enabled": true,
+      "weight": 20,
+      "validityDays": 1
+    },
+    {
+      "taskId": "flush",
+      "enabled": true,
+      "weight": 20,
+      "validityDays": 1
+    },
+    {
+      "taskId": "win_5hands",
+      "enabled": true,
+      "weight": 50,
+      "validityDays": 1
+    },
+    {
+      "taskId": "complete_10hands",
+      "enabled": true,
+      "weight": 50,
+      "validityDays": 1
+    },
+    {
+      "taskId": "surprise",
+      "enabled": true,
+      "weight": 5,
+      "validityDays": 1
+    },
+    {
+      "taskId": "fullhouse",
+      "enabled": true,
+      "weight": 30,
+      "validityDays": 3
+    },
+    {
+      "taskId": "twopair_10hands",
+      "enabled": true,
+      "weight": 50,
+      "validityDays": 1
+    },
+    {
+      "taskId": "pair",
+      "enabled": true,
+      "weight": 50,
+      "validityDays": 1
+    },
+    {
+      "taskId": "four_of_a_kind",
+      "enabled": true,
+      "weight": 25,
+      "validityDays": 7
+    },
+    {
+      "taskId": "straight",
+      "enabled": true,
+      "weight": 40,
+      "validityDays": 1
+    },
+    {
+      "taskId": "straight_flush",
+      "enabled": true,
+      "weight": 10,
+      "validityDays": 30
+    }
+  ]
+}

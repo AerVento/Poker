@@ -4,8 +4,8 @@ using System.Collections.Generic;
 namespace Game.Network.Accounts
 {
     // Expected business rejections are return values. Unexpected repository failures stop the server.
-    public sealed class GuardedAccountRepository : IHandAccountRepository,
-        IPasswordAccountRepository, ISessionAccountRepository, IDailyRewardRepository, ILeaderboardRepository, INamecardRepository
+    public sealed partial class GuardedAccountRepository : IHandAccountRepository,
+        IPasswordAccountRepository, ISessionAccountRepository, IDailyRewardRepository, ILeaderboardRepository, INamecardRepository, IItemRepository, IServiceYearsRepository
     {
         private readonly IHandAccountRepository _inner;
         private readonly IPasswordAccountRepository _passwords;
@@ -44,6 +44,18 @@ namespace Game.Network.Accounts
             Execute(() => { _inner.Initialize(); return true; });
         }
 
+        public AccountItemInventory ReadItems(string accountId)
+        {
+            return Execute(() => ((IItemRepository)_inner).ReadItems(accountId));
+        }
+
+        public ItemChangeExecution ChangeItem(string accountId, string operationId, ItemShopAction action,
+            string itemId, uint quantity, uint quotedPrice, string catalogRevision, ItemPurchaseRuntime runtime, bool inRoom = false)
+        {
+            return Execute(() => ((IItemRepository)_inner).ChangeItem(accountId, operationId, action,
+                itemId, quantity, quotedPrice, catalogRevision, runtime, inRoom));
+        }
+
         public NamecardInventory ReadNamecards(string accountId)
         {
             return Execute(() => ((INamecardRepository)_inner).ReadNamecards(accountId));
@@ -54,6 +66,11 @@ namespace Game.Network.Accounts
         {
             return Execute(() => ((INamecardRepository)_inner).ChangeNamecard(
                 accountId, operationId, action, productId, catalogRevision, catalog));
+        }
+
+        public Dictionary<string, ulong> ReadServiceYears(string[] accountIds)
+        {
+            return Execute(() => ((IServiceYearsRepository)_inner).ReadServiceYears(accountIds));
         }
 
         public LeaderboardSnapshot ReadLeaderboard(string accountId)

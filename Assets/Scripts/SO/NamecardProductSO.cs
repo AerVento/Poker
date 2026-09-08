@@ -22,6 +22,10 @@ namespace Game.SO
 
         [SerializeField] private bool _isListed = true;
 
+        [Tooltip("When disabled, a listed card remains visible with a disabled purchase button.")]
+        [SerializeField] private bool _canPurchase = true;
+
+        public bool CanPurchase => _isDefault || _canPurchase;
         public bool IsListed => _isDefault || _isListed;
         public bool IsDefault => _isDefault;
         public string Id => _id;

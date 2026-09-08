@@ -239,9 +239,12 @@ namespace Game.Network
             _serverLifecycleVersion++;
             if (authenticator is AccountAuthenticator accountAuthenticator)
                 _gameManager.SetAccountRepository(accountAuthenticator.AccountRepository);
-            RegisterDailyTaskServerHandlers();
             RegisterLeaderboardServerHandler();
             RegisterShopServerHandlers();
+            RegisterItemServerHandlers();
+            InitializeItemGrants();
+            RegisterDailyTaskServerHandlers();
+            if (_serverStorageFailed) return;
             RegisterServerHandler<PlayerChangeReadyMessage>(PlayerChangeReadyMessageHandler, requireAuthentication: true);
             RegisterServerHandler<PlayerCreateRoomRequest>(PlayerCreateRoomRequestHandler, requireAuthentication: true);
             RegisterServerHandler<PlayerJoinRoomRequest>(PlayerJoinRoomRequestHandler, requireAuthentication: true);
@@ -260,7 +263,12 @@ namespace Game.Network
             _dailyTaskRequestSequences.Clear();
             _leaderboardRequests.Clear();
             _shopRequests.Clear();
+            _itemRequests.Clear();
+            _itemRuntime = null;
+            ClearItemGrants();
+            ItemPurchaseEvents.Clear();
             _dailyTaskService = null;
+            _configuredTasks = null;
             base.OnStopServer();
         }
 
@@ -268,6 +276,7 @@ namespace Game.Network
             PlayerAccount account,
             NetworkConnectionToClient conn)
         {
+            _configuredTasks?.OnLogin(account.AccountId);
             return _playerManager.BindAccount(account, conn);
         }
 
@@ -317,6 +326,7 @@ namespace Game.Network
             _dailyTaskRequestSequences.Remove(conn);
             _leaderboardRequests.Remove(conn);
             _shopRequests.Remove(conn);
+            _itemRequests.Remove(conn);
 
             if (!_serverStorageFailed && _playerManager.RemoveConnection(conn, out var name))
             {
@@ -371,6 +381,7 @@ namespace Game.Network
             RegisterDailyTaskClientHandlers();
             RegisterLeaderboardClientHandler();
             RegisterShopClientHandlers();
+            RegisterItemClientHandlers();
             
             if (!_silentConnectionAttempt)
                 ShowConnectingMessage();
@@ -764,6 +775,7 @@ namespace Game.Network
                 return;
 
             GameController.Instance.State.SetChips(message.Chips);
+            ShopPanel.Instance?.ReceiveAccountBalance(message.Chips);
             RoomListPanel.Instance?.RefreshAccountStatus();
             GamePanel.Instance?.SetAccountChips(message.Chips);
         }

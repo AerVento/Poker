@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using Game.Network.Accounts;
 using Game.UI;
 using Mirror;
@@ -22,14 +21,7 @@ namespace Game.Network
         private void RegisterShopServerHandlers()
         {
             _shopRequests.Clear();
-            var asset = Resources.Load<TextAsset>("SO/Shop/NamecardServerCatalog");
-            if (asset == null)
-                throw new InvalidOperationException("Missing exported namecard server catalog.");
-            _shopCatalog = new NamecardServerCatalog
-            {
-                Products = JsonSerializer.Deserialize<NamecardOffer[]>(asset.text)
-            };
-            _shopCatalog.Validate();
+            _shopCatalog = NamecardCatalogLoader.LoadServer();
             RegisterServerHandler<NamecardShopRequest>((conn, request) =>
             {
                 var response = ProcessShopRequest(conn, request);
@@ -118,6 +110,8 @@ namespace Game.Network
                 return null;
             if (room.Namecards == null)
                 room.Namecards = new Dictionary<string, string>();
+            if (room.ServiceYears == null)
+                room.ServiceYears = new Dictionary<string, ulong>();
             var visibleNames = new HashSet<string>(room.MemberNames);
             var game = _gameManager.GetGameInfo(room.Id);
             if (game != null)
@@ -125,12 +119,21 @@ namespace Game.Network
                     if (player.IsOccupied) visibleNames.Add(player.PlayerName);
             foreach (var stale in room.Namecards.Keys.Where(name => !visibleNames.Contains(name)).ToArray())
                 room.Namecards.Remove(stale);
+            foreach (var stale in room.ServiceYears.Keys.Where(name => !visibleNames.Contains(name)).ToArray())
+                room.ServiceYears.Remove(stale);
             // Keep disconnected / departed hand participants' last public appearance until their hand ends.
+            var accounts = new Dictionary<string, PlayerAccount>();
             foreach (var name in room.MemberNames)
             {
-                if (_playerManager.TryGetAccount(name, out var account))
-                    room.Namecards[name] = account.EquippedNamecardId ?? string.Empty;
+                if (!_playerManager.TryGetAccount(name, out var account)) continue;
+                accounts[name] = account;
+                room.Namecards[name] = account.EquippedNamecardId ?? string.Empty;
             }
+            var repository = (authenticator as AccountAuthenticator)?.AccountRepository as IServiceYearsRepository;
+            var years = repository?.ReadServiceYears(accounts.Values.Select(account => account.AccountId).ToArray());
+            foreach (var entry in accounts)
+                room.ServiceYears[entry.Key] = years != null && years.TryGetValue(entry.Value.AccountId, out var total)
+                    ? total : 0UL;
             return room;
         }
     }

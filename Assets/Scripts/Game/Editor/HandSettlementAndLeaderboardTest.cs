@@ -245,6 +245,135 @@ INSERT INTO chip_ledger VALUES('b1','b1','B',1,'legacy','HandCommit',-200,1000,8
         }
 
         [Test]
+        public void ServiceLeaderboardWeightsOnlyOwnedContractsAndRefreshesBothTabs()
+        {
+            Create("Rich", 9000); Create("One", 1); Create("Ten", 2); Create("Hundred", 3);
+            Sql("INSERT INTO account_items VALUES ('Rich','unrelated',4294967295), ('One','devil-contract',9), ('Ten','archdevil-contract',1), ('Hundred','satan-contract',1);");
+            var snapshot = _repository.ReadLeaderboard("Rich");
+            CollectionAssert.AreEqual(new[] { "Hundred", "Ten", "One", "Rich" }, snapshot.ServiceTopPlayers.Select(p => p.UserName));
+            CollectionAssert.AreEqual(new ulong[] { 100, 10, 9, 0 }, snapshot.ServiceTopPlayers.Select(p => p.ServiceYears));
+            Assert.AreEqual(1, snapshot.Self.Rank);
+            Assert.AreEqual(4, snapshot.ServiceSelf.Rank);
+            Sql("INSERT INTO account_items VALUES ('Rich','devil-contract',2), ('Rich','archdevil-contract',3), ('Rich','satan-contract',4);");
+            snapshot = _repository.ReadLeaderboard("Rich");
+            Assert.AreEqual(432UL, snapshot.ServiceSelf.ServiceYears);
+            Assert.AreEqual(1, snapshot.ServiceSelf.Rank);
+            Sql("UPDATE account_items SET quantity=0 WHERE account_id='Rich';");
+            Assert.AreEqual(0UL, _repository.ReadLeaderboard("Rich").ServiceSelf.ServiceYears);
+        }
+
+        [Test]
+        public void InfernalYearsReachWealthSelfAndRoomWithoutChangingEquipment()
+        {
+            for (int i = 0; i < 12; i++) Create("Player" + i.ToString("D2"));
+            Sql("INSERT INTO account_items VALUES ('Player00','satan-contract',5), ('Player11','devil-contract',4294967295), ('Player11','archdevil-contract',4294967295), ('Player11','satan-contract',4294967295);");
+            Sql("UPDATE player_accounts SET equipped_namecard='galaxy';");
+            var snapshot = _repository.ReadLeaderboard("Player11");
+            Assert.AreEqual(500UL, snapshot.TopPlayers[0].ServiceYears);
+            Assert.AreEqual(476741369745UL, snapshot.Self.ServiceYears);
+            Assert.AreEqual(12, snapshot.Self.Rank);
+            Assert.AreEqual("galaxy", snapshot.Self.NamecardId);
+            var years = new GuardedAccountRepository(_repository, ex => Assert.Fail(ex.ToString()))
+                .ReadServiceYears(new[] { "Player00", "Player01", "Player11", "Player00", "missing" });
+            Assert.AreEqual(3, years.Count);
+            Assert.AreEqual(500UL, years["Player00"]);
+            Assert.AreEqual(0UL, years["Player01"]);
+            Assert.AreEqual(snapshot.Self.ServiceYears, years["Player11"]);
+            using var writer = NetworkWriterPool.Get();
+            writer.Write(new LeaderboardResponse { Snapshot = snapshot });
+            var decoded = new NetworkReader(writer.ToArraySegment()).Read<LeaderboardResponse>();
+            Assert.AreEqual(500UL, decoded.Snapshot.TopPlayers[0].ServiceYears);
+            Assert.AreEqual(snapshot.Self.ServiceYears, decoded.Snapshot.Self.ServiceYears);
+            Sql("UPDATE account_items SET quantity=0;");
+            Assert.AreEqual(0UL, _repository.ReadServiceYears(new[] { "Player00" })["Player00"]);
+            Assert.AreEqual("galaxy", _repository.FindById("Player00").EquippedNamecardId);
+        }
+
+        [Test]
+        public void RoomAppearanceRefreshesYearsForMembersAndRemovesStaleTotals()
+        {
+            var account = Create("Owner");
+            Create("Observer");
+            Sql("INSERT INTO account_items VALUES ('Owner','satan-contract',10), ('Observer','archdevil-contract',50);");
+            var go = new GameObject("Infernal room sync test");
+            go.SetActive(false);
+            var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            try
+            {
+                var network = go.AddComponent<NetworkRoom>();
+                var auth = go.AddComponent<AccountAuthenticator>();
+                network.authenticator = auth;
+                typeof(AccountAuthenticator).GetField("<AccountRepository>k__BackingField", flags).SetValue(auth, _repository);
+                var players = (PlayerManager)typeof(NetworkRoom).GetField("_playerManager", flags).GetValue(network);
+                players.BindAccount(account, new NetworkConnectionToClient(91));
+                players.BindAccount(_repository.FindById("Observer"), new NetworkConnectionToClient(92));
+                var room = RoomInfo.CreateRoom("Owner");
+                room.Spectators.Add("Observer");
+                room.ServiceYears["stale"] = 1000;
+                var populate = typeof(NetworkRoom).GetMethod("PopulateNamecards", flags);
+                populate.Invoke(network, new object[] { room });
+                Assert.AreEqual(1000UL, room.GetServiceYears("Owner"));
+                Assert.AreEqual(500UL, room.GetServiceYears("Observer"));
+                Assert.IsFalse(room.ServiceYears.ContainsKey("stale"));
+                Assert.AreEqual(string.Empty, room.GetNamecard("Owner"));
+                Sql("UPDATE account_items SET quantity=1 WHERE account_id='Owner';");
+                populate.Invoke(network, new object[] { room });
+                Assert.AreEqual(100UL, room.GetServiceYears("Owner"));
+                using var writer = NetworkWriterPool.Get();
+                writer.WriteRoomInfo(room);
+                var decoded = new NetworkReader(writer.ToArraySegment()).ReadRoomInfo();
+                Assert.AreEqual(100UL, decoded.GetServiceYears("Owner"));
+                Assert.AreEqual(500UL, decoded.GetServiceYears("Observer"));
+                Assert.AreEqual(0UL, decoded.GetServiceYears(null));
+                Assert.AreEqual(0UL, decoded.GetServiceYears("missing"));
+            }
+            finally { UnityEngine.Object.DestroyImmediate(go); }
+        }
+
+        [Test]
+        public void ServiceLeaderboardBreaksEqualYearsByRegistrationThenAccountIdAcrossContractKinds()
+        {
+            Create("B"); Create("A"); Create("Early", 1, Created.AddDays(-1));
+            Sql("INSERT INTO account_items VALUES ('A','devil-contract',10), ('B','archdevil-contract',1), ('Early','devil-contract',10);");
+            var snapshot = _repository.ReadLeaderboard("B");
+            CollectionAssert.AreEqual(new[] { "Early", "A", "B" }, snapshot.ServiceTopPlayers.Select(p => p.UserName));
+            Assert.AreEqual(3, snapshot.ServiceSelf.Rank);
+            Assert.IsTrue(snapshot.ServiceTopPlayers.All(p => p.ServiceYears == 10UL));
+        }
+
+        [Test]
+        public void ServiceLeaderboardHandlesMaximumStacksAndSerializesPublicCounts()
+        {
+            Create("Max");
+            Sql("INSERT INTO account_items VALUES ('Max','devil-contract',4294967295), ('Max','archdevil-contract',4294967295), ('Max','satan-contract',4294967295);");
+            var snapshot = _repository.ReadLeaderboard("Max");
+            Assert.AreEqual(476741369745UL, snapshot.ServiceSelf.ServiceYears);
+            using var writer = NetworkWriterPool.Get();
+            writer.Write(new LeaderboardResponse { RequestId = 42, AccountId = "Max", Result = LeaderboardResult.Success, Snapshot = snapshot });
+            var decoded = new NetworkReader(writer.ToArraySegment()).Read<LeaderboardResponse>();
+            Assert.AreEqual(snapshot.ServiceSelf.ServiceYears, decoded.Snapshot.ServiceSelf.ServiceYears);
+            Assert.AreEqual(uint.MaxValue, decoded.Snapshot.ServiceTopPlayers[0].SatanContracts);
+            Assert.IsTrue(decoded.Snapshot.ServiceSelf.IsSelf);
+            CollectionAssert.AreEquivalent(new[] { "Rank", "UserName", "DevilContracts", "ArchdevilContracts", "SatanContracts", "IsSelf" },
+                typeof(ServiceLeaderboardEntry).GetFields().Select(field => field.Name));
+        }
+
+        [Test]
+        public void ServiceLeaderboardIncludesZeroInventoryOfflineSelfOutsideTopTenAndStableTies()
+        {
+            for (int i = 13; i >= 0; i--) Create("Player" + i.ToString("D2"));
+            Create("Early", 0, Created.AddDays(-1));
+            var snapshot = _repository.ReadLeaderboard("Player13");
+            Assert.AreEqual(10, snapshot.ServiceTopPlayers.Length);
+            Assert.AreEqual("Early", snapshot.ServiceTopPlayers[0].UserName);
+            Assert.AreEqual("Player00", snapshot.ServiceTopPlayers[1].UserName);
+            Assert.AreEqual(15, snapshot.ServiceSelf.Rank);
+            Assert.AreEqual(0UL, snapshot.ServiceSelf.ServiceYears);
+            Assert.IsTrue(snapshot.ServiceSelf.IsSelf);
+            Assert.IsFalse(snapshot.ServiceTopPlayers.Any(p => p.IsSelf));
+        }
+
+        [Test]
         public void LeaderboardMessagesRoundTripWithoutAccountSecrets()
         {
             Create("A");
@@ -257,7 +386,7 @@ INSERT INTO chip_ledger VALUES('b1','b1','B',1,'legacy','HandCommit',-200,1000,8
             Assert.IsTrue(result.Snapshot.TopPlayers[0].IsSelf);
             Assert.AreEqual("galaxy", result.Snapshot.TopPlayers[0].NamecardId);
             Assert.AreEqual("galaxy", result.Snapshot.Self.NamecardId);
-            CollectionAssert.AreEquivalent(new[] { "Rank", "UserName", "NamecardId", "Chips", "IsSelf" }, typeof(LeaderboardEntry).GetFields().Select(field => field.Name));
+            CollectionAssert.AreEquivalent(new[] { "Rank", "UserName", "NamecardId", "ServiceYears", "Chips", "IsSelf" }, typeof(LeaderboardEntry).GetFields().Select(field => field.Name));
         }
 
         [Test]

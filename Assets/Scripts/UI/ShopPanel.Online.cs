@@ -20,16 +20,19 @@ namespace Game.UI
 
         public void BeginOnline()
         {
+            if (_online) return;
             _online = true;
             _accountId = GameController.Instance.State.AccountId;
             PurchaseRequested += BuyOnline;
             EquipRequested += EquipOnline;
             SetFeedback("正在读取账户、库存与商品价格…");
             StartRequest(ShopAction.Read, null);
+            BeginItemsOnline();
         }
 
         private void ResetOnline()
         {
+            ResetItemsOnline();
             _online = false;
             _accountId = null;
             _pending = default;
@@ -40,10 +43,10 @@ namespace Game.UI
         private uint PriceOf(NamecardProductSO product) => _online && _offers.TryGetValue(product.Id, out var offer)
             ? offer.Price : product.Price;
 
-        private bool IsVisible(NamecardProductSO product) => product.IsDefault || _owned.Contains(product.Id) ||
+        private bool IsVisible(NamecardProductSO product) => (product.IsListed && !product.CanPurchase) || product.IsDefault || _owned.Contains(product.Id) ||
             (_online ? _offers.TryGetValue(product.Id, out var offer) && offer.Listed : product.IsListed);
 
-        private bool HasOffer(NamecardProductSO product) => !_online || _offers.ContainsKey(product.Id);
+        private bool HasOffer(NamecardProductSO product) => product.CanPurchase && (!_online || _offers.ContainsKey(product.Id));
 
         private void BuyOnline(NamecardProductSO product) => StartRequest(ShopAction.Purchase, product.Id);
         private void EquipOnline(string id) => StartRequest(ShopAction.Equip, string.IsNullOrEmpty(id) ? "default" : id);
@@ -75,6 +78,7 @@ namespace Game.UI
 
         private void Update()
         {
+            UpdateItemsOnline();
             if (!_online || _pending.RequestId == 0 || Time.realtimeSinceStartupAsDouble < _deadline)
                 return;
             if (_attempts < 3)

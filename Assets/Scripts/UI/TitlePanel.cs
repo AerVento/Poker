@@ -17,6 +17,7 @@ namespace Game.UI
         [SerializeField]
         private Button _tasks;
         [SerializeField] private Button _shop;
+        [SerializeField] private Button _collection;
         [SerializeField] private Button _leaderboard;
 
         private void OnEnable()
@@ -25,6 +26,7 @@ namespace Game.UI
             _start.onClick.AddListener(Play);
             _tasks.onClick.AddListener(Tasks);
             _shop.onClick.AddListener(Shop);
+            _collection.onClick.AddListener(Collection);
             _leaderboard.onClick.AddListener(Leaderboard);
             _option.onClick.AddListener(Option);
             _quit.onClick.AddListener(Quit);
@@ -36,6 +38,7 @@ namespace Game.UI
             _start.onClick.RemoveListener(Play);
             _tasks.onClick.RemoveListener(Tasks);
             _shop.onClick.RemoveListener(Shop);
+            _collection.onClick.RemoveListener(Collection);
             _leaderboard.onClick.RemoveListener(Leaderboard);
             _option.onClick.RemoveListener(Option);
             _quit.onClick.RemoveListener(Quit);
@@ -49,6 +52,7 @@ namespace Game.UI
             _tasks.interactable = _start.interactable &&
                 !(NetworkManager.singleton is NetworkRoom room && room.IsRoomEntryPending);
             _shop.interactable = _tasks.interactable;
+            _collection.interactable = _tasks.interactable;
             _leaderboard.interactable = _tasks.interactable;
         }
 
@@ -76,6 +80,7 @@ namespace Game.UI
 
         private void Tasks() => OpenAccountPage(LoginDestination.DailyTasks);
         private void Shop() => OpenAccountPage(LoginDestination.Shop);
+        private void Collection() => OpenAccountPage(LoginDestination.Collection);
         private void Leaderboard() => OpenAccountPage(LoginDestination.Leaderboard);
 
         private void OpenAccountPage(LoginDestination destination)
@@ -88,7 +93,7 @@ namespace Game.UI
             }
             if (!(NetworkManager.singleton is NetworkRoom room) || room.IsRoomEntryPending)
                 return;
-            var canOpen = destination == LoginDestination.Shop ? room.CanOpenShop :
+            var canOpen = destination == LoginDestination.Shop || destination == LoginDestination.Collection ? room.CanOpenShop :
                 destination == LoginDestination.Leaderboard ? room.CanOpenLeaderboard : room.CanOpenDailyTasks;
             if (canOpen)
             {
@@ -112,7 +117,10 @@ namespace Game.UI
                     UIManager.Instance.PushPanel<LeaderboardPanel>();
                     break;
                 case LoginDestination.Shop:
-                    UIManager.Instance.PushPanel<ShopPanel>().BeginOnline();
+                case LoginDestination.Collection:
+                    var shop = UIManager.Instance.PushPanel<ShopPanel>();
+                    shop.Open(destination == LoginDestination.Collection ? ShopPageMode.Collection : ShopPageMode.Shop);
+                    shop.BeginOnline();
                     break;
             }
         }

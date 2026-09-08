@@ -34,6 +34,7 @@ namespace Game.Network.Diagnostics
                 if (repository.Create(account) != CreateAccountResult.Created)
                     throw new InvalidOperationException("Unable to seed isolated leaderboard test database.");
                 ExecuteStorageTestSql("UPDATE player_accounts SET equipped_namecard='galaxy' WHERE account_id='offline-" + index.ToString("D2") + "';");
+                ExecuteStorageTestSql("INSERT INTO account_items(account_id,item_id,quantity) VALUES ('offline-" + index.ToString("D2") + "','satan-contract'," + (index + 1) + ");");
             }
 #endif
         }
@@ -51,6 +52,11 @@ namespace Game.Network.Diagnostics
             }
             Framework.UI.UIManager.Instance.ResetPanels<TitlePanel>();
             Click(TitlePanel.Instance, "_leaderboard");
+            if (LeaderboardPanel.Instance.SelectedTab != LeaderboardTab.Wealth)
+            {
+                Fail("Title leaderboard entry did not default to wealth.");
+                yield break;
+            }
             for (int attempt = 0; attempt < 2; attempt++)
             {
                 var panel = LeaderboardPanel.Instance;
@@ -78,12 +84,44 @@ namespace Game.Network.Diagnostics
                 {
                     var appearance = Field<NamecardAppearance>(row, "_namecard");
                     var artwork = Field<Image>(appearance, "_artwork");
-                    if (artwork.sprite != Resources.Load<Game.SO.NamecardCatalogSO>("SO/Shop/NamecardCatalog").Products.First(product => product.Id == "galaxy").Artwork ||
+                    if (artwork.sprite != Resources.Load<Game.SO.NamecardCatalogSO>("SO/Shop/NamecardCatalog").Products.First(product => product.Id == InfernalNamecard.Resolve("galaxy", (ulong)(int.Parse(Field<TMP_Text>(row, "_name").text.Substring(7)) + 1) * 100UL)).Artwork ||
+                        Field<TMP_Text>(row, "_name").color != (Color)new Color32(255, 24, 24, 255) ||
+                        (Color)Field<TMP_Text>(row, "_name").outlineColor != Color.black ||
+                        Mathf.Abs(Field<TMP_Text>(row, "_name").outlineWidth - 0.2f) > 0.001f ||
                         Mathf.Abs(((RectTransform)appearance.transform).rect.width / ((RectTransform)appearance.transform).rect.height - 8f / 3f) > 0.001f)
                     {
                         Fail("Leaderboard equipped namecard was lost in network serialization or rendered at the wrong aspect ratio.");
                         yield break;
                     }
+                }
+                Click(panel, "_serviceTab");
+                yield return null;
+                var serviceRows = Field<RectTransform>(panel, "_list").GetComponentsInChildren<ServiceLeaderboardRow>();
+                var serviceSelf = Field<ServiceLeaderboardRow>(panel, "_serviceSelf");
+                if (panel.SelectedTab != LeaderboardTab.Service || serviceRows.Length != 10 ||
+                    Field<TMP_Text>(serviceRows[0], "_name").text != "Offline10" ||
+                    Field<TMP_Text>(serviceRows[0], "_years").text != "1,100 <size=65%>年</size>" ||
+                    Field<TMP_Text>(serviceSelf, "_years").text != "0 <size=65%>年</size>" ||
+                    Field<ulong>(panel, "_requestId") != 0 ||
+                    Field<RectTransform>(panel, "_list").GetComponent<VerticalLayoutGroup>() == null)
+                {
+                    Fail("Contract years, offline service order, zero-inventory self or cached tab switch was incorrect.");
+                    yield break;
+                }
+                var scroll = Field<ScrollRect>(panel, "_scroll");
+                scroll.verticalNormalizedPosition = 0f;
+                yield return null;
+                if (scroll.content.rect.height <= scroll.viewport.rect.height || scroll.verticalNormalizedPosition > 0.01f)
+                {
+                    Fail("Single-column leaderboard did not scroll to the final row.");
+                    yield break;
+                }
+                Click(panel, "_wealthTab");
+                yield return null;
+                if (panel.SelectedTab != LeaderboardTab.Wealth || scroll.verticalNormalizedPosition < 0.99f)
+                {
+                    Fail("Switching back did not restore the wealth tab at the top.");
+                    yield break;
                 }
                 if (attempt == 0)
                 {
@@ -100,7 +138,7 @@ namespace Game.Network.Diagnostics
                 yield break;
             }
             Click(TitlePanel.Instance, "_start");
-            WriteResult("leaderboard-" + _clientIndex + "-" + _roundsCompleted + ".checked", "Title entry and back, top ten offline accounts, equipped galaxy artwork at 8:3, own rank outside top ten, settled balance, manual refresh and back verified through actual network and UI.");
+            WriteResult("leaderboard-" + _clientIndex + "-" + _roundsCompleted + ".checked", "Title entry defaults to wealth; both single-column tabs, offline contract totals and stable service order, zero-inventory self, cached switching, scrolling, forced infernal artwork and red/black player names at 8:3, own rank outside top ten, settled balance, refresh and back verified through actual network and UI.");
         }
 
         private IEnumerator CheckIdleConnection()

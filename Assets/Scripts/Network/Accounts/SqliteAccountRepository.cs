@@ -15,7 +15,7 @@ namespace Game.Network.Accounts
         IDailyRewardRepository,
         ILeaderboardRepository
     {
-        public const int SchemaVersion = 5;
+        public const int SchemaVersion = 9;
 
         private static readonly object RuntimeInitializationLock = new object();
         private static bool _runtimeInitialized;
@@ -76,6 +76,18 @@ namespace Game.Network.Accounts
                     if (version < 5)
                         CreateShopSchema(connection, transaction);
 
+                    if (version < 6)
+                        CreateItemSchema(connection, transaction);
+
+                    if (version < 7)
+                        CreateTaskSchema(connection, transaction);
+
+                    if (version < 8)
+                        CreateItemOutcomeSchema(connection, transaction);
+
+                    if (version < 9)
+                        CreateItemGrantSchema(connection, transaction);
+
                     SetSchemaVersion(connection, transaction, SchemaVersion);
 
                     transaction.Commit();
@@ -99,7 +111,7 @@ namespace Game.Network.Accounts
                     {
                         command.Transaction = transaction;
                         command.CommandText = @"
-SELECT account_id, user_name, chips, equipped_namecard FROM player_accounts
+SELECT account_id, user_name, chips, equipped_namecard, " + ServiceYearsSql("player_accounts.account_id") + @" FROM player_accounts
 ORDER BY chips DESC, created_at_utc ASC, account_id COLLATE BINARY ASC LIMIT 10;";
                         using (var reader = command.ExecuteReader())
                         {
@@ -107,7 +119,7 @@ ORDER BY chips DESC, created_at_utc ASC, account_id COLLATE BINARY ASC LIMIT 10;
                                 top.Add(new LeaderboardEntry
                                 {
                                     Rank = top.Count + 1, UserName = reader.GetString(1),
-                                    NamecardId = reader.GetString(3),
+                                    NamecardId = reader.GetString(3), ServiceYears = checked((ulong)reader.GetInt64(4)),
                                     Chips = checked((uint)reader.GetInt64(2)), IsSelf = reader.GetString(0) == accountId,
                                 });
                         }
@@ -122,7 +134,7 @@ SELECT me.user_name, me.chips, 1 + (
     WHERE other.chips > me.chips
        OR (other.chips = me.chips AND other.created_at_utc < me.created_at_utc)
        OR (other.chips = me.chips AND other.created_at_utc = me.created_at_utc
-           AND other.account_id COLLATE BINARY < me.account_id COLLATE BINARY)), me.equipped_namecard
+           AND other.account_id COLLATE BINARY < me.account_id COLLATE BINARY)), me.equipped_namecard, " + ServiceYearsSql("me.account_id") + @"
 FROM player_accounts AS me WHERE me.account_id = $accountId;";
                         command.Parameters.AddWithValue("$accountId", accountId);
                         using (var reader = command.ExecuteReader())
@@ -132,12 +144,18 @@ FROM player_accounts AS me WHERE me.account_id = $accountId;";
                             self = new LeaderboardEntry
                             {
                                 UserName = reader.GetString(0), Chips = checked((uint)reader.GetInt64(1)),
-                                Rank = reader.GetInt64(2), IsSelf = true, NamecardId = reader.GetString(3),
+                                Rank = reader.GetInt64(2), IsSelf = true, NamecardId = reader.GetString(3), ServiceYears = checked((ulong)reader.GetInt64(4)),
                             };
                         }
                     }
+                    // Both tabs share one consistent read transaction, so tab switches need no extra request.
+                    var service = ReadServiceLeaderboard(connection, transaction, accountId);
                     transaction.Commit();
-                    return new LeaderboardSnapshot { TopPlayers = top.ToArray(), Self = self };
+                    return new LeaderboardSnapshot
+                    {
+                        TopPlayers = top.ToArray(), Self = self,
+                        ServiceTopPlayers = service.TopPlayers, ServiceSelf = service.Self,
+                    };
                 }
             }
         }
@@ -762,6 +780,16 @@ WHERE hand_id = $handId AND account_id = $accountId;";
                             command.Parameters.AddWithValue("$final", (long)balance.Chips);
                             if (command.ExecuteNonQuery() != 1)
                                 throw new InvalidOperationException("The hand participant could not be settled.");
+                        }
+                    }
+                    foreach (var entry in entries)
+                    {
+                        if (entry.OutcomeFact != null)
+                        {
+                            if (entry.OutcomeFact.HandId != handId || entry.OutcomeFact.AccountId != entry.AccountId ||
+                                entry.OutcomeFact.Kind != Game.Facts.HandFactKind.Settled)
+                                throw new InvalidOperationException("Settlement fact identity mismatch.");
+                            InsertHandFact(connection, transaction, entry.OutcomeFact);
                         }
                     }
                     MarkHandCompleted(connection, transaction, handId, "Settled", now);

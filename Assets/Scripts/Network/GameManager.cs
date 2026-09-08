@@ -10,7 +10,7 @@ namespace Game.Network
     /// <summary>
     /// 服务端权威的无限注德州扑克规则与牌局状态管理器。
     /// </summary>
-    public class GameManager
+    public partial class GameManager
     {
         private readonly Dictionary<int, ServerGameInfo> _games = new Dictionary<int, ServerGameInfo>();
         private readonly HashSet<int> _autoRunningRooms = new HashSet<int>();
@@ -169,7 +169,8 @@ namespace Game.Network
         private bool ApplySettlement(
             ServerGameInfo info,
             IReadOnlyList<uint> earned,
-            PotCalculator.Result calculation)
+            PotCalculator.Result calculation,
+            IReadOnlyCollection<int> winners)
         {
             var entries = new List<HandSettlementEntry>();
             ulong totalCredit = 0;
@@ -187,6 +188,7 @@ namespace Game.Network
                     Contribution = player.RoundBet,
                     Award = earned[playerIndex],
                     Refund = calculation.Refunds[playerIndex],
+                    OutcomeFact = CreateOutcomeFact(info, player, winners.Contains(playerIndex)),
                 });
             }
 
@@ -315,8 +317,10 @@ namespace Game.Network
         private void BeginNextStreet(ServerGameInfo info, GameStage nextStage, int communityCardCount)
         {
             info.TurnId++;
+            PublishPreflopFacts(info);
             info.Stage = nextStage;
             DealCommunityCards(info, communityCardCount);
+            PublishBoardFacts(info);
             info.CurrentHighestPlayerBet = 0;
             info.CurrentHighestRaise = GetBigBlindAmount(info);
 
@@ -342,8 +346,10 @@ namespace Game.Network
         private void DealRunoutStreet(ServerGameInfo info, GameStage nextStage, int communityCardCount)
         {
             info.TurnId++;
+            PublishPreflopFacts(info);
             info.Stage = nextStage;
             DealCommunityCards(info, communityCardCount);
+            PublishBoardFacts(info);
             info.CurrentHighestPlayerBet = 0;
             info.CurrentHighestRaise = GetBigBlindAmount(info);
             info.OperatingPlayer = -1;
@@ -416,6 +422,7 @@ namespace Game.Network
             });
 
             var earned = new uint[info.PlayersCount];
+            var wonSeats = new HashSet<int>();
             foreach (var pot in potCalculation.Pots)
             {
                 var eligiblePatterns = patterns
@@ -430,6 +437,7 @@ namespace Game.Network
                     .Select(pattern => pattern.Player)
                     .ToList();
 
+                wonSeats.UnionWith(winners);
                 var winnerCount = checked((uint)winners.Count);
                 var share = pot.ChipCount / winnerCount;
                 foreach (var winner in winners)
@@ -446,7 +454,7 @@ namespace Game.Network
                 }
             }
 
-            if (!ApplySettlement(info, earned, potCalculation))
+            if (!ApplySettlement(info, earned, potCalculation, wonSeats))
                 return false;
 
             CompleteRound(info, earned, revealShowdownHands: true);
@@ -457,6 +465,7 @@ namespace Game.Network
         {
             var potCalculation = CalculatePots(info);
             var earned = new uint[info.PlayersCount];
+            var wonSeats = new HashSet<int>();
 
             foreach (var pot in potCalculation.Pots)
             {
@@ -464,10 +473,11 @@ namespace Game.Network
                     throw new InvalidOperationException("An uncontested pot must have exactly one eligible player.");
 
                 var winner = pot.EligiblePlayers[0];
+                wonSeats.Add(winner);
                 earned[winner] = checked(earned[winner] + pot.ChipCount);
             }
 
-            if (!ApplySettlement(info, earned, potCalculation))
+            if (!ApplySettlement(info, earned, potCalculation, wonSeats))
                 return false;
 
             CompleteRound(info, earned, revealShowdownHands: false);
@@ -768,6 +778,7 @@ namespace Game.Network
             if (handStartResult != HandStartResult.Started)
                 return handStartResult == HandStartResult.InsufficientChips ? -2 : -7;
 
+            ForgetHandFacts(info.HandId);
             info.HandId = handId;
             info.TurnId = 1;
             info.ActionSequence = 0;
@@ -869,6 +880,7 @@ namespace Game.Network
             if (info.Stage == GameStage.RoundOver || info.Stage == GameStage.GameOver)
                 return -2;
 
+            PublishPreflopFacts(info);
             if (info.Players.Count(player => !player.IsFold) <= 1)
             {
                 return EarlyTermination(info) ? 0 : -7;
@@ -1156,6 +1168,7 @@ namespace Game.Network
             try
             {
                 _accountRepository?.AbortHand(handId, reason);
+                ForgetHandFacts(handId);
             }
             catch (Exception exception)
             {

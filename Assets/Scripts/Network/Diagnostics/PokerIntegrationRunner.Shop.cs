@@ -20,7 +20,8 @@ namespace Game.Network.Diagnostics
         private IEnumerator ShopWait(ShopPanel panel)
         {
             var until = Time.realtimeSinceStartup + 15f;
-            while (Field<NamecardShopRequest>(panel, "_pending").RequestId != 0 &&
+            while ((Field<NamecardShopRequest>(panel, "_pending").RequestId != 0 ||
+                Field<ItemShopRequest>(panel, "_pendingItem").RequestId != 0) &&
                 Time.realtimeSinceStartup < until)
                 yield return null;
             if (!Field<bool>(panel, "_hasAccount") || !Field<bool>(panel, "_canAct"))
@@ -39,10 +40,13 @@ namespace Game.Network.Diagnostics
             if (_finishing) yield break;
             var panel = ShopPanel.Instance;
             if (panel == null || !panel.IsShowing) { Fail("Shop entry did not open."); yield break; }
+            if (panel.ActiveTab != ShopTab.Items) Fail("Shop must open on items.");
+            Click(panel, "_namecardsTab");
             yield return ShopWait(panel);
             if (_finishing) yield break;
             var cards = Field<ShopItemCard[]>(panel, "_cards");
-            if (panel.PageCount != 3 || cards.Length != 4)
+            var expectedPages = Mathf.Max(1, (panel.Catalog.GetListedProducts().Count(p => p.IsListed || p.IsDefault) + 3) / 4);
+            if (panel.PageCount != expectedPages || cards.Length != 4)
                 Fail("Shop pagination was not 4 per page.");
             if (purchase)
             {
@@ -76,9 +80,13 @@ namespace Game.Network.Diagnostics
             }
             else if (Field<string>(panel, "_equippedId") != (_clientIndex == 2 ? "" : "galaxy"))
                 Fail("Reopened shop lost equipped appearance.");
-            Click(panel, "_next");
-            Click(panel, "_next");
-            if (panel.CurrentPage != 2 || Field<Button>(panel, "_next").interactable)
+            if (_testItems)
+            {
+                yield return CheckItemsUI(panel, purchase);
+                if (_finishing) yield break;
+            }
+            for (var page = panel.CurrentPage; page + 1 < expectedPages; page++) Click(panel, "_next");
+            if (panel.CurrentPage != expectedPages - 1 || Field<Button>(panel, "_next").interactable)
                 Fail("Last page boundary failed.");
             Click(panel, "_back");
             if (Framework.UI.UIManager.Instance.TopPanelIdentifier != nameof(TitlePanel))

@@ -16,6 +16,7 @@ namespace Game.Network.Accounts
         BalanceTooHigh,
         ActiveHand,
         BalanceLimit,
+        InProgress, Expired, ItemLimit, OutsideRoom,
     }
 
     public enum DailyTaskResult : byte
@@ -29,11 +30,38 @@ namespace Game.Network.Accounts
         InvalidRequest,
         BalanceLimit,
         Unavailable,
+        NotComplete, Expired, ItemLimit, SnapshotChanged,
+        AlreadyDeleted, FixedTask,
+    }
+
+    public struct TaskObjectiveState
+    {
+        public string Description;
+        public int Progress;
+        public int Target;
+    }
+
+    public struct TaskRewardItemState
+    {
+        public string ItemId;
+        public uint Count;
     }
 
     public struct DailyTaskState
     {
         public DailyTaskId Id;
+        public string InstanceId;
+        public string DefinitionId;
+        public bool IsRandom;
+        public bool CanDelete;
+        public bool IsDirectClaim;
+        public int CompletedCount;
+        public int ClaimedCount;
+        public int MaxCompletions;
+        public int ClaimOrdinal;
+        public long ExpiresAtUnixSeconds;
+        public TaskObjectiveState[] Objectives;
+        public TaskRewardItemState[] RewardItems;
         public string Name;
         public string Description;
         public uint Reward;
@@ -43,6 +71,10 @@ namespace Game.Network.Accounts
     public struct DailyTasksSnapshot
     {
         public int Period;
+        public long Revision;
+        public int Offset;
+        public int NextOffset;
+        public int TotalCount;
         public long ServerUnixSeconds;
         public long NextResetUnixSeconds;
         public uint Balance;

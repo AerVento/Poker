@@ -19,6 +19,7 @@ namespace Game.Editor
             EditorGUILayout.PropertyField(serializedObject.FindProperty("_artwork"), new GUIContent("宽版图片（8:3）"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("_artwork4x3"), new GUIContent("紧凑图片（4:3）", "同一 ID 的独立构图，按显示槽比例自动选择；缺失时回退宽版。"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("_isListed"), new GUIContent("上架", "取消后保留库存和装备，请勿删除 SO 或目录引用。"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_canPurchase"), new GUIContent("可购买", "取消后仍按上架配置展示，按钮灰显不可购买；规则说明填写在商品介绍中。"));
             var isDefault = serializedObject.FindProperty("_isDefault");
             EditorGUILayout.PropertyField(isDefault, new GUIContent("默认款", "玩家天然拥有，不需要购买或解锁。目录内只保留一款。"));
             using (new EditorGUI.DisabledScope(isDefault.boolValue))
@@ -78,6 +79,7 @@ namespace Game.Editor
             if (UIManager.Instance.ContainsPanel<ShopPanel>())
                 UIManager.Instance.PopPanel<ShopPanel>();
             var panel = UIManager.Instance.PushPanel<ShopPanel>();
+            panel.SelectTab(ShopTab.Namecards);
             var owned = new HashSet<string> { "galaxy", "neon" };
             uint previewBalance = 500000;
             string equipped = string.Empty;

@@ -42,19 +42,19 @@ namespace Game.UI
             _artwork.enabled = product.Artwork != null;
             _name.text = product.DisplayName;
             _description.text = product.Description;
-            _price.text = product.IsDefault ? "免费默认款" : owned ? "永久拥有" : $"${price:N0}";
+            _price.text = product.IsDefault ? "免费默认款" : owned && product.CanPurchase ? "永久拥有" : $"${price:N0}";
             _status.text = equipped ? "当前装备" : product.IsDefault ? "默认拥有" : owned ? "已收藏" : "永久名片";
             _playerName.text = string.IsNullOrEmpty(playerName) ? "Poker Player" : playerName;
             _playerChips.text = hasAccount ? "$" + ChipAmountFormatter.Format(balance) : "POKER";
-            _actionLabel.text = equipped ? "已装备" : owned ? "装备" :
+            _actionLabel.text = !product.CanPurchase ? "不可购买" : equipped ? "已装备" : owned ? "装备" :
                 hasAccount && balance < price ? "余额不足" : "购买";
-            _action.interactable = canAct && hasAccount && !equipped && (owned || balance >= price);
+            _action.interactable = product.CanPurchase && canAct && hasAccount && !equipped && (owned || balance >= price);
             _border.color = equipped ? new Color(0.76f, 0.65f, 0.40f, 0.85f) : new Color(0.26f, 0.42f, 0.37f, 0.52f);
         }
 
         private void Act()
         {
-            if (_action.interactable && _product != null)
+            if (_action.interactable && _product != null && _product.CanPurchase)
                 _onAction?.Invoke(_product);
         }
     }

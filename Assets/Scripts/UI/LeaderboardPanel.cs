@@ -8,6 +8,8 @@ using UnityEngine.UI;
 
 namespace Game.UI
 {
+    public enum LeaderboardTab { Wealth, Service }
+
     public sealed class LeaderboardPanel : SingletonPanel<LeaderboardPanel>
     {
         [SerializeField] private RectTransform _content;
@@ -19,6 +21,20 @@ namespace Game.UI
         [SerializeField] private LeaderboardRow _self;
         [SerializeField] private TextMeshProUGUI _feedback;
 
+        [SerializeField] private Button _wealthTab;
+        [SerializeField] private Button _serviceTab;
+        [SerializeField] private GameObject _wealthTheme;
+        [SerializeField] private GameObject _serviceTheme;
+        [SerializeField] private ServiceLeaderboardRow _serviceRowPrefab;
+        [SerializeField] private ServiceLeaderboardRow _serviceSelf;
+        [SerializeField] private TextMeshProUGUI _title;
+        [SerializeField] private TextMeshProUGUI _subtitle;
+        [SerializeField] private TextMeshProUGUI _eyebrow;
+        [SerializeField] private TextMeshProUGUI _amountHeading;
+
+        public LeaderboardTab SelectedTab { get; private set; }
+        private LeaderboardSnapshot _snapshot;
+        private bool _hasSnapshot;
         private ulong _requestId;
         private double _deadline;
         private double _refreshAfter;
@@ -26,6 +42,10 @@ namespace Game.UI
         private void OnEnable()
         {
             FitContent();
+            _hasSnapshot = false;
+            _wealthTab.onClick.AddListener(SelectWealth);
+            _serviceTab.onClick.AddListener(SelectService);
+            SelectTab(LeaderboardTab.Wealth);
             _back.onClick.AddListener(Back);
             _refresh.onClick.AddListener(Refresh);
             _scroll.verticalNormalizedPosition = 1f;
@@ -37,7 +57,11 @@ namespace Game.UI
         {
             _back.onClick.RemoveListener(Back);
             _refresh.onClick.RemoveListener(Refresh);
+            _wealthTab.onClick.RemoveListener(SelectWealth);
+            _serviceTab.onClick.RemoveListener(SelectService);
             _requestId = 0;
+            _hasSnapshot = false;
+            _snapshot = default;
         }
 
         private void OnRectTransformDimensionsChange() => FitContent();
@@ -67,8 +91,11 @@ namespace Game.UI
         {
             if (_requestId != 0 || Time.realtimeSinceStartupAsDouble < _refreshAfter)
                 return;
+            _hasSnapshot = false;
+            _snapshot = default;
             ClearRows();
             _self.Show(default);
+            _serviceSelf.Show(default);
             _requestId = (NetworkManager.singleton as NetworkRoom)?.RequestLeaderboard() ?? 0;
             _deadline = Time.realtimeSinceStartupAsDouble + 10d;
             _refreshAfter = Time.realtimeSinceStartupAsDouble + 2d;
@@ -98,10 +125,57 @@ namespace Game.UI
                     ? "刷新较频繁，请稍后重试。" : "排行榜暂时不可用，请重试。";
                 return;
             }
-            foreach (var entry in response.Snapshot.TopPlayers ?? System.Array.Empty<LeaderboardEntry>())
-                Instantiate(_rowPrefab, _list).Show(entry);
-            _self.Show(response.Snapshot.Self);
-            _feedback.text = "按已结算账户余额排名 · 包含离线玩家";
+            _snapshot = response.Snapshot;
+            _hasSnapshot = true;
+            RenderSnapshot();
+        }
+
+        private void SelectWealth() => SelectTab(LeaderboardTab.Wealth);
+        private void SelectService() => SelectTab(LeaderboardTab.Service);
+
+        public void SelectTab(LeaderboardTab tab)
+        {
+            if (tab != LeaderboardTab.Wealth && tab != LeaderboardTab.Service)
+                return;
+            SelectedTab = tab;
+            bool service = tab == LeaderboardTab.Service;
+            _wealthTab.interactable = service;
+            _serviceTab.interactable = !service;
+            _wealthTheme.SetActive(!service);
+            _serviceTheme.SetActive(service);
+            _self.gameObject.SetActive(!service);
+            _serviceSelf.gameObject.SetActive(service);
+            _title.text = service ? "服役排行榜" : "富豪排行榜";
+            _title.color = service ? new Color(1f, 0.78f, 0.36f) : new Color(0.85f, 0.93f, 0.94f);
+            _eyebrow.text = service ? "契约档案 · TOP 10" : "财富排行 · TOP 10";
+            _subtitle.text = service ? string.Empty : "玩家名片 · 已结算账户余额";
+            _amountHeading.text = service ? "累计服役" : "账户余额";
+            if (_hasSnapshot) RenderSnapshot();
+            else ClearRows();
+            _scroll.StopMovement();
+            _scroll.verticalNormalizedPosition = 1f;
+        }
+
+        private void RenderSnapshot()
+        {
+            ClearRows();
+            if (SelectedTab == LeaderboardTab.Service)
+            {
+                foreach (var entry in _snapshot.ServiceTopPlayers ?? System.Array.Empty<ServiceLeaderboardEntry>())
+                    Instantiate(_serviceRowPrefab, _list).Show(entry);
+                _serviceSelf.Show(_snapshot.ServiceSelf);
+                _feedback.text = "按仓库契约折算年数排名 · 包含离线玩家 · 同年数按注册顺序排列";
+            }
+            else
+            {
+                foreach (var entry in _snapshot.TopPlayers ?? System.Array.Empty<LeaderboardEntry>())
+                    Instantiate(_rowPrefab, _list).Show(entry);
+                _self.Show(_snapshot.Self);
+                _feedback.text = "按已结算账户余额排名 · 包含离线玩家";
+            }
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_list);
+            _scroll.StopMovement();
+            _scroll.verticalNormalizedPosition = 1f;
         }
     }
 }

@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cbd122b6c61407a499ac5f75cfb3a713, type: 3}
+  m_Name: ArchdevilContract
+  m_EditorClassIdentifier: 
+  _id: archdevil-contract
+  _displayName: "\u5927\u6076\u9B54\u5951\u7EA6"
+  _description: "\u8FD9\u662F\u4E00\u7EB8\u5356\u8EAB\u5951\uFF0C\u4F60\u5FC5\u987B\u8EAB\u65E0\u5206\u6587\u624D\u80FD\u7B7E\u4E0B\uFF0C\u7B7E\u4E0B\u540E\u7ACB\u5373\u83B7\u5F97
+    $10,000\u3002\u6B7B\u540E\uFF0C\u4F60\u987B\u4E3A\u5927\u6076\u9B54\u670D\u5F79\u5341\u5E74\uFF1A\u62D6\u7740\u9501\u94FE\uFF0C\u5728\u4E1A\u706B\u77FF\u5751\u4E2D\u65E5\u591C\u51FF\u77F3\u3002\u53CC\u624B\u78E8\u7834\u53C8\u590D\u539F\uFF0C\u75B2\u60EB\u5374\u4E0D\u65AD\u7D2F\u79EF\u3002\u8FD9\u91CC\u6CA1\u6709\u7761\u7720\uFF0C\u53EA\u6709\u50AC\u5DE5\u7684\u949F\u58F0\u3002"
+  _icon: {fileID: 21300000, guid: 6fe01ed483b05bd4d8b16b8270764926, type: 3}
+  _kind: 1

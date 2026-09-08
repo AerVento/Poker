@@ -243,6 +243,10 @@ namespace Game.Tests
                 var response = ServerClaim(network, connection, 2);
                 Assert.AreEqual(expected, response.Result);
                 Assert.AreEqual(0, response.GrantedAmount);
+                var deletion = (DailyTaskDeleteResponse)Invoke(network, "ProcessDailyTaskDelete", connection,
+                    new DailyTaskDeleteRequest { RequestId = 3, InstanceId = Guid.NewGuid().ToString("N") }, null);
+                Assert.AreEqual(expected, deletion.Result);
+                Assert.AreEqual(0, deletion.GrantedAmount);
                 Assert.AreEqual(900, _repository.FindById("Alice").Chips);
             }
             finally { UnityEngine.Object.DestroyImmediate(go); }
@@ -272,6 +276,17 @@ namespace Game.Tests
         [Test]
         public void MirrorRoundTripPreservesTaskSnapshotAndRequestCorrelation()
         {
+            var deletion = RoundTrip(new DailyTaskDeleteRequest { RequestId = 123, InstanceId = "instance" });
+            Assert.AreEqual(123, deletion.RequestId);
+            Assert.AreEqual("instance", deletion.InstanceId);
+            var deleted = RoundTrip(new DailyTaskDeleteResponse { RequestId = 123, AccountId = "Alice", InstanceId = "instance",
+                Result = DailyTaskResult.Success, GrantedAmount = 100, GrantedItems = new[] { new TaskRewardItemState { ItemId = "item", Count = 2 } } });
+            Assert.AreEqual(100, deleted.GrantedAmount);
+            Assert.AreEqual("Alice", deleted.AccountId);
+            Assert.AreEqual("instance", deleted.InstanceId);
+            Assert.AreEqual(2, deleted.GrantedItems.Single().Count);
+            var state = RoundTrip(new DailyTasksResponse { Snapshot = new DailyTasksSnapshot { Tasks = new[] { new DailyTaskState { CanDelete = true } } } });
+            Assert.IsTrue(state.Snapshot.Tasks.Single().CanDelete);
             var response = RoundTrip(new DailyTasksResponse { RequestId = 99, AccountId = "Alice", Result = DailyTaskResult.Success, Snapshot = _tasks.GetStatus("Alice") });
             Assert.AreEqual(99, response.RequestId);
             Assert.AreEqual("Alice", response.AccountId);

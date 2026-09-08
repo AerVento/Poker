@@ -30,7 +30,7 @@ namespace Game.Editor
                 throw new BuildFailedException("Invalid namecard catalog: check default, product references, names and artwork.");
             var catalog = new NamecardServerCatalog
             {
-                Products = products.Select(p => new NamecardOffer { Id = p.Id, Price = p.Price, Listed = p.IsListed }).ToArray()
+                Products = products.Select(p => new NamecardOffer { Id = p.Id, Price = p.Price, Listed = p.IsListed && p.CanPurchase }).ToArray()
             };
             catalog.Validate();
             const string path = "Assets/Resources/SO/Shop/NamecardServerCatalog.json";

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 2,
+  "revision": "daily-tasks-v5",
+  "capacity": 2,
+  "entries": [
+    {
+      "taskId": "two_pair_10",
+      "enabled": true,
+      "weight": 60,
+      "validityDays": 3
+    },
+    {
+      "taskId": "full_house_1_repeat_3",
+      "enabled": true,
+      "weight": 40,
+      "validityDays": 3
+    }
+  ]
+}

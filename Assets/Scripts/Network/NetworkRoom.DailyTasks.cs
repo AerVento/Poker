@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Game.Network.Accounts;
 using Game.UI;
 using Mirror;
@@ -20,7 +21,19 @@ namespace Game.Network
             _dailyTaskService = authenticator is AccountAuthenticator accountAuthenticator &&
                 accountAuthenticator.AccountRepository is IDailyRewardRepository repository
                 ? new DailyTaskService(repository) : null;
+            InitializeConfiguredTasks();
+            if (_serverStorageFailed) return;
             _dailyTaskRequestSequences.Clear();
+            RegisterServerHandler<DailyTaskDeleteRequest>((conn, request) =>
+            {
+                var response = ProcessDailyTaskDelete(conn, request, out var account);
+                if (account != null && (response.Result == DailyTaskResult.Success || response.Result == DailyTaskResult.AlreadyDeleted))
+                {
+                    if (_playerManager.TryGetSession(conn, out var session)) session.Account = account.Copy();
+                    conn.Send(new AccountBalanceSync { Chips = account.Chips });
+                }
+                conn.Send(response);
+            }, requireAuthentication: true);
             RegisterServerHandler<DailyTasksRequest>((conn, request) =>
                 conn.Send(ProcessDailyTasksRequest(conn, request)), requireAuthentication: true);
             RegisterServerHandler<DailyTaskClaimRequest>((conn, request) =>
@@ -41,25 +54,28 @@ namespace Game.Network
             out PlayerAccount account)
         {
             account = null;
-            if (conn == null || !conn.isAuthenticated || !_playerManager.TryGetAccount(conn, out account))
+            if (_serverStorageFailed || conn == null || !conn.isAuthenticated || !_playerManager.TryGetAccount(conn, out account))
                 return DailyTaskResult.Unavailable;
             if (requestId == 0 || (_dailyTaskRequestSequences.TryGetValue(conn, out var last) && requestId <= last))
                 return DailyTaskResult.InvalidRequest;
             _dailyTaskRequestSequences[conn] = requestId;
             if (_roomManager.WhichRoom(account.UserName, out _) || account.LastRoomId.HasValue)
                 return DailyTaskResult.OutsideRoomRequired;
-            return _dailyTaskService == null ? DailyTaskResult.Unavailable : DailyTaskResult.Success;
+            return _configuredTasks == null && _dailyTaskService == null ? DailyTaskResult.Unavailable : DailyTaskResult.Success;
         }
 
         internal DailyTasksResponse ProcessDailyTasksRequest(NetworkConnectionToClient conn, DailyTasksRequest request)
         {
             var result = ValidateDailyTaskRequest(conn, request.RequestId, out var account);
+            if (request.Offset < 0 || request.Offset > 1000000 || request.Revision < 0)
+                result = DailyTaskResult.InvalidRequest;
             return new DailyTasksResponse
             {
                 RequestId = request.RequestId,
                 AccountId = account?.AccountId,
                 Result = result,
-                Snapshot = result == DailyTaskResult.Success ? _dailyTaskService.GetStatus(account.AccountId) : default,
+                Snapshot = result == DailyTaskResult.Success ? (_configuredTasks != null ? ReadConfiguredTasks(account.AccountId, request) :
+                    _dailyTaskService.GetStatus(account.AccountId)) : default,
             };
         }
 
@@ -68,7 +84,15 @@ namespace Game.Network
         {
             updatedAccount = null;
             var result = ValidateDailyTaskRequest(conn, request.RequestId, out var account);
-            if (result == DailyTaskResult.Success)
+            TaskClaimReceipt receipt = null;
+            if (result == DailyTaskResult.Success && _configuredTasks != null)
+            {
+                var outcome = ClaimConfiguredTask(account.AccountId, request);
+                result = outcome.Result;
+                receipt = outcome.Receipt;
+                updatedAccount = outcome.Account;
+            }
+            else if (result == DailyTaskResult.Success)
                 result = _dailyTaskService.Claim(account.AccountId, request.TaskId, request.Period, out updatedAccount);
             return new DailyTaskClaimResponse
             {
@@ -76,8 +100,11 @@ namespace Game.Network
                 AccountId = account?.AccountId,
                 TaskId = request.TaskId,
                 Result = result,
+                InstanceId = receipt?.InstanceId ?? request.InstanceId,
+                CompletionOrdinal = receipt?.Ordinal ?? request.CompletionOrdinal,
+                GrantedItems = receipt?.Items?.Select(i => new TaskRewardItemState { ItemId = i.ItemId, Count = i.Count }).ToArray(),
                 GrantedAmount = result == DailyTaskResult.Success
-                    ? (request.TaskId == DailyTaskId.DailySupply ? DailyTaskService.SupplyReward : DailyTaskService.ComebackReward)
+                    ? receipt?.Chip ?? (request.TaskId == DailyTaskId.DailySupply ? DailyTaskService.SupplyReward : DailyTaskService.ComebackReward)
                     : 0,
             };
         }
@@ -102,6 +129,7 @@ namespace Game.Network
 
         private void RegisterDailyTaskClientHandlers()
         {
+            NetworkClient.RegisterHandler<DailyTaskDeleteResponse>(DailyTaskDeleteResponseHandler);
             NetworkClient.RegisterHandler<DailyTasksResponse>(DailyTasksResponseHandler);
             NetworkClient.RegisterHandler<DailyTaskClaimResponse>(DailyTaskClaimResponseHandler);
         }
@@ -116,6 +144,43 @@ namespace Game.Network
         {
             if (CanOpenDailyTasks && response.AccountId == GameController.Instance.State.AccountId)
                 DailyTaskPanel.Instance?.ReceiveClaim(response);
+        }
+
+        internal DailyTaskDeleteResponse ProcessDailyTaskDelete(NetworkConnectionToClient conn, DailyTaskDeleteRequest request,
+            out PlayerAccount updatedAccount)
+        {
+            updatedAccount = null;
+            var result = ValidateDailyTaskRequest(conn, request.RequestId, out var account);
+            Game.Network.Tasks.TaskDeleteOutcome outcome = null;
+            if (result == DailyTaskResult.Success)
+            {
+                if (_configuredTasks == null) result = DailyTaskResult.Unavailable;
+                else
+                {
+                    RefreshTaskDay();
+                    _configuredTasks.DrainFacts();
+                    outcome = _configuredTasks.Delete(account.AccountId, request.InstanceId);
+                    result = outcome.Result;
+                    updatedAccount = outcome.Account;
+                }
+            }
+            return new DailyTaskDeleteResponse { RequestId = request.RequestId, AccountId = account?.AccountId,
+                InstanceId = request.InstanceId, Result = result, GrantedAmount = outcome?.AutoClaim?.Chip ?? 0,
+                GrantedItems = outcome?.AutoClaim?.Items?.Select(i => new TaskRewardItemState { ItemId = i.ItemId, Count = i.Count }).ToArray() };
+        }
+
+        public ulong RequestDailyTaskDelete(string instanceId)
+        {
+            if (!CanOpenDailyTasks) return 0;
+            var requestId = ++_nextDailyTaskRequest;
+            NetworkClient.Send(new DailyTaskDeleteRequest { RequestId = requestId, InstanceId = instanceId });
+            return requestId;
+        }
+
+        private void DailyTaskDeleteResponseHandler(DailyTaskDeleteResponse response)
+        {
+            if (CanOpenDailyTasks && response.AccountId == GameController.Instance.State.AccountId)
+                DailyTaskPanel.Instance?.ReceiveDelete(response);
         }
     }
 }

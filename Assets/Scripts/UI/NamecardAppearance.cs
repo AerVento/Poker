@@ -1,4 +1,5 @@
 using Game.SO;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -18,12 +19,17 @@ namespace Game.UI
         private NamecardProductSO _product;
         private Vector2 _lastArtworkSize;
 
-        public void Present(string id)
+        private readonly InfernalNameStyle _nameStyle = new InfernalNameStyle();
+
+        public void Present(string id, ulong serviceYears = 0, TMP_Text playerName = null)
         {
-            _product = _catalog != null ? _catalog.GetProduct(id) : null;
+            _nameStyle.Present(playerName, serviceYears);
+            _product = _catalog != null ? _catalog.GetProduct(InfernalNamecard.Resolve(id, serviceYears)) : null;
             _hasPresented = true;
             RefreshArtwork();
         }
+
+        private void OnDestroy() => _nameStyle.Dispose();
 
         private void OnEnable()
         {

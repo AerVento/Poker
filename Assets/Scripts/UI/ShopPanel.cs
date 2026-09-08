@@ -50,11 +50,13 @@ namespace Game.UI
             _page = 0;
             RefreshCatalog();
             FitContent();
+            EnableTabs();
         }
 
         private void OnDisable()
         {
             CloseConfirmation();
+            DisableTabs();
             _back.onClick.RemoveListener(Back);
             _previous.onClick.RemoveListener(PreviousPage);
             _next.onClick.RemoveListener(NextPage);
@@ -102,6 +104,7 @@ namespace Game.UI
             _equippedId = equippedId;
             _hasAccount = true;
             _canAct = canAct;
+            _itemsView.SetBalance(chips);
             RefreshCatalog();
         }
 
@@ -148,7 +151,7 @@ namespace Game.UI
 
         private void SelectProduct(NamecardProductSO product)
         {
-            if (!_hasAccount || !_canAct || !_products.Contains(product))
+            if (product == null || !product.CanPurchase || ActiveTab != ShopTab.Namecards || !_hasAccount || !_canAct || !_products.Contains(product))
                 return;
             if (product.IsDefault)
             {

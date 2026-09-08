@@ -432,6 +432,8 @@ namespace Game.Tests
 
         [TestCase("Shop", false)]
         [TestCase("Shop", true)]
+        [TestCase("Collection", false)]
+        [TestCase("Collection", true)]
         [TestCase("Leaderboard", false)]
         [TestCase("Leaderboard", true)]
         public void FeatureLoginRoutesToSelectionButRoomRecoveryTakesPriority(string destination, bool hasRoom)
@@ -446,11 +448,14 @@ namespace Game.Tests
                 HasLastRoom = hasRoom,
                 LastRoomId = 42,
             });
-            Assert.AreEqual(hasRoom ? nameof(RoomListPanel) : destination + "Panel", _ui.TopPanelIdentifier);
+            Assert.AreEqual(hasRoom ? nameof(RoomListPanel) : destination == "Collection" ? nameof(ShopPanel) : destination + "Panel", _ui.TopPanelIdentifier);
+            if (!hasRoom && destination == "Collection")
+                Assert.AreEqual(ShopPageMode.Collection, _ui.GetPanel<ShopPanel>().Mode);
             Assert.IsFalse(_ui.ContainsPanel<LoginPanel>());
         }
 
         [TestCase("Shop")]
+        [TestCase("Collection")]
         [TestCase("Leaderboard")]
         public void CancelledFeatureLoginCannotRedirectNextNormalLogin(string destination)
         {
@@ -466,14 +471,17 @@ namespace Game.Tests
         }
 
         [TestCase("Shop")]
+        [TestCase("Collection")]
         [TestCase("Leaderboard")]
         public void FeatureBackAndDisconnectReturnToTitle(string destination)
         {
             _ui.PushPanel<TitlePanel>();
-            BasePanel panel = destination == "Shop" ? (BasePanel)_ui.PushPanel<ShopPanel>() : _ui.PushPanel<LeaderboardPanel>();
+            BasePanel panel = destination != "Leaderboard" ? (BasePanel)_ui.PushPanel<ShopPanel>() : _ui.PushPanel<LeaderboardPanel>();
+            if (destination == "Collection") ((ShopPanel)panel).Open(ShopPageMode.Collection);
             Invoke(panel, "Back");
             Assert.AreEqual(nameof(TitlePanel), _ui.TopPanelIdentifier);
-            if (destination == "Shop") _ui.PushPanel<ShopPanel>();
+            if (destination != "Leaderboard") _ui.PushPanel<ShopPanel>().Open(
+                destination == "Collection" ? ShopPageMode.Collection : ShopPageMode.Shop);
             else _ui.PushPanel<LeaderboardPanel>();
             Set(_network, "_silentDisconnect", true);
             Set(_network, "_isConnected", true);
@@ -481,6 +489,9 @@ namespace Game.Tests
             CollectionAssert.AreEqual(new[] { nameof(TitlePanel) }, _ui.PanelOrder);
         }
 
+        [TestCase("Collection", "pending")]
+        [TestCase("Collection", "active")]
+        [TestCase("Collection", "last-room")]
         [TestCase("Shop", "pending")]
         [TestCase("Shop", "active")]
         [TestCase("Shop", "last-room")]
@@ -505,6 +516,7 @@ namespace Game.Tests
         }
 
         [TestCase("Shop")]
+        [TestCase("Collection")]
         [TestCase("Leaderboard")]
         public void UnauthenticatedTitleEntryRemembersLoginDestination(string destination)
         {

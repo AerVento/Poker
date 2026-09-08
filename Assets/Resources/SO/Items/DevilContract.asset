@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cbd122b6c61407a499ac5f75cfb3a713, type: 3}
+  m_Name: DevilContract
+  m_EditorClassIdentifier: 
+  _id: devil-contract
+  _displayName: "\u6076\u9B54\u5951\u7EA6"
+  _description: "\u8FD9\u662F\u4E00\u7EB8\u5356\u8EAB\u5951\uFF0C\u4F60\u5FC5\u987B\u8EAB\u65E0\u5206\u6587\u624D\u80FD\u7B7E\u4E0B\uFF0C\u7B7E\u4E0B\u540E\u7ACB\u5373\u83B7\u5F97
+    $1,000\u3002\u6B7B\u540E\uFF0C\u4F60\u987B\u4E3A\u6076\u9B54\u670D\u5F79\u4E00\u5E74\uFF1A\u6234\u7740\u70E7\u7EA2\u7684\u9563\u94D0\uFF0C\u5411\u7194\u7089\u642C\u8FD0\u7164\u77F3\u3002\u70DF\u7070\u707C\u70E7\u5589\u5499\uFF0C\u505C\u6B65\u4FBF\u906D\u97AD\u7B1E\u3002"
+  _icon: {fileID: 21300000, guid: 06ef7464262f376448e1146618b34ff7, type: 3}
+  _kind: 1

@@ -1,0 +1,5 @@
+[
+  { "Id": "devil-contract", "Kind": 1, "Price": 0, "Listed": true, "MaxQuantity": 1 },
+  { "Id": "archdevil-contract", "Kind": 1, "Price": 0, "Listed": true, "MaxQuantity": 1 },
+  { "Id": "satan-contract", "Kind": 1, "Price": 0, "Listed": true, "MaxQuantity": 1 }
+]

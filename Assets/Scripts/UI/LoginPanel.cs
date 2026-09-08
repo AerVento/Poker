@@ -13,7 +13,8 @@ namespace Game.UI
         Lobby,
         DailyTasks,
         Leaderboard,
-        Shop
+        Shop,
+        Collection
     }
 
     public class LoginPanel : SingletonPanel<LoginPanel>

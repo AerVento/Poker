@@ -93,8 +93,10 @@ namespace Game.Network.Diagnostics
             runner._testStorage = (GetArgument("-pokerIntegrationScenario") ?? "").StartsWith("storage-");
             runner._testLeaderboard = runner._reviewScenario == "leaderboard" || runner._reviewScenario == "idle";
             runner._testIdle = runner._reviewScenario == "idle";
-            runner._testShop = runner._reviewScenario == "shop";
-            runner._testSpectators |= runner._testShop;
+            runner._testItems = runner._reviewScenario == "items";
+            runner._testContracts = runner._reviewScenario == "contracts";
+            runner._testShop = runner._reviewScenario == "shop" || runner._testItems;
+            runner._testSpectators |= runner._testShop || runner._testContracts;
             runner._storageAllIn = GetArgument("-pokerIntegrationScenario") == "storage-allin";
             runner._runId = SanitizeFileName(runId);
             runner._outputDirectory = Path.GetFullPath(outputDirectory);
@@ -131,7 +133,13 @@ namespace Game.Network.Diagnostics
             if (_testTasks)
                 typeof(AccountAuthenticator).GetField("_initialChips", System.Reflection.BindingFlags.Instance |
                     System.Reflection.BindingFlags.NonPublic).SetValue(_authenticator, (uint)900);
+            if (_testContracts)
+                typeof(AccountAuthenticator).GetField("_initialChips", System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.NonPublic).SetValue(_authenticator, (uint)0);
             _networkRoom.StartServer();
+            // Keep purchase fixtures independent of production catalog prices.
+            if (_testShop) Field<NamecardServerCatalog>(_networkRoom, "_shopCatalog").Products.Single(p => p.Id == "galaxy").Price = 6000;
+            if (_testItems) ConfigureIntegrationItems();
             if (_testLeaderboard) SeedLeaderboard();
             if (_testStorage)
             {
@@ -178,7 +186,7 @@ namespace Game.Network.Diagnostics
                         Fail("Final chip reconciliation failed: " + JsonSerializer.Serialize(report));
                         yield break;
                     }
-                    if (report.ActiveHandCount != 0 || report.AccountBalanceTotal != (_testTasks ? 7700 : _testShop ? 12000 : _testLeaderboard ? 5530000 : 30000))
+                    if (report.ActiveHandCount != 0 || report.AccountBalanceTotal != (_testContracts ? 111000 : _testTasks ? 13700 : _testItems ? 11100 : _testShop ? 12000 : _testLeaderboard ? 5530000 : 30000))
                     {
                         Fail("Unexpected final chip totals: " + JsonSerializer.Serialize(report));
                         yield break;
@@ -304,6 +312,11 @@ namespace Game.Network.Diagnostics
                 _authenticator.Register(_userName, Password);
             }
 
+            if (_testContracts)
+            {
+                yield return CheckContractsUI(_roundsCompleted == 0);
+                if (_finishing) yield break;
+            }
             if (_testShop)
             {
                 yield return CheckShopUI(_roundsCompleted == 0);
@@ -378,7 +391,7 @@ namespace Game.Network.Diagnostics
             if (_finishing) yield break;
             if (_clientIndex != 1)
             {
-                var card = Field<UI.DailyTaskCard[]>(UI.DailyTaskPanel.Instance, "_cards")[1];
+                var card = Field<UI.DailyTaskCard[]>(UI.DailyTaskPanel.Instance, "_cards").First(c => c.TaskId == DailyTaskId.Comeback);
                 if (Field<UnityEngine.UI.Button>(card, "_claim").interactable)
                 {
                     Fail("Low-balance UI remained claimable after the daily supply raised the balance.");
@@ -390,6 +403,38 @@ namespace Game.Network.Diagnostics
             }
             var duplicate = _networkRoom.RequestDailyTaskClaim(DailyTaskId.DailySupply, _taskPeriod);
             yield return WaitForDailyTaskClaim(duplicate, DailyTaskResult.AlreadyClaimed);
+            if (_finishing) yield break;
+            var supply = Field<DailyTasksSnapshot>(UI.DailyTaskPanel.Instance, "_snapshot").Tasks.First(t => t.Id == DailyTaskId.DailySupply);
+            for (var ordinal = supply.ClaimedCount; ordinal < supply.MaxCompletions; ordinal++)
+            {
+                expected += supply.Reward;
+                yield return ClaimDailyTaskThroughUI(DailyTaskId.DailySupply, expected);
+                if (_finishing) yield break;
+            }
+            var deletePanel = UI.DailyTaskPanel.Instance;
+            var randomBefore = Field<DailyTasksSnapshot>(deletePanel, "_snapshot").Tasks.Where(t => t.IsRandom).ToArray();
+            var deletedId = randomBefore[0].InstanceId;
+            var deleteCard = Field<UI.DailyTaskCard[]>(deletePanel, "_cards").First(c => Field<DailyTaskState>(c, "_state").InstanceId == deletedId);
+            var scroll = Field<UI.TaskCardScrollRect>(deletePanel, "_scroll");
+            scroll.SelectPage(Array.FindIndex(Field<DailyTasksSnapshot>(deletePanel, "_snapshot").Tasks, t => t.InstanceId == deletedId), true);
+            yield return null;
+            if (Mathf.Abs(scroll.viewport.rect.width - ((RectTransform)deleteCard.transform).rect.width) > 1)
+            {
+                Fail("Task viewport does not display exactly one card.");
+                yield break;
+            }
+            Click(deleteCard, "_delete");
+            Click(Field<UI.MsgBox>(deletePanel, "_deleteConfirmation"), "_cancelButton");
+            if (Field<ulong>(deletePanel, "_deleteRequest") != 0) { Fail("Cancel sent a task deletion."); yield break; }
+            Click(deleteCard, "_delete");
+            Click(Field<UI.MsgBox>(deletePanel, "_deleteConfirmation"), "_confirmButton");
+            var deleteDeadline = Time.realtimeSinceStartup + 10;
+            while (Time.realtimeSinceStartup < deleteDeadline &&
+                (!Field<bool>(deletePanel, "_hasSnapshot") || Field<DailyTasksSnapshot>(deletePanel, "_snapshot").Tasks.Any(t => t.InstanceId == deletedId)))
+                yield return null;
+            if (Field<DailyTasksSnapshot>(deletePanel, "_snapshot").Tasks.Any(t => t.InstanceId == deletedId))
+            { Fail("Deleted task remained in UI."); yield break; }
+            yield return WaitForDailyTaskBalance(expected);
             if (_finishing) yield break;
             Click(UI.DailyTaskPanel.Instance, "_back");
             if (Framework.UI.UIManager.Instance.TopPanelIdentifier != nameof(UI.TitlePanel))
@@ -415,15 +460,18 @@ namespace Game.Network.Diagnostics
                 RegisterClientHandlers();
                 yield return WaitForDailyTaskBalance(expected);
                 if (_finishing) yield break;
-                if (Field<DailyTasksSnapshot>(UI.DailyTaskPanel.Instance, "_snapshot").Tasks[0].Availability != DailyTaskAvailability.Claimed)
+                if (Field<DailyTasksSnapshot>(UI.DailyTaskPanel.Instance, "_snapshot").Tasks.First(t => t.Id == DailyTaskId.DailySupply).Availability != DailyTaskAvailability.Claimed)
                 {
                     Fail("Relogin lost the persisted daily claim.");
                     yield break;
                 }
             }
+            var afterDelete = Field<DailyTasksSnapshot>(UI.DailyTaskPanel.Instance, "_snapshot").Tasks;
+            if (afterDelete.Any(t => t.InstanceId == deletedId) || afterDelete.Count(t => t.IsRandom) != randomBefore.Length - 1)
+            { Fail("Same-day navigation or relogin refilled a deleted task."); yield break; }
             Click(UI.DailyTaskPanel.Instance, "_back");
             Click(UI.TitlePanel.Instance, "_start");
-            WriteResult("tasks-" + _clientIndex + ".ready", "Title entry, registration, claim, refresh, duplicate rejection and back navigation passed; balance=" + expected);
+            WriteResult("tasks-" + _clientIndex + ".ready", "Single-card UI, delete/cancel, no same-day refill, registration, claim and relogin passed; balance=" + expected);
         }
 
         private IEnumerator ClaimDailyTaskThroughUI(DailyTaskId id, uint balance)
@@ -552,6 +600,7 @@ namespace Game.Network.Diagnostics
                 return;
 
             if (_testShop) CheckShopRoom(room);
+            if (_testContracts) CheckInfernalRoom(room);
             _roomId = room.Id;
             _joined = room.ContainsMember(_userName);
             if (_testResultReview && _roundsCompleted > 0 && room.IsWaiting)
@@ -670,6 +719,7 @@ namespace Game.Network.Diagnostics
                 WriteResult($"client-{_clientIndex}.intro.checked", "First observer introduction acknowledged");
             }
             if (_testShop) CheckShopGame(message);
+            if (_testContracts) CheckInfernalGame(message);
             _latestGameInfo = message;
             _roomId = info.RoomInfo.Id;
             _sawRiver |= info.Round == GameStage.River;
@@ -1121,6 +1171,11 @@ namespace Game.Network.Diagnostics
                 Fail("The complete departure and recovery flow was not observed.");
                 yield break;
             }
+            if (_testContracts)
+            {
+                yield return CheckContractsUI(_roundsCompleted == 0);
+                if (_finishing) yield break;
+            }
             if (_testShop)
             {
                 yield return CheckShopUI(_roundsCompleted == 0);
@@ -1287,6 +1342,11 @@ namespace Game.Network.Diagnostics
 
         private IEnumerator FinishSpectatorClient()
         {
+            if (_testContracts)
+            {
+                yield return CheckContractsUI(false);
+                if (_finishing) yield break;
+            }
             if (_testShop)
             {
                 yield return CheckShopUI(false);

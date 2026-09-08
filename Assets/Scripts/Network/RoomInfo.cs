@@ -45,6 +45,11 @@ namespace Game.Network
 
         public Dictionary<string, string> Namecards { get; set; } = new Dictionary<string, string>();
 
+        public Dictionary<string, ulong> ServiceYears { get; set; } = new Dictionary<string, ulong>();
+
+        public ulong GetServiceYears(string playerName) => playerName != null && ServiceYears != null &&
+            ServiceYears.TryGetValue(playerName, out var years) ? years : 0UL;
+
         public string GetNamecard(string playerName) => playerName != null && Namecards != null &&
             Namecards.TryGetValue(playerName, out var id) ? id : string.Empty;
 

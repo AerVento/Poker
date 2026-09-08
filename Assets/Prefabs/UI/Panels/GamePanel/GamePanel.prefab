@@ -102,7 +102,7 @@ MonoBehaviour:
     m_NormalColor: {r: 0.13333334, g: 0.23921569, b: 0.22352941, a: 1}
     m_HighlightedColor: {r: 0.23733334, g: 0.3305098, b: 0.31670588, a: 1}
     m_PressedColor: {r: 0.10933334, g: 0.19615686, b: 0.18329412, a: 1}
-    m_SelectedColor: {r: 0.2912157, g: 0.34878433, b: 0.27960783, a: 1}
+    m_SelectedColor: {r: 0.13333334, g: 0.23921569, b: 0.22352941, a: 1}
     m_DisabledColor: {r: 0.20392157, g: 0.25882354, b: 0.24313726, a: 1}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.12
@@ -3368,7 +3368,7 @@ MonoBehaviour:
     m_NormalColor: {r: 0.13333334, g: 0.23921569, b: 0.22352941, a: 1}
     m_HighlightedColor: {r: 0.23733334, g: 0.3305098, b: 0.31670588, a: 1}
     m_PressedColor: {r: 0.10933334, g: 0.19615686, b: 0.18329412, a: 1}
-    m_SelectedColor: {r: 0.2912157, g: 0.34878433, b: 0.27960783, a: 1}
+    m_SelectedColor: {r: 0.13333334, g: 0.23921569, b: 0.22352941, a: 1}
     m_DisabledColor: {r: 0.20392157, g: 0.25882354, b: 0.24313726, a: 1}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.12
@@ -3893,7 +3893,7 @@ MonoBehaviour:
     m_NormalColor: {r: 0.13333334, g: 0.23921569, b: 0.22352941, a: 1}
     m_HighlightedColor: {r: 0.23733334, g: 0.3305098, b: 0.31670588, a: 1}
     m_PressedColor: {r: 0.10933334, g: 0.19615686, b: 0.18329412, a: 1}
-    m_SelectedColor: {r: 0.2912157, g: 0.34878433, b: 0.27960783, a: 1}
+    m_SelectedColor: {r: 0.13333334, g: 0.23921569, b: 0.22352941, a: 1}
     m_DisabledColor: {r: 0.20392157, g: 0.25882354, b: 0.24313726, a: 1}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.12
@@ -4475,7 +4475,7 @@ MonoBehaviour:
     m_NormalColor: {r: 0.16862746, g: 0.4117647, b: 0.3137255, a: 1}
     m_HighlightedColor: {r: 0.26839215, g: 0.48235294, b: 0.39607844, a: 1}
     m_PressedColor: {r: 0.1382745, g: 0.33764705, b: 0.2572549, a: 1}
-    m_SelectedColor: {r: 0.3187451, g: 0.48337257, b: 0.3499608, a: 1}
+    m_SelectedColor: {r: 0.16862746, g: 0.4117647, b: 0.3137255, a: 1}
     m_DisabledColor: {r: 0.20392157, g: 0.25882354, b: 0.24313726, a: 1}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.12
@@ -4617,7 +4617,7 @@ MonoBehaviour:
     m_NormalColor: {r: 0.16862746, g: 0.4117647, b: 0.3137255, a: 1}
     m_HighlightedColor: {r: 0.26839215, g: 0.48235294, b: 0.39607844, a: 1}
     m_PressedColor: {r: 0.1382745, g: 0.33764705, b: 0.2572549, a: 1}
-    m_SelectedColor: {r: 0.3187451, g: 0.48337257, b: 0.3499608, a: 1}
+    m_SelectedColor: {r: 0.16862746, g: 0.4117647, b: 0.3137255, a: 1}
     m_DisabledColor: {r: 0.20392157, g: 0.25882354, b: 0.24313726, a: 1}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.12
@@ -4893,7 +4893,7 @@ MonoBehaviour:
     m_NormalColor: {r: 0.28235295, g: 0.19215687, b: 0.21568628, a: 1}
     m_HighlightedColor: {r: 0.3684706, g: 0.28909805, b: 0.30980393, a: 1}
     m_PressedColor: {r: 0.23152941, g: 0.15756863, b: 0.17686275, a: 1}
-    m_SelectedColor: {r: 0.407451, g: 0.31207845, b: 0.2734902, a: 1}
+    m_SelectedColor: {r: 0.28235295, g: 0.19215687, b: 0.21568628, a: 1}
     m_DisabledColor: {r: 0.20392157, g: 0.25882354, b: 0.24313726, a: 1}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.12
@@ -5035,7 +5035,7 @@ MonoBehaviour:
     m_NormalColor: {r: 0.4392157, g: 0.3254902, b: 0.21176471, a: 1}
     m_HighlightedColor: {r: 0.5065098, g: 0.40643138, b: 0.30635294, a: 1}
     m_PressedColor: {r: 0.36015686, g: 0.26690197, b: 0.17364706, a: 1}
-    m_SelectedColor: {r: 0.52980393, g: 0.41607845, b: 0.27043137, a: 1}
+    m_SelectedColor: {r: 0.4392157, g: 0.3254902, b: 0.21176471, a: 1}
     m_DisabledColor: {r: 0.20392157, g: 0.25882354, b: 0.24313726, a: 1}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.12
@@ -5176,7 +5176,7 @@ MonoBehaviour:
     m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
     m_HighlightedColor: {r: 1, g: 1, b: 0.88, a: 1}
     m_PressedColor: {r: 0.65, g: 0.75, b: 0.7, a: 1}
-    m_SelectedColor: {r: 1, g: 1, b: 0.88, a: 1}
+    m_SelectedColor: {r: 1, g: 1, b: 1, a: 1}
     m_DisabledColor: {r: 0.20392157, g: 0.25882354, b: 0.24313726, a: 1}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.12

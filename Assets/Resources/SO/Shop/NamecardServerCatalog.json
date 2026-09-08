@@ -58,5 +58,25 @@
     "Id": "prism",
     "Price": 50000,
     "Listed": true
+  },
+  {
+    "Id": "twilight-duo",
+    "Price": 50000,
+    "Listed": true
+  },
+  {
+    "Id": "devil-service",
+    "Price": 0,
+    "Listed": false
+  },
+  {
+    "Id": "archdevil-service",
+    "Price": 0,
+    "Listed": false
+  },
+  {
+    "Id": "satan-service",
+    "Price": 0,
+    "Listed": false
   }
 ]

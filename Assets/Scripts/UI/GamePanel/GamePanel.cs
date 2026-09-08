@@ -375,7 +375,7 @@ namespace Game.UI
                 listItem.IsFold = playerInfo.IsFold;
                 listItem.IsDisconnected = playerInfo.IsDisconnected;
                 listItem.PlayerName = playerInfo.PlayerName;
-                listItem.SetNamecard(_info.RoomInfo.GetNamecard(playerInfo.PlayerName));
+                listItem.SetNamecard(_info.RoomInfo.GetNamecard(playerInfo.PlayerName), _info.RoomInfo.GetServiceYears(playerInfo.PlayerName));
                 listItem.Chip = playerInfo.Chips;
                 listItem.Operation = playerInfo.LastOperation;
                 if (layoutChanged && listItem.IsOperating && playerInfo.PlayerName == countdownPlayer)

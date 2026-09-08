@@ -199,7 +199,7 @@ namespace Game.Tests
             Sql("PRAGMA user_version=4;");
             _repository.Create(_account);
             _repository.Initialize();
-            Assert.AreEqual(5, Sql("PRAGMA user_version;"));
+            Assert.AreEqual(SqliteAccountRepository.SchemaVersion, Sql("PRAGMA user_version;"));
             Assert.AreEqual(10000, _repository.FindById(_account.AccountId).Chips);
             Assert.AreEqual("", _repository.FindById(_account.AccountId).EquippedNamecardId);
             CollectionAssert.AreEqual(new[] { "default" }, _repository.ReadNamecards(_account.AccountId).OwnedIds);

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 2,
+  "revision": "daily-tasks-v5",
+  "entries": [
+    {
+      "taskId": "daily_supply",
+      "enabled": true,
+      "sortOrder": 0
+    },
+    {
+      "taskId": "comeback",
+      "enabled": true,
+      "sortOrder": 1
+    }
+  ]
+}

@@ -15,7 +15,7 @@ namespace Game.UI
 
         public void Show(LeaderboardEntry entry)
         {
-            _namecard.Present(entry.NamecardId);
+            _namecard.Present(entry.NamecardId, entry.ServiceYears, _name);
             _rank.text = entry.Rank > 0 ? entry.Rank.ToString() : "—";
             _name.text = entry.UserName == null ? "我的排名" : entry.UserName + (entry.IsSelf ? "（我）" : "");
             _chips.text = entry.Rank > 0 ? $"${entry.Chips:N0}" : "—";

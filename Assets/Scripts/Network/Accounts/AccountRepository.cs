@@ -51,6 +51,7 @@ namespace Game.Network.Accounts
         public uint Contribution { get; set; }
         public uint Award { get; set; }
         public uint Refund { get; set; }
+        public Game.Facts.HandFact OutcomeFact { get; set; }
     }
 
     public sealed class HandSettlementBalance
