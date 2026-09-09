@@ -27,7 +27,7 @@ namespace Game.Tests
             _root = new GameObject("Item collection test");
             _root.SetActive(false);
             _panel = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Prefabs/UI/Panels/ShopPanel.prefab"), _root.transform).GetComponent<ShopPanel>();
+                "Assets/Prefabs/UI/Panels/ShopPanel/ShopPanel.prefab"), _root.transform).GetComponent<ShopPanel>();
             _view = _panel.ItemsView;
             for (int i = 0; i < 8; i++)
             {
@@ -73,6 +73,25 @@ namespace Game.Tests
         }
 
         [Test]
+        public void RepaymentButtonRequiresFreshServerEligibilityAndRespectsPayment()
+        {
+            _panel.Open(ShopPageMode.Collection);
+            _view.BindActions(_ => { });
+            var owned = new[] { new ItemStack("test-0", 1) };
+            var offer = new ItemOffer("test-0", 0, canUse: true, useCost: 1100);
+            _view.SetSnapshot(new ItemInventorySnapshot(owned, new[] { offer }, 1099, true));
+            _view.SelectItem("test-0");
+            Assert.IsFalse(Field<Button>(_view, "_action").interactable);
+            Assert.AreEqual("无法使用", Field<TMP_Text>(_view, "_actionLabel").text);
+            _view.SetSnapshot(new ItemInventorySnapshot(owned, new[] { offer }, 1100, true));
+            Assert.IsTrue(Field<Button>(_view, "_action").interactable);
+            _view.SetBalance(1101);
+            Assert.IsFalse(Field<Button>(_view, "_action").interactable);
+            _view.SetSnapshot(new ItemInventorySnapshot(owned, new[] { new ItemOffer("test-0", 0, canUse: false) }, 1101, true));
+            Assert.IsFalse(Field<Button>(_view, "_action").interactable);
+        }
+
+        [Test]
         public void ServerEligibilityCanDisableAnOtherwiseLocallyEligibleContract()
         {
             _view.BindActions(_ => { });
@@ -106,7 +125,7 @@ namespace Game.Tests
 
         private ItemInventorySnapshot Snapshot(uint balance = 100) => new ItemInventorySnapshot(
             new[] { new ItemStack("test-0", 2), new ItemStack("test-1", 1), new ItemStack("test-2", 0) },
-            _definitions.Select(item => new ItemOffer(item.Id, 100)), balance, true);
+            _definitions.Select(item => new ItemOffer(item.Id, 100, canUse: item.Kind == ItemKind.Consumable)), balance, true);
 
         [TestCase(ShopPageMode.Shop)]
         [TestCase(ShopPageMode.Collection)]
@@ -166,7 +185,7 @@ namespace Game.Tests
             _view.BindActions(request => { });
             _view.SetSnapshot(Snapshot(99));
             _view.SelectItem("test-0");
-            Assert.AreEqual("余额不足", Field<TMP_Text>(_view, "_actionLabel").text);
+            Assert.AreEqual("无法购买", Field<TMP_Text>(_view, "_actionLabel").text);
             Assert.IsFalse(Field<Button>(_view, "_action").interactable);
             _view.SetSnapshot(Snapshot(100));
             Assert.IsTrue(Field<Button>(_view, "_action").interactable);

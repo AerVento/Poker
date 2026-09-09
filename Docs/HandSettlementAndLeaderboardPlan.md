@@ -160,8 +160,8 @@
 | 同文件：`IDailyRewardRepository.ClaimDailyReward`、`Claim` | 将余额上限契约改为包含边界，明确命名为 `maximumBalanceInclusive`；阈值继续为 1,000，每日补给继续传无上限。 |
 | `Assets/Scripts/Network/Accounts/SqliteAccountRepository.cs`：`ClaimDailyReward`、共享余额变更方法 | 同步参数语义，并在实际入账事务内以 `account.Chips > maximumBalanceInclusive` 拒绝超标。检查共享方法的全部调用，其他金额变更行为不受影响。 |
 | `Assets/Scripts/Network/Accounts/GuardedAccountRepository.cs` | 同步包含边界的参数与转发逻辑，保留故障停服保护。 |
-| `Assets/Scripts/UI/DailyTaskPanel.cs` | `BalanceTooHigh` 的提示从“不低于 $1,000”改为“高于 $1,000”；与服务器描述一致。 |
-| `Assets/Scripts/UI/DailyTaskCard.cs` | 核对来自服务器的任务描述和可领取状态；现有通用拒绝文案无数值条件，不必为此次任务做无关改动。 |
+| `Assets/Scripts/UI/DailyTaskPanel/DailyTaskPanel.cs` | `BalanceTooHigh` 的提示从“不低于 $1,000”改为“高于 $1,000”；与服务器描述一致。 |
+| `Assets/Scripts/UI/DailyTaskPanel/DailyTaskCard.cs` | 核对来自服务器的任务描述和可领取状态；现有通用拒绝文案无数值条件，不必为此次任务做无关改动。 |
 | `Assets/Scripts/Game/Editor/DailyTaskTest.cs`、相关 UI 测试 | 修改 1,000 的旧拒绝断言，覆盖状态查询与真实领取的一致性、奖励领取顺序、重复请求和已领取状态。 |
 | `Docs/DailyTasks.md`、`Docs/TestCaseInventory.md` | 实施后同步领取条件及测试说明，不把历史测试记录改写为本次通过。 |
 
@@ -207,7 +207,7 @@
 
 实施步骤：
 
-1. 新增无 `MonoBehaviour` 依赖的格式化工具，例如 `Assets/Scripts/UI/ChipAmountFormatter.cs`（`Game.UI` 命名空间），补 `.meta`。工具接收原始整数，集中处理 1,000,000 阈值、K 后缀与上述精度；明确 `$` 和 `+` 的组合方式，避免出现两个货币符号。
+1. 新增无 `MonoBehaviour` 依赖的格式化工具，例如 `Assets/Scripts/UI/Shared/ChipAmountFormatter.cs`（`Game.UI` 命名空间），补 `.meta`。工具接收原始整数，集中处理 1,000,000 阈值、K 后缀与上述精度；明确 `$` 和 `+` 的组合方式，避免出现两个货币符号。
 2. 删除上述 6 份重复的 `BigNumberToString`，把直接 `N0` 拼接的相关金额提示也接入工具。完整整数展示不得经过 float 转换或四舍五入；缩写计算避免大数浮点精度丢失。
 3. 金额 Label 与输入值分开；计时器秒数、房间编号、玩家名、牌型、人数和下一手倒计时不经过金额工具。此要求针对 GamePanel 及关联牌局结果/提示；大厅、每日任务、排行榜原有完整金额展示不因复用工具而被强行改成缩写。
 4. 核对 `GamePanel.prefab`、`Player.prefab`、操作图标实际引用及两类结果条目 prefab 的宽度、TMP 自动字号和溢出设置。完整金额变长后优先调整局部布局，不通过裁掉末尾数字或改小真实金额来适配；只修改确有需要的 prefab。

@@ -50,6 +50,7 @@ namespace Game.Network
         private void ForgetHandFacts(string handId)
         {
             if (string.IsNullOrEmpty(handId)) return;
+            _achievementHistory.Remove(handId);
             foreach (var key in _formedPatterns.Keys.Where(k => k.StartsWith(handId + ":", System.StringComparison.Ordinal)).ToArray())
                 _formedPatterns.Remove(key);
             _preflopFacts.Remove(handId);

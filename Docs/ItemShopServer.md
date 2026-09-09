@@ -1,5 +1,11 @@
 # 物品商店与背包服务端
 
+## 2026-09-09 更新
+
+购买条件与购买效果继续分离；新增 ItemUseRegistry / ItemUsePolicy，将使用条件与扣款效果分别注册。契约使用由服务端原子扣余额、扣库存、记账和保存回执。ItemOffer 协议增加 CanUse / UseCost，客户端与服务端须使用同一版本。
+
+实现计划见 [UIPolishAndContractRepaymentPlan.md](UIPolishAndContractRepaymentPlan.md)。
+
 2026-09-07。基于已有 `ItemBrowserView` / `ShopPanel` 接口接入真实账户服务。当前产品范围是不可消耗物品；消耗品只预留接口，使用请求不会扣库存或执行效果。
 
 ## 已接通

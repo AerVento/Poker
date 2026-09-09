@@ -98,7 +98,10 @@ namespace Game.Network
                 {
                     ItemId = p.Id, Price = p.Price, Listed = p.Listed, MaxQuantity = p.MaxQuantity,
                     RewardChips = p.Policy.RewardChips, PurchaseConditions = p.Policy.ConditionDescriptors.Select(ProjectCondition).ToArray(),
-                    CanPurchase = reason == ItemShopResult.Success, BlockReason = reason
+                    CanPurchase = reason == ItemShopResult.Success, BlockReason = reason,
+                    CanUse = ItemPurchaseRuntime.CheckUse(new ItemUseContext(response.AccountId, response.Chips, p, owned),
+                        response.CanAct) == ItemShopResult.Success,
+                    UseCost = p.UsePolicy?.Cost ?? 0
                 };
             }).ToArray();
             return response;

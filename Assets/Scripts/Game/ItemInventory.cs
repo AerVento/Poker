@@ -31,11 +31,13 @@ namespace Game
         public uint MaxQuantity { get; }
         public IReadOnlyList<PurchaseConditionDescriptor> PurchaseConditions { get; }
         public bool CanPurchase { get; }
+        public bool CanUse { get; }
+        public uint UseCost { get; }
         public ItemShopResult BlockReason { get; }
 
         public ItemOffer(string itemId, uint price, bool isListed = true, uint rewardChips = 0,
             IEnumerable<PurchaseConditionDescriptor> purchaseConditions = null, bool canPurchase = true,
-            ItemShopResult blockReason = ItemShopResult.Success, uint maxQuantity = uint.MaxValue)
+            ItemShopResult blockReason = ItemShopResult.Success, uint maxQuantity = uint.MaxValue, bool canUse = false, uint useCost = 0)
         {
             if (string.IsNullOrWhiteSpace(itemId)) throw new ArgumentException(nameof(itemId));
             ItemId = itemId;
@@ -47,6 +49,8 @@ namespace Game
             if (conditions.Any(c => c == null)) throw new ArgumentException(nameof(purchaseConditions));
             PurchaseConditions = Array.AsReadOnly(conditions);
             CanPurchase = canPurchase;
+            CanUse = canUse;
+            UseCost = useCost;
             BlockReason = blockReason;
         }
     }

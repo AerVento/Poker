@@ -1,0 +1,331 @@
+{
+  "tool": "built-in image_gen",
+  "style": "Cat Court",
+  "commonPrompt": "Use case: stylized-concept. Production texture for Unity cute cat poker deck 'Cat Court'. ONE single playing card face, portrait EXACT aspect ratio 17:24, requested output 1088x1536. Flat orthographic printable art, not a photograph or mockup. Card fills entire canvas, no surrounding background, no drop shadow or perspective; solid flat warm ivory #FFFCF5 face, gently rounded corners with transparent corner pixels. Thin inset border at 3.5% of width, red on red suits, charcoal on black suits. Consistent corner indices: bold readable serif rank centered at x=12%, y=10%, height 10% of card; standard suit glyph immediately beneath at x=12%, y=19%, width 9%. Bottom-right has identical rank/suit pair rotated 180 degrees. Corner suit glyphs are ALWAYS normal standard suits, never cat faces. No other text, watermark, labels or scenery. Cute large amber eyes, tiny pink nose, gentle smile, elegant refined 2D illustration, soft minimal shading. IMPORTANT all number cards A through 10 have exactly ONE centered suit-shaped cat HEAD without body, regardless of numerical rank, never repeated pips. Cat-head emblem centered x50% y50%, maximum width 55%, height 38%, generous ivory whitespace. Emblem silhouette itself preserves the standard suit geometry; not a round cat pasted onto a separate symbol.",
+  "suitPrompts": {
+    "Heart": "HEARTS, red ink. The one central red cat head has a dominant HEART silhouette: two rounded upper lobes with deep center cleft, tapering pointed bottom chin; subtle integrated ears atop the lobes, face inside the heart shape, three tiny whisker marks each cheek.",
+    "Diamond": "DIAMONDS, red ink. The one central red cat head has a dominant DIAMOND RHOMBUS silhouette: sharp top point, left and right cheek vertices, sharp bottom chin and four diagonal edges. Tiny ear folds integrated into upper diagonals without losing the unmistakable diamond outline, cute face inside the diamond, tiny whisker marks on cheeks. NOT a heart.",
+    "Club": "CLUBS, black ink. The one central charcoal cat head has a dominant CLUB silhouette: THREE distinct round lobes (one round top lobe and two side cheek lobes), with short broad stem centered below. Tiny cat ears integrated at upper shoulders, face within the lobes, subtle whisker marks. The top stays ROUND, NOT pointed: unmistakable club, not spade.",
+    "Spade": "SPADES, black ink. The one central charcoal cat head has a dominant SPADE silhouette: pronounced top point, two rounded lower cheek lobes, short flared stem beneath center. Tiny cat ears integrated in sloping upper shoulders, cute face inside spade shape, delicate whisker marks. Unmistakable standard spade geometry."
+  },
+  "cards": [
+    {
+      "suit": "Heart",
+      "rank": "A",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-acf780c0-1389-45fe-a538-dd09622341d0.png",
+      "prompt": "Use case: stylized-concept. Production texture for Unity cute cat poker deck 'Cat Court'. ONE single playing card face, portrait EXACT aspect ratio 17:24, requested output 1088x1536. Flat orthographic printable art, not a photograph or mockup. Card fills entire canvas, no surrounding background, no drop shadow or perspective; solid flat warm ivory #FFFCF5 face, gently rounded corners with transparent corner pixels. Thin inset border at 3.5% of width, red on red suits, charcoal on black suits. Consistent corner indices: bold readable serif rank centered at x=12%, y=10%, height 10% of card; standard suit glyph immediately beneath at x=12%, y=19%, width 9%. Bottom-right has identical rank/suit pair rotated 180 degrees. Corner suit glyphs are ALWAYS normal standard suits, never cat faces. No other text, watermark, labels or scenery. Cute large amber eyes, tiny pink nose, gentle smile, elegant refined 2D illustration, soft minimal shading. IMPORTANT all number cards A through 10 have exactly ONE centered suit-shaped cat HEAD without body, regardless of numerical rank, never repeated pips. Cat-head emblem centered x50% y50%, maximum width 55%, height 38%, generous ivory whitespace. Emblem silhouette itself preserves the standard suit geometry; not a round cat pasted onto a separate symbol.\nCARD: rank 'A' of HEARTS, red ink. The one central red cat head has a dominant HEART silhouette: two rounded upper lobes with deep center cleft, tapering pointed bottom chin; subtle integrated ears atop the lobes, face inside the heart shape, three tiny whisker marks each cheek.\nUse the supplied approved Heart 5 only as an ART STYLE reference; replace rank and suit as specified, remove the mockup gray surround and shadow, extend ivory to the canvas boundary."
+    },
+    {
+      "suit": "Diamond",
+      "rank": "A",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-2b739a8b-e5f8-4c6b-a35c-11d2fa6219b4.png",
+      "prompt": "Use case: stylized-concept. Production texture for Unity cute cat poker deck 'Cat Court'. ONE single playing card face, portrait EXACT aspect ratio 17:24, requested output 1088x1536. Flat orthographic printable art, not a photograph or mockup. Card fills entire canvas, no surrounding background, no drop shadow or perspective; solid flat warm ivory #FFFCF5 face, gently rounded corners with transparent corner pixels. Thin inset border at 3.5% of width, red on red suits, charcoal on black suits. Consistent corner indices: bold readable serif rank centered at x=12%, y=10%, height 10% of card; standard suit glyph immediately beneath at x=12%, y=19%, width 9%. Bottom-right has identical rank/suit pair rotated 180 degrees. Corner suit glyphs are ALWAYS normal standard suits, never cat faces. No other text, watermark, labels or scenery. Cute large amber eyes, tiny pink nose, gentle smile, elegant refined 2D illustration, soft minimal shading. IMPORTANT all number cards A through 10 have exactly ONE centered suit-shaped cat HEAD without body, regardless of numerical rank, never repeated pips. Cat-head emblem centered x50% y50%, maximum width 55%, height 38%, generous ivory whitespace. Emblem silhouette itself preserves the standard suit geometry; not a round cat pasted onto a separate symbol.\nCARD: rank 'A' of DIAMONDS, red ink. The one central red cat head has a dominant DIAMOND RHOMBUS silhouette: sharp top point, left and right cheek vertices, sharp bottom chin and four diagonal edges. Tiny ear folds integrated into upper diagonals without losing the unmistakable diamond outline, cute face inside the diamond, tiny whisker marks on cheeks. NOT a heart.\nUse the supplied approved Heart 5 only as an ART STYLE reference; replace rank and suit as specified, remove the mockup gray surround and shadow, extend ivory to the canvas boundary."
+    },
+    {
+      "suit": "Spade",
+      "rank": "A",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-809472d5-acfe-49ca-9d88-317e8df83c1a.png",
+      "prompt": "Use case: stylized-concept. Production texture for Unity cute cat poker deck 'Cat Court'. ONE single playing card face, portrait EXACT aspect ratio 17:24, requested output 1088x1536. Flat orthographic printable art, not a photograph or mockup. Card fills entire canvas, no surrounding background, no drop shadow or perspective; solid flat warm ivory #FFFCF5 face, gently rounded corners with transparent corner pixels. Thin inset border at 3.5% of width, red on red suits, charcoal on black suits. Consistent corner indices: bold readable serif rank centered at x=12%, y=10%, height 10% of card; standard suit glyph immediately beneath at x=12%, y=19%, width 9%. Bottom-right has identical rank/suit pair rotated 180 degrees. Corner suit glyphs are ALWAYS normal standard suits, never cat faces. No other text, watermark, labels or scenery. Cute large amber eyes, tiny pink nose, gentle smile, elegant refined 2D illustration, soft minimal shading. IMPORTANT all number cards A through 10 have exactly ONE centered suit-shaped cat HEAD without body, regardless of numerical rank, never repeated pips. Cat-head emblem centered x50% y50%, maximum width 55%, height 38%, generous ivory whitespace. Emblem silhouette itself preserves the standard suit geometry; not a round cat pasted onto a separate symbol.\nCARD: rank 'A' of SPADES, black ink. The one central charcoal cat head has a dominant SPADE silhouette: pronounced top point, two rounded lower cheek lobes, short flared stem beneath center. Tiny cat ears integrated in sloping upper shoulders, cute face inside spade shape, delicate whisker marks. Unmistakable standard spade geometry.\nUse the supplied approved Heart 5 only as an ART STYLE reference; replace rank and suit as specified, remove the mockup gray surround and shadow, extend ivory to the canvas boundary."
+    },
+    {
+      "suit": "Club",
+      "rank": "A",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-1de34deb-f75f-4039-bb76-473cc8a4c1b2.png",
+      "prompt": "Use case: stylized-concept. Production texture for Unity cute cat poker deck 'Cat Court'. ONE single playing card face, portrait EXACT aspect ratio 17:24, requested output 1088x1536. Flat orthographic printable art, not a photograph or mockup. Card fills entire canvas, no surrounding background, no drop shadow or perspective; solid flat warm ivory #FFFCF5 face, gently rounded corners with transparent corner pixels. Thin inset border at 3.5% of width, red on red suits, charcoal on black suits. Consistent corner indices: bold readable serif rank centered at x=12%, y=10%, height 10% of card; standard suit glyph immediately beneath at x=12%, y=19%, width 9%. Bottom-right has identical rank/suit pair rotated 180 degrees. Corner suit glyphs are ALWAYS normal standard suits, never cat faces. No other text, watermark, labels or scenery. Cute large amber eyes, tiny pink nose, gentle smile, elegant refined 2D illustration, soft minimal shading. IMPORTANT all number cards A through 10 have exactly ONE centered suit-shaped cat HEAD without body, regardless of numerical rank, never repeated pips. Cat-head emblem centered x50% y50%, maximum width 55%, height 38%, generous ivory whitespace. Emblem silhouette itself preserves the standard suit geometry; not a round cat pasted onto a separate symbol.\nCARD: rank 'A' of CLUBS, black ink. The one central charcoal cat head has a dominant CLUB silhouette: THREE distinct round lobes (one round top lobe and two side cheek lobes), with short broad stem centered below. Tiny cat ears integrated at upper shoulders, face within the lobes, subtle whisker marks. The top stays ROUND, NOT pointed: unmistakable club, not spade.\nUse the supplied approved Heart 5 only as an ART STYLE reference; replace rank and suit as specified, remove the mockup gray surround and shadow, extend ivory to the canvas boundary."
+    },
+    {
+      "suit": "Heart",
+      "rank": "2",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-7887d839-5c0e-4271-8bfc-d4f1777c5dc7.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is the attached Cat Court playing card. Create the TWO of HEART. CHANGE ONLY BOTH corner rank letters A into the numeral '2', with the lower-right 2 rotated 180 degrees. Preserve exactly the same standard suit glyphs beneath corner ranks, central ONE suit-shaped cat head, composition, head size, eyes, colors, ivory paper, border, full-bleed card and rounded corners. No extra heads or pips. Output one single complete playing-card texture, 17:24 aspect ratio. No surrounding margin or shadow. This is a coherent deck variant, not a redesign."
+    },
+    {
+      "suit": "Diamond",
+      "rank": "2",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-b55d726c-b0ff-4de5-aa2a-eb1857680f59.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is the attached Cat Court playing card. Create the TWO of DIAMOND. CHANGE ONLY BOTH corner rank letters A into the numeral '2', with the lower-right 2 rotated 180 degrees. Preserve exactly the same standard suit glyphs beneath corner ranks, central ONE suit-shaped cat head, composition, head size, eyes, colors, ivory paper, border, full-bleed card and rounded corners. No extra heads or pips. Output one single complete playing-card texture, 17:24 aspect ratio. No surrounding margin or shadow. This is a coherent deck variant, not a redesign."
+    },
+    {
+      "suit": "Club",
+      "rank": "2",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-c72f4ba2-42af-4b62-be32-e9a57d2278a7.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '2' of CLUB. CHANGE ONLY BOTH corner rank letters A into '2', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Spade",
+      "rank": "2",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-2034e19d-a8af-4fbe-aaba-5312e674385b.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '2' of SPADE. CHANGE ONLY BOTH corner rank letters A into '2', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Heart",
+      "rank": "3",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-01182ced-2bde-4692-9796-acf9eadebcce.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '3' of HEART. CHANGE ONLY BOTH corner rank letters A into '3', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Diamond",
+      "rank": "3",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-a47a95fc-c3ee-4368-93bb-5f4e554339a7.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '3' of DIAMOND. CHANGE ONLY BOTH corner rank letters A into '3', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Club",
+      "rank": "3",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-11bd17a8-6a77-4fd7-8dc4-ebc96963ff34.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '3' of CLUB. CHANGE ONLY BOTH corner rank letters A into '3', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Spade",
+      "rank": "3",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-dc69569c-17f3-4782-8ba8-98081186b688.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '3' of SPADE. CHANGE ONLY BOTH corner rank letters A into '3', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Heart",
+      "rank": "4",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-3ad5ca18-af95-42b8-9280-fc9a59906686.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '4' of HEART. CHANGE ONLY BOTH corner rank letters A into '4', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Diamond",
+      "rank": "4",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-14ae005e-3971-45fa-bbf5-7a163c2b6856.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '4' of DIAMOND. CHANGE ONLY BOTH corner rank letters A into '4', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Club",
+      "rank": "4",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-5212862e-2094-4630-a664-9e7f122be1ba.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '4' of CLUB. CHANGE ONLY BOTH corner rank letters A into '4', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Spade",
+      "rank": "4",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-4f3d95ea-1d7f-4c35-bfcc-4aa0592ce1e2.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '4' of SPADE. CHANGE ONLY BOTH corner rank letters A into '4', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Heart",
+      "rank": "5",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-bc2b80e5-9d31-4886-a48d-b478f82b400b.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '5' of HEART. CHANGE ONLY BOTH corner rank letters A into '5', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Diamond",
+      "rank": "5",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-bc1262e9-c51e-49f1-af6b-8a1a33fb7677.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '5' of DIAMOND. CHANGE ONLY BOTH corner rank letters A into '5', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Club",
+      "rank": "5",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-24298429-398e-4153-85a0-2dfb8f28480f.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '5' of CLUB. CHANGE ONLY BOTH corner rank letters A into '5', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Spade",
+      "rank": "5",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-496becbf-11cb-4daf-bc5f-d51d495a6862.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '5' of SPADE. CHANGE ONLY BOTH corner rank letters A into '5', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Heart",
+      "rank": "6",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-655189bf-955a-43b8-9996-c98d26fbaae2.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '6' of HEART. CHANGE ONLY BOTH corner rank letters A into '6', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Diamond",
+      "rank": "6",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-077a80ac-354d-4da0-9ce5-3a7d1e638434.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '6' of DIAMOND. CHANGE ONLY BOTH corner rank letters A into '6', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Club",
+      "rank": "6",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-10c8c4bd-5890-4710-8f54-fbb75227932b.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '6' of CLUB. CHANGE ONLY BOTH corner rank letters A into '6', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Spade",
+      "rank": "6",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-37aa936f-9af0-45e2-985e-50c6d3461f62.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '6' of SPADE. CHANGE ONLY BOTH corner rank letters A into '6', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Heart",
+      "rank": "7",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-c4a024cf-5c70-4890-bfaf-7b7f5608fc65.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '7' of HEART. CHANGE ONLY BOTH corner rank letters A into '7', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Diamond",
+      "rank": "7",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-06e9150a-ec78-46e6-bf7f-501b3ac638b2.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '7' of DIAMOND. CHANGE ONLY BOTH corner rank letters A into '7', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Club",
+      "rank": "7",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-50e09735-951e-4472-aae5-f6c7eaab6f43.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '7' of CLUB. CHANGE ONLY BOTH corner rank letters A into '7', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Spade",
+      "rank": "7",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-5c059fbd-3992-45b5-9abe-8c8563b540f8.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '7' of SPADE. CHANGE ONLY BOTH corner rank letters A into '7', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Heart",
+      "rank": "8",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-ddedef83-79ca-4a40-a7cf-e249f9a38868.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '8' of HEART. CHANGE ONLY BOTH corner rank letters A into '8', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Diamond",
+      "rank": "8",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-c56731ec-74e1-4232-ba3d-2b78eb639b11.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '8' of DIAMOND. CHANGE ONLY BOTH corner rank letters A into '8', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Club",
+      "rank": "8",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-0582544e-d4cf-4c15-b265-6b658718ea06.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '8' of CLUB. CHANGE ONLY BOTH corner rank letters A into '8', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Spade",
+      "rank": "8",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-f67dd0d1-198e-403f-8fef-5fae63d008a6.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '8' of SPADE. CHANGE ONLY BOTH corner rank letters A into '8', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Heart",
+      "rank": "9",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-9648616d-aca9-471d-9bb8-2f25dcd5c5c3.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '9' of HEART. CHANGE ONLY BOTH corner rank letters A into '9', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Diamond",
+      "rank": "9",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-366bf88b-474a-4586-b1f4-9845a9f1ac59.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '9' of DIAMOND. CHANGE ONLY BOTH corner rank letters A into '9', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Club",
+      "rank": "9",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-3b126fc7-667f-46b0-9082-50e5ef8f646e.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '9' of CLUB. CHANGE ONLY BOTH corner rank letters A into '9', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Spade",
+      "rank": "9",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-072d91b1-dd9b-40b7-9a98-8ae2635d0a90.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '9' of SPADE. CHANGE ONLY BOTH corner rank letters A into '9', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Heart",
+      "rank": "10",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-21d84bf6-9115-4071-abe8-acfb7543b3bd.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '10' of HEART. CHANGE ONLY BOTH corner rank letters A into '10', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Diamond",
+      "rank": "10",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-1170f98d-8c3b-4421-938e-380f4bb687d2.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '10' of DIAMOND. CHANGE ONLY BOTH corner rank letters A into '10', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Club",
+      "rank": "10",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-5d961c00-3663-4e97-85da-34f2898073bf.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '10' of CLUB. CHANGE ONLY BOTH corner rank letters A into '10', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Spade",
+      "rank": "10",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-2cd243dd-4bd4-408b-91f6-52669070228b.png",
+      "prompt": "Use case: precise-object-edit. EDIT TARGET is this Cat Court playing card. Make rank '10' of SPADE. CHANGE ONLY BOTH corner rank letters A into '10', lower-right rank rotated 180 degrees. Preserve the standard corner suit glyphs, precisely ONE central suit-shaped cat head with no body, all colors, head design, ivory paper, border, full-bleed card and rounded corners. Never add extra heads or pips to indicate rank. Keep rank centered in the same corner index box, including two-digit 10. Output one entire playing card texture, exact 17:24 aspect ratio, no external margin or shadows. All illustrations remain identical to the reference."
+    },
+    {
+      "suit": "Spade",
+      "rank": "J",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-9ed82458-39b3-4c6a-99fa-59e707acd33f.png",
+      "prompt": "Use case: stylized-concept. ONE playing card face, rank J of SPADE. Image 1 is the REQUIRED card layout reference; image 2 is the approved CAT COURT PORTRAIT style reference. Preserve image 1 full-bleed ivory card, thin inset border, corner index locations and standard Spade symbols. Change both corner rank letters A to 'J', bottom-right pair rotated 180 degrees. Replace central suit-cat emblem with ONE SINGLE waist-up court cat portrait with ONE HEAD, in the exact charming richly illustrated style of image 2: sparkling amber eyes, tiny pink nose and mouth, soft detailed fur, refined 2D storybook court illustration, gentle shading. charcoal-black cat, ivory black and muted gold court clothes, small SPADE embroidery, BLACK indices and border. JACK: feathered court cap, one paw holds an upright ceremonial halberd next to shoulder, other paw across chest. Alert cheerful expression. Portrait comfortably centered, spans roughly x18%-82%, y25%-80%, safely separated from both corner indices. Cat should be as cute as approved J reference. NO mirrored second portrait, no repeated heads. The corner suit glyphs remain ordinary correct geometric symbols with NO cat faces. True flat texture: ivory face extends to all image edges, no gray exterior, no photo shadow, no surrounding margin, no perspective. Portrait 17:24 card ratio, rounded corners with transparent corners. No lettering except the two 'J' indices, no watermark."
+    },
+    {
+      "suit": "Heart",
+      "rank": "J",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-26133787-9405-4954-b811-cb3b8ee2157b.png",
+      "prompt": "Use case: stylized-concept. ONE playing card face, rank J of HEART. Image 1 is the REQUIRED card layout reference; image 2 is the approved CAT COURT PORTRAIT style reference. Preserve image 1 full-bleed ivory card, thin inset border, corner index locations and standard Heart symbols. Change both corner rank letters A to 'J', bottom-right pair rotated 180 degrees. Replace central suit-cat emblem with ONE SINGLE waist-up court cat portrait with ONE HEAD, in the exact charming richly illustrated style of image 2: sparkling amber eyes, tiny pink nose and mouth, soft detailed fur, refined 2D storybook court illustration, gentle shading. warm ginger cat, crimson red and ivory gold court clothes, small HEART embroidery, RED indices and border. JACK: feathered court cap, one paw holds an upright ceremonial halberd next to shoulder, other paw across chest. Alert cheerful expression. Portrait comfortably centered, spans roughly x18%-82%, y25%-80%, safely separated from both corner indices. Cat should be as cute as approved J reference. NO mirrored second portrait, no repeated heads. The corner suit glyphs remain ordinary correct geometric symbols with NO cat faces. True flat texture: ivory face extends to all image edges, no gray exterior, no photo shadow, no surrounding margin, no perspective. Portrait 17:24 card ratio, rounded corners with transparent corners. No lettering except the two 'J' indices, no watermark."
+    },
+    {
+      "suit": "Diamond",
+      "rank": "J",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-074502c3-8344-4165-9a31-c6c8bceb7700.png",
+      "prompt": "Use case: stylized-concept. ONE playing card face, rank J of DIAMOND. Image 1 is the REQUIRED card layout reference; image 2 is the approved CAT COURT PORTRAIT style reference. Preserve image 1 full-bleed ivory card, thin inset border, corner index locations and standard Diamond symbols. Change both corner rank letters A to 'J', bottom-right pair rotated 180 degrees. Replace central suit-cat emblem with ONE SINGLE waist-up court cat portrait with ONE HEAD, in the exact charming richly illustrated style of image 2: sparkling amber eyes, tiny pink nose and mouth, soft detailed fur, refined 2D storybook court illustration, gentle shading. cream-white cat with ginger ears, ruby red and ivory gold court clothes, small DIAMOND embroidery, RED indices and border. JACK: feathered court cap, one paw holds an upright ceremonial halberd next to shoulder, other paw across chest. Alert cheerful expression. Portrait comfortably centered, spans roughly x18%-82%, y25%-80%, safely separated from both corner indices. Cat should be as cute as approved J reference. NO mirrored second portrait, no repeated heads. The corner suit glyphs remain ordinary correct geometric symbols with NO cat faces. True flat texture: ivory face extends to all image edges, no gray exterior, no photo shadow, no surrounding margin, no perspective. Portrait 17:24 card ratio, rounded corners with transparent corners. No lettering except the two 'J' indices, no watermark."
+    },
+    {
+      "suit": "Club",
+      "rank": "J",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-81fe9b45-e01e-45cd-afcf-5d2bd239a864.png",
+      "prompt": "Use case: stylized-concept. ONE playing card face, rank J of CLUB. Image 1 is the REQUIRED card layout reference; image 2 is the approved CAT COURT PORTRAIT style reference. Preserve image 1 full-bleed ivory card, thin inset border, corner index locations and standard Club symbols. Change both corner rank letters A to 'J', bottom-right pair rotated 180 degrees. Replace central suit-cat emblem with ONE SINGLE waist-up court cat portrait with ONE HEAD, in the exact charming richly illustrated style of image 2: sparkling amber eyes, tiny pink nose and mouth, soft detailed fur, refined 2D storybook court illustration, gentle shading. soft silver-gray cat, charcoal and muted emerald gold court clothes, small CLUB embroidery, BLACK indices and border. JACK: feathered court cap, one paw holds an upright ceremonial halberd next to shoulder, other paw across chest. Alert cheerful expression. Portrait comfortably centered, spans roughly x18%-82%, y25%-80%, safely separated from both corner indices. Cat should be as cute as approved J reference. NO mirrored second portrait, no repeated heads. The corner suit glyphs remain ordinary correct geometric symbols with NO cat faces. True flat texture: ivory face extends to all image edges, no gray exterior, no photo shadow, no surrounding margin, no perspective. Portrait 17:24 card ratio, rounded corners with transparent corners. No lettering except the two 'J' indices, no watermark."
+    },
+    {
+      "suit": "Spade",
+      "rank": "Q",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-1237ab20-bd0c-4f6d-bf7c-de78bce4e901.png",
+      "prompt": "Use case: stylized-concept. ONE playing card face, rank Q of SPADE. Image 1 is the REQUIRED card layout reference; image 2 is the approved CAT COURT PORTRAIT style reference. Preserve image 1 full-bleed ivory card, thin inset border, corner index locations and standard Spade symbols. Change both corner rank letters A to 'Q', bottom-right pair rotated 180 degrees. Replace central suit-cat emblem with ONE SINGLE waist-up court cat portrait with ONE HEAD, in the exact charming richly illustrated style of image 2: sparkling amber eyes, tiny pink nose and mouth, soft detailed fur, refined 2D storybook court illustration, gentle shading. charcoal-black cat, ivory black and muted gold court clothes, small SPADE embroidery, BLACK indices and border. QUEEN: elegant small gold crown, flowing royal gown and lace collar, one paw gently holds a long-stem rose beside shoulder, other paw rests over heart. Warm kind expression. Portrait comfortably centered, spans roughly x18%-82%, y25%-80%, safely separated from both corner indices. Cat should be as cute as approved J reference. NO mirrored second portrait, no repeated heads. The corner suit glyphs remain ordinary correct geometric symbols with NO cat faces. True flat texture: ivory face extends to all image edges, no gray exterior, no photo shadow, no surrounding margin, no perspective. Portrait 17:24 card ratio, rounded corners with transparent corners. No lettering except the two 'Q' indices, no watermark."
+    },
+    {
+      "suit": "Heart",
+      "rank": "Q",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-fa391a56-9a0f-4fca-8881-69cb866ed357.png",
+      "prompt": "Use case: stylized-concept. ONE playing card face, rank Q of HEART. Image 1 is the REQUIRED card layout reference; image 2 is the approved CAT COURT PORTRAIT style reference. Preserve image 1 full-bleed ivory card, thin inset border, corner index locations and standard Heart symbols. Change both corner rank letters A to 'Q', bottom-right pair rotated 180 degrees. Replace central suit-cat emblem with ONE SINGLE waist-up court cat portrait with ONE HEAD, in the exact charming richly illustrated style of image 2: sparkling amber eyes, tiny pink nose and mouth, soft detailed fur, refined 2D storybook court illustration, gentle shading. warm ginger cat, crimson red and ivory gold court clothes, small HEART embroidery, RED indices and border. QUEEN: elegant small gold crown, flowing royal gown and lace collar, one paw gently holds a long-stem rose beside shoulder, other paw rests over heart. Warm kind expression. Portrait comfortably centered, spans roughly x18%-82%, y25%-80%, safely separated from both corner indices. Cat should be as cute as approved J reference. NO mirrored second portrait, no repeated heads. The corner suit glyphs remain ordinary correct geometric symbols with NO cat faces. True flat texture: ivory face extends to all image edges, no gray exterior, no photo shadow, no surrounding margin, no perspective. Portrait 17:24 card ratio, rounded corners with transparent corners. No lettering except the two 'Q' indices, no watermark."
+    },
+    {
+      "suit": "Diamond",
+      "rank": "Q",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-a11ded57-a4e5-426e-9df5-42b61cb02235.png",
+      "prompt": "Use case: stylized-concept. ONE playing card face, rank Q of DIAMOND. Image 1 is the REQUIRED card layout reference; image 2 is the approved CAT COURT PORTRAIT style reference. Preserve image 1 full-bleed ivory card, thin inset border, corner index locations and standard Diamond symbols. Change both corner rank letters A to 'Q', bottom-right pair rotated 180 degrees. Replace central suit-cat emblem with ONE SINGLE waist-up court cat portrait with ONE HEAD, in the exact charming richly illustrated style of image 2: sparkling amber eyes, tiny pink nose and mouth, soft detailed fur, refined 2D storybook court illustration, gentle shading. cream-white cat with ginger ears, ruby red and ivory gold court clothes, small DIAMOND embroidery, RED indices and border. QUEEN: elegant small gold crown, flowing royal gown and lace collar, one paw gently holds a long-stem rose beside shoulder, other paw rests over heart. Warm kind expression. Portrait comfortably centered, spans roughly x18%-82%, y25%-80%, safely separated from both corner indices. Cat should be as cute as approved J reference. NO mirrored second portrait, no repeated heads. The corner suit glyphs remain ordinary correct geometric symbols with NO cat faces. True flat texture: ivory face extends to all image edges, no gray exterior, no photo shadow, no surrounding margin, no perspective. Portrait 17:24 card ratio, rounded corners with transparent corners. No lettering except the two 'Q' indices, no watermark."
+    },
+    {
+      "suit": "Club",
+      "rank": "Q",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-ba9e56fe-adc6-4cf6-940a-7b1cbed602ae.png",
+      "prompt": "Use case: stylized-concept. ONE playing card face, rank Q of CLUB. Image 1 is the REQUIRED card layout reference; image 2 is the approved CAT COURT PORTRAIT style reference. Preserve image 1 full-bleed ivory card, thin inset border, corner index locations and standard Club symbols. Change both corner rank letters A to 'Q', bottom-right pair rotated 180 degrees. Replace central suit-cat emblem with ONE SINGLE waist-up court cat portrait with ONE HEAD, in the exact charming richly illustrated style of image 2: sparkling amber eyes, tiny pink nose and mouth, soft detailed fur, refined 2D storybook court illustration, gentle shading. soft silver-gray cat, charcoal and muted emerald gold court clothes, small CLUB embroidery, BLACK indices and border. QUEEN: elegant small gold crown, flowing royal gown and lace collar, one paw gently holds a long-stem rose beside shoulder, other paw rests over heart. Warm kind expression. Portrait comfortably centered, spans roughly x18%-82%, y25%-80%, safely separated from both corner indices. Cat should be as cute as approved J reference. NO mirrored second portrait, no repeated heads. The corner suit glyphs remain ordinary correct geometric symbols with NO cat faces. True flat texture: ivory face extends to all image edges, no gray exterior, no photo shadow, no surrounding margin, no perspective. Portrait 17:24 card ratio, rounded corners with transparent corners. No lettering except the two 'Q' indices, no watermark."
+    },
+    {
+      "suit": "Spade",
+      "rank": "K",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-2e0ef6b1-db9d-401d-b953-7d83b63ec2ad.png",
+      "prompt": "Use case: stylized-concept. ONE playing card face, rank K of SPADE. Image 1 is the REQUIRED card layout reference; image 2 is the approved CAT COURT PORTRAIT style reference. Preserve image 1 full-bleed ivory card, thin inset border, corner index locations and standard Spade symbols. Change both corner rank letters A to 'K', bottom-right pair rotated 180 degrees. Replace central suit-cat emblem with ONE SINGLE waist-up court cat portrait with ONE HEAD, in the exact charming richly illustrated style of image 2: sparkling amber eyes, tiny pink nose and mouth, soft detailed fur, refined 2D storybook court illustration, gentle shading. charcoal-black cat, ivory black and muted gold court clothes, small SPADE embroidery, BLACK indices and border. KING: substantial gold crown, royal mantle and tunic, one paw holds an upright ceremonial sword beside shoulder, other paw holds a small royal orb close to chest. Confident gentle expression. Portrait comfortably centered, spans roughly x18%-82%, y25%-80%, safely separated from both corner indices. Cat should be as cute as approved J reference. NO mirrored second portrait, no repeated heads. The corner suit glyphs remain ordinary correct geometric symbols with NO cat faces. True flat texture: ivory face extends to all image edges, no gray exterior, no photo shadow, no surrounding margin, no perspective. Portrait 17:24 card ratio, rounded corners with transparent corners. No lettering except the two 'K' indices, no watermark."
+    },
+    {
+      "suit": "Heart",
+      "rank": "K",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-8d97f56b-f8c0-47d9-93ac-cc23d74a9879.png",
+      "prompt": "Use case: stylized-concept. ONE playing card face, rank K of HEART. Image 1 is the REQUIRED card layout reference; image 2 is the approved CAT COURT PORTRAIT style reference. Preserve image 1 full-bleed ivory card, thin inset border, corner index locations and standard Heart symbols. Change both corner rank letters A to 'K', bottom-right pair rotated 180 degrees. Replace central suit-cat emblem with ONE SINGLE waist-up court cat portrait with ONE HEAD, in the exact charming richly illustrated style of image 2: sparkling amber eyes, tiny pink nose and mouth, soft detailed fur, refined 2D storybook court illustration, gentle shading. warm ginger cat, crimson red and ivory gold court clothes, small HEART embroidery, RED indices and border. KING: substantial gold crown, royal mantle and tunic, one paw holds an upright ceremonial sword beside shoulder, other paw holds a small royal orb close to chest. Confident gentle expression. Portrait comfortably centered, spans roughly x18%-82%, y25%-80%, safely separated from both corner indices. Cat should be as cute as approved J reference. NO mirrored second portrait, no repeated heads. The corner suit glyphs remain ordinary correct geometric symbols with NO cat faces. True flat texture: ivory face extends to all image edges, no gray exterior, no photo shadow, no surrounding margin, no perspective. Portrait 17:24 card ratio, rounded corners with transparent corners. No lettering except the two 'K' indices, no watermark."
+    },
+    {
+      "suit": "Diamond",
+      "rank": "K",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-83b8dae5-7b69-4651-82be-436df37ca901.png",
+      "prompt": "Use case: stylized-concept. ONE playing card face, rank K of DIAMOND. Image 1 is the REQUIRED card layout reference; image 2 is the approved CAT COURT PORTRAIT style reference. Preserve image 1 full-bleed ivory card, thin inset border, corner index locations and standard Diamond symbols. Change both corner rank letters A to 'K', bottom-right pair rotated 180 degrees. Replace central suit-cat emblem with ONE SINGLE waist-up court cat portrait with ONE HEAD, in the exact charming richly illustrated style of image 2: sparkling amber eyes, tiny pink nose and mouth, soft detailed fur, refined 2D storybook court illustration, gentle shading. cream-white cat with ginger ears, ruby red and ivory gold court clothes, small DIAMOND embroidery, RED indices and border. KING: substantial gold crown, royal mantle and tunic, one paw holds an upright ceremonial sword beside shoulder, other paw holds a small royal orb close to chest. Confident gentle expression. Portrait comfortably centered, spans roughly x18%-82%, y25%-80%, safely separated from both corner indices. Cat should be as cute as approved J reference. NO mirrored second portrait, no repeated heads. The corner suit glyphs remain ordinary correct geometric symbols with NO cat faces. True flat texture: ivory face extends to all image edges, no gray exterior, no photo shadow, no surrounding margin, no perspective. Portrait 17:24 card ratio, rounded corners with transparent corners. No lettering except the two 'K' indices, no watermark."
+    },
+    {
+      "suit": "Club",
+      "rank": "K",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-3e8c7892-d860-470b-8619-aff74adc5ac7.png",
+      "prompt": "Use case: stylized-concept. ONE playing card face, rank K of CLUB. Image 1 is the REQUIRED card layout reference; image 2 is the approved CAT COURT PORTRAIT style reference. Preserve image 1 full-bleed ivory card, thin inset border, corner index locations and standard Club symbols. Change both corner rank letters A to 'K', bottom-right pair rotated 180 degrees. Replace central suit-cat emblem with ONE SINGLE waist-up court cat portrait with ONE HEAD, in the exact charming richly illustrated style of image 2: sparkling amber eyes, tiny pink nose and mouth, soft detailed fur, refined 2D storybook court illustration, gentle shading. soft silver-gray cat, charcoal and muted emerald gold court clothes, small CLUB embroidery, BLACK indices and border. KING: substantial gold crown, royal mantle and tunic, one paw holds an upright ceremonial sword beside shoulder, other paw holds a small royal orb close to chest. Confident gentle expression. Portrait comfortably centered, spans roughly x18%-82%, y25%-80%, safely separated from both corner indices. Cat should be as cute as approved J reference. NO mirrored second portrait, no repeated heads. The corner suit glyphs remain ordinary correct geometric symbols with NO cat faces. True flat texture: ivory face extends to all image edges, no gray exterior, no photo shadow, no surrounding margin, no perspective. Portrait 17:24 card ratio, rounded corners with transparent corners. No lettering except the two 'K' indices, no watermark."
+    },
+    {
+      "suit": "Back",
+      "rank": "Back",
+      "path": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0860f-58ed-7d10-9d84-565adaa83b2d\\exec-a0e8e4df-8eb8-401c-a5aa-0067633ab8be.png",
+      "prompt": "Use case: stylized-concept. Production BACK TEXTURE for the Cat Court playing card deck, exactly one complete card back. Portrait 17:24 aspect ratio. Flat orthographic 2D printable art, card fills entire canvas, no exterior margin, no shadow, no perspective. Same full-bleed softly rounded card silhouette and thin inset border as the attached card face reference. Warm ivory outer rim occupying 3.5% width, delicate muted gold inner frame. Inside, deep charcoal forest-green field with elegant gold court filigree and very subtle repeating small feline paw-print and diamond lattice ornaments. Center a refined gold oval medallion containing two small graceful gold cat silhouettes curled head-to-tail, paired in exact 180-degree rotational symmetry, surrounded by symmetrical leafy scrollwork. Rich but uncluttered, playful and premium, matches the cute black-gold Cat Court characters. TWO-WAY card back: all large composition and decorative elements exactly symmetric under 180 degree rotation, all cards in the deck use this identical back. No corner ranks, no letters, no numbers, no suits in corners, no text or watermark. Outer rounded corner pixels genuinely transparent. Clean readable graphic shapes, gentle minimal texture."
+    }
+  ]
+}

@@ -179,8 +179,16 @@ namespace Game.Network.Diagnostics
                 return;
             }
             var rows = Field<List<RoundResultListItem>>(panel, "_listItems");
+            if (rows.Count != result.PlayerResults.Count(player => !player.IsFold))
+            { Fail("Result grid contains an incorrect number of non-folded players."); return; }
             foreach (var player in result.PlayerResults)
             {
+                if (player.IsFold)
+                {
+                    if (rows.Any(item => item.PlayerName == player.PlayerName))
+                        Fail("A folded player remained in the result grid.");
+                    continue;
+                }
                 var row = rows.Single(item => item.PlayerName == player.PlayerName);
                 if (Field<List<PokerElement>>(row, "_holes").Count(card => card.IsShowing) != player.Hole.Count ||
                     row.ShowPattern != (!player.IsFold && player.Hole.Count == 2 && result.Community.Count == 5))

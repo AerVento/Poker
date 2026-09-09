@@ -20,6 +20,8 @@ namespace Game.Network
         public event Action<int> OnGameStageEnded;
         public event Action<int, RoundResult> OnRoomRoundEnded;
         public event Action<int, GameResult> OnRoomGameOver;
+        // Deterministic fixtures are attached only by the explicitly enabled integration runner.
+        internal event Action<ServerGameInfo> OnHandPrepared;
 
         public GameManager(IHandAccountRepository accountRepository = null)
         {
@@ -170,7 +172,9 @@ namespace Game.Network
             ServerGameInfo info,
             IReadOnlyList<uint> earned,
             PotCalculator.Result calculation,
-            IReadOnlyCollection<int> winners)
+            IReadOnlyCollection<int> winners,
+            bool showdown,
+            IReadOnlyList<Game.Achievements.AchievementPot> achievementPots)
         {
             var entries = new List<HandSettlementEntry>();
             ulong totalCredit = 0;
@@ -194,6 +198,10 @@ namespace Game.Network
 
             if (totalCredit != info.TotalPot)
                 throw new InvalidOperationException("The hand settlement does not conserve the pot.");
+
+            if (_accountRepository is IAchievementRepository && entries.Count > 0)
+                entries[0].AchievementContext = CaptureAchievementContext(info, GameStage.RoundOver, showdown,
+                    achievementPots, earned, calculation.Refunds);
 
             HandSettlementResult result;
             IReadOnlyDictionary<string, HandSettlementBalance> accounts;
@@ -219,8 +227,8 @@ namespace Game.Network
                     !string.IsNullOrEmpty(player.AccountId) &&
                     accounts.TryGetValue(player.AccountId, out var account))
                 {
-                    player.Chips = account.Chips;
-                    player.AccountChips = account.Chips;
+                    player.Chips = account.AccountChips ?? account.Chips;
+                    player.AccountChips = account.AccountChips ?? account.Chips;
                 }
             }
 
@@ -273,6 +281,7 @@ namespace Game.Network
 
         private void AdvanceAfterAction(ServerGameInfo info)
         {
+            RecordAchievementAction(info);
             info.TurnId++;
             ResetActionTimer(info);
 
@@ -336,6 +345,7 @@ namespace Game.Network
             if (info.OperatingPlayer < 0)
                 throw new InvalidOperationException("A betting street was started without a player who can act.");
 
+            PublishAchievementStreet(info);
             ResetActionTimer(info);
             if (info.Players[info.OperatingPlayer].IsDisconnected)
                 AutoOperation(info);
@@ -362,6 +372,7 @@ namespace Game.Network
                 player.BetFacedAtLastAction = 0;
             }
 
+            PublishAchievementStreet(info);
             OnGameInfoChanged?.Invoke(info.RoomInfo.Id);
         }
 
@@ -423,6 +434,7 @@ namespace Game.Network
 
             var earned = new uint[info.PlayersCount];
             var wonSeats = new HashSet<int>();
+            var achievementPots = new List<Game.Achievements.AchievementPot>();
             foreach (var pot in potCalculation.Pots)
             {
                 var eligiblePatterns = patterns
@@ -437,6 +449,9 @@ namespace Game.Network
                     .Select(pattern => pattern.Player)
                     .ToList();
 
+                achievementPots.Add(new Game.Achievements.AchievementPot(pot.ChipCount,
+                    pot.EligiblePlayers.Select(i => info.Players[i].AccountId).ToArray(),
+                    winners.Select(i => info.Players[i].AccountId).ToArray()));
                 wonSeats.UnionWith(winners);
                 var winnerCount = checked((uint)winners.Count);
                 var share = pot.ChipCount / winnerCount;
@@ -454,7 +469,7 @@ namespace Game.Network
                 }
             }
 
-            if (!ApplySettlement(info, earned, potCalculation, wonSeats))
+            if (!ApplySettlement(info, earned, potCalculation, wonSeats, true, achievementPots))
                 return false;
 
             CompleteRound(info, earned, revealShowdownHands: true);
@@ -477,7 +492,10 @@ namespace Game.Network
                 earned[winner] = checked(earned[winner] + pot.ChipCount);
             }
 
-            if (!ApplySettlement(info, earned, potCalculation, wonSeats))
+            var achievementPots = potCalculation.Pots.Select(pot => new Game.Achievements.AchievementPot(pot.ChipCount,
+                pot.EligiblePlayers.Select(i => info.Players[i].AccountId).ToArray(),
+                pot.EligiblePlayers.Select(i => info.Players[i].AccountId).ToArray())).ToArray();
+            if (!ApplySettlement(info, earned, potCalculation, wonSeats, false, achievementPots))
                 return false;
 
             CompleteRound(info, earned, revealShowdownHands: false);
@@ -857,6 +875,8 @@ namespace Game.Network
                 : bigBlindAmount;
 
             info.OperatingPlayer = FindSeatAtOrAfter(info, positions.FirstPreflopPlayer, CanAct);
+            OnHandPrepared?.Invoke(info);
+            PublishAchievementStreet(info);
             if (IsBettingRoundComplete(info))
             {
                 info.OperatingPlayer = -1;
@@ -1146,6 +1166,7 @@ namespace Game.Network
                 info.Timer.Stop();
             }
             _autoRunningRooms.Clear();
+            _achievementHistory.Clear();
             _games.Clear();
         }
 
@@ -1159,6 +1180,7 @@ namespace Game.Network
             gameInfo.Timer.Stop();
             if (gameInfo.Stage != GameStage.RoundOver && gameInfo.Stage != GameStage.GameOver)
                 SafeAbortHand(gameInfo.HandId, reason);
+            ForgetHandFacts(gameInfo.HandId);
             _autoRunningRooms.Remove(roomId);
             _games.Remove(roomId);
         }

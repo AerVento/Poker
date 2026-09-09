@@ -372,6 +372,7 @@ namespace Game.Network
             }
 
             LoginCredentialStore.Save(response.UserName, response.SessionToken);
+            Game.UI.CardFaceAppearance.Equip(response.EquippedCardFaceId);
 
             if (GameController.Available)
             {
@@ -432,6 +433,7 @@ namespace Game.Network
             response.AccountId = result.Account.AccountId;
             response.UserName = result.Account.UserName;
             response.Chips = result.Account.Chips;
+            response.EquippedCardFaceId = result.Account.EquippedCardFaceId;
             response.HasLastRoom = result.Account.LastRoomId.HasValue;
             response.LastRoomId = result.Account.LastRoomId.GetValueOrDefault();
             response.RequiresRoomRecovery = requireRoomRecovery && response.HasLastRoom;

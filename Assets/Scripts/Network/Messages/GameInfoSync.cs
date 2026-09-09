@@ -20,6 +20,7 @@ namespace Game.Network
     {
         public string RawData;
         public uint AccountChips;
+        public bool CanClaimDailyTaskRewards;
         public uint BigBlind;
         public TableParticipationStatus ParticipationStatus;
         public bool CanLeaveImmediately;

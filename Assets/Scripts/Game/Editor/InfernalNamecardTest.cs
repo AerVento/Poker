@@ -40,7 +40,7 @@ namespace Game.Tests
 
         [TestCase("GamePanel/Player", "_name")]
         [TestCase("RoomPanel/Player", "_playername")]
-        [TestCase("LeaderboardRow", "_name")]
+        [TestCase("LeaderboardPanel/LeaderboardRow", "_name")]
         public void RealRowsOverrideEquipmentAndRestorePooledNameAndMaterial(string path, string nameField)
         {
             var holder = new GameObject("Infernal UI test");
@@ -91,7 +91,7 @@ namespace Game.Tests
             try
             {
                 var row = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(
-                    "Assets/Prefabs/UI/Panels/ServiceLeaderboardRow.prefab"), holder.transform).GetComponent<ServiceLeaderboardRow>();
+                    "Assets/Prefabs/UI/Panels/LeaderboardPanel/ServiceLeaderboardRow.prefab"), holder.transform).GetComponent<ServiceLeaderboardRow>();
                 var label = Field<TMP_Text>(row, "_name");
                 var color = label.color;
                 var material = label.fontSharedMaterial;

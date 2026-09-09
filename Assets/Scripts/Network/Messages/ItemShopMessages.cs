@@ -50,6 +50,8 @@ namespace Game.Network
         public uint MaxQuantity;
         public PurchaseConditionMessage[] PurchaseConditions;
         public bool CanPurchase;
+        public bool CanUse;
+        public uint UseCost;
         public ItemShopResult BlockReason;
     }
 

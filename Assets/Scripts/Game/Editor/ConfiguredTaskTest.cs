@@ -13,7 +13,7 @@ using NUnit.Framework;
 
 namespace Game.Tests
 {
-    public sealed class ConfiguredTaskTest
+    public sealed partial class ConfiguredTaskTest
     {
         private string _path;
         private SqliteAccountRepository _repository;
@@ -61,6 +61,87 @@ namespace Game.Tests
         {
             using var connection = new SqliteConnection("Data Source=" + _path);
             connection.Open(); using var command = connection.CreateCommand(); command.CommandText = sql; command.ExecuteNonQuery();
+        }
+
+        private TaskRewardAccess BeginRewardHand(string handId = "reward-hand")
+        {
+            if (_repository.FindById("TaskOther") == null)
+                _repository.Create(new PlayerAccount { AccountId = "TaskOther", UserName = "TaskOther", Chips = 900,
+                    PasswordAlgorithm = "test", PasswordHash = new byte[] { 1 }, PasswordSalt = new byte[] { 1 },
+                    PasswordIterations = 1, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
+            _repository.SetLastRoom(Account, 7);
+            Assert.AreEqual(HandStartResult.Started, _repository.BeginHand(handId, 7, new[] { Account, "TaskOther" }, 1, out _));
+            return new TaskRewardAccess(Account, 7, handId);
+        }
+
+        [Test]
+        public void FoldedRewardIsImmediateAndSettlementKeepsItOutsideHandProfit()
+        {
+            Start(Master(Def("direct", "DirectClaim", "[100]")), Fixed("direct"), Random(0, 1));
+            var state = State("direct");
+            var access = BeginRewardHand();
+            Assert.AreEqual(DailyTaskResult.ActiveHand, Claim(state).Result);
+            Assert.AreEqual(DailyTaskAvailability.ActiveHand, State("direct").Availability);
+            Assert.AreEqual(DailyTaskAvailability.Claimable, _service.GetStatus(Account, access: access).Tasks.Single().Availability);
+            Assert.AreEqual(DailyTaskResult.Success, _service.Claim(Account, state.InstanceId, 1, access).Result);
+            Assert.AreEqual(1000, _repository.FindById(Account).Chips);
+            Assert.AreEqual(DailyTaskResult.AlreadyClaimed, _service.Claim(Account, state.InstanceId, 1, access).Result);
+            var entries = new[] {
+                new HandSettlementEntry { AccountId = Account, Contribution = 200 },
+                new HandSettlementEntry { AccountId = "TaskOther", Contribution = 100, Award = 300 } };
+            Assert.AreEqual(HandSettlementResult.Applied, _repository.SettleHand("reward-hand", "reward-settlement", entries, out var balances));
+            Assert.AreEqual(700, balances[Account].Chips);
+            Assert.AreEqual(800, balances[Account].AccountChips);
+            Assert.AreEqual(800, _repository.FindById(Account).Chips);
+            Assert.AreEqual(1100, _repository.FindById("TaskOther").Chips);
+            Assert.AreEqual(HandSettlementResult.AlreadyApplied, _repository.SettleHand("reward-hand", "reward-settlement", entries, out balances));
+            Assert.AreEqual(800, balances[Account].AccountChips);
+            Assert.IsTrue(_repository.ReconcileChips().IsConsistent);
+            Assert.AreEqual(HandStartResult.Started, _repository.BeginHand("next-reward-hand", 7, new[] { Account, "TaskOther" }, 1, out var accounts));
+            Assert.AreEqual(800, accounts.Single(a => a.AccountId == Account).Chips);
+        }
+
+        [Test]
+        public void TaskAuthorizationCannotCrossAccountsRoomsOrHandsAndBalanceUsesStoredAccount()
+        {
+            Start(Master(Def("low", "DirectClaimWhenLesserThan", "[100,800]"), Def("direct", "DirectClaim", "[100]")),
+                Fixed("low", "direct"), Random(0, 1));
+            var low = State("low");
+            var state = State("direct");
+            var access = BeginRewardHand();
+            Assert.AreEqual(DailyTaskResult.BalanceTooHigh, _service.Claim(Account, low.InstanceId, 1, access).Result);
+            foreach (var wrong in new[] { new TaskRewardAccess("TaskOther", 7, "reward-hand"),
+                new TaskRewardAccess(Account, 8, "reward-hand"), new TaskRewardAccess(Account, 7, "old-hand"), new TaskRewardAccess(Account, 7) })
+                Assert.AreEqual(DailyTaskResult.ActiveHand, _service.Claim(Account, state.InstanceId, 1, wrong).Result);
+            Assert.AreEqual(900, _repository.FindById(Account).Chips);
+        }
+
+        [Test]
+        public void DeletingTaskUsesSameRewardGateAndRecoveryPreservesClaimedRewards()
+        {
+            Start(Master(Def("direct", "DirectClaim", "[100]")), Fixed(), Random(1, 1, "direct"));
+            var state = State("direct");
+            var access = BeginRewardHand();
+            Assert.AreEqual(DailyTaskResult.ActiveHand, _service.Delete(Account, state.InstanceId).Result);
+            Assert.AreEqual(DailyTaskResult.Success, _service.Delete(Account, state.InstanceId, access).Result);
+            Assert.AreEqual(1000, _repository.FindById(Account).Chips);
+            _repository.Initialize();
+            Assert.AreEqual(1000, _repository.FindById(Account).Chips);
+            Assert.AreEqual(DailyTaskResult.AlreadyDeleted, _service.Delete(Account, state.InstanceId).Result);
+            Assert.AreEqual(0, _repository.ReconcileChips().ActiveHandCount);
+            Assert.IsTrue(_repository.ReconcileChips().IsConsistent);
+        }
+
+        [Test]
+        public void UnexpectedBalanceChangesStillRejectSettlement()
+        {
+            Start(Master(Def("direct", "DirectClaim", "[100]")), Fixed("direct"), Random(0, 1));
+            BeginRewardHand();
+            Assert.AreEqual(ChipMutationResult.AccountBusyInHand,
+                _repository.ApplyChipMutation(Account, "unexpected", "TestAdjustment", 1, null, null, out _));
+            Sql("UPDATE player_accounts SET chips=chips+1 WHERE account_id='TaskTest';");
+            Assert.AreEqual(HandSettlementResult.InvalidDistribution, _repository.SettleHand("reward-hand", "settle", new[] {
+                new HandSettlementEntry { AccountId = Account }, new HandSettlementEntry { AccountId = "TaskOther" } }, out _));
         }
 
         [Test]
@@ -304,7 +385,8 @@ namespace Game.Tests
             _service.OnLogin(Account);
             Assert.AreEqual(2, _service.GetStatus(Account).Tasks.Length, "Same-day login must not refill a freed final-round slot.");
             _now = _now.AddDays(1); _service.OnLogin(Account);
-            Assert.AreEqual(2, _service.GetStatus(Account).Tasks.Count(t => t.DefinitionId == "fh"), "Historical pending reward and new instance coexist.");
+            Assert.AreEqual(1, _service.GetStatus(Account).Tasks.Count(t => t.DefinitionId == "fh"), "Completed tasks are auto-claimed and replaced on the next business day.");
+            Assert.AreEqual(1200, _repository.FindById(Account).Chips);
         }
 
         [Test]

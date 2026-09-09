@@ -158,14 +158,106 @@ namespace Game.Tests
             };
             var rows = Field<List<RoundResultListItem>>(panel, "_listItems");
             Assert.IsTrue(rows.Single(row => row.PlayerName == "Winner").ShowPattern);
-            Assert.IsFalse(rows.Single(row => row.PlayerName == "Folded").ShowPattern);
+            Assert.IsFalse(rows.Any(row => row.PlayerName == "Folded"));
+            Assert.AreEqual(2, rows.Count);
+            Assert.AreEqual(2, rows.Single(row => row.PlayerName == "Winner").GetComponentsInChildren<PokerElement>(true).Length);
+            StringAssert.Contains("[", Field<TMP_Text>(rows.Single(row => row.PlayerName == "Winner"), "_patternText").text);
+            StringAssert.Contains("♥", Field<TMP_Text>(rows.Single(row => row.PlayerName == "Winner"), "_patternText").text);
             Assert.IsFalse(rows.Single(row => row.PlayerName == "Hidden").ShowPattern);
+        }
+
+        [Test]
+        public void RoundResult_GridHasFourColumnsAndContentGrowsPastViewport()
+        {
+            var panel = Create<RoundResultMsgBox>("GamePanel/RoundResultMsgBox.prefab");
+            panel.Info = new RoundResult
+            {
+                Community = new List<Poker>(),
+                PlayerResults = Enumerable.Range(0, 10).Select(i => new RoundResult.Player
+                    { PlayerName = "Player" + i, IsFold = i == 9 }).ToList()
+            };
+            var rows = Field<List<RoundResultListItem>>(panel, "_listItems");
+            var list = (RectTransform)Field<Transform>(panel, "_listTransform");
+            var grid = list.GetComponent<GridLayoutGroup>();
+            Assert.AreEqual(9, rows.Count);
+            Assert.AreEqual(GridLayoutGroup.Constraint.FixedColumnCount, grid.constraint);
+            Assert.AreEqual(4, grid.constraintCount);
+            _root.SetActive(true);
+            grid.CalculateLayoutInputHorizontal();
+            grid.SetLayoutHorizontal();
+            grid.CalculateLayoutInputVertical();
+            grid.SetLayoutVertical();
+            Assert.GreaterOrEqual(grid.preferredHeight, grid.cellSize.y * 3 + grid.spacing.y * 2);
+            Assert.AreEqual(((RectTransform)rows[0].transform).anchoredPosition.y,
+                ((RectTransform)rows[3].transform).anchoredPosition.y);
+            Assert.Less(((RectTransform)rows[4].transform).anchoredPosition.y,
+                ((RectTransform)rows[0].transform).anchoredPosition.y);
+        }
+
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        [TestCase(5)]
+        [TestCase(6)]
+        [TestCase(7)]
+        [TestCase(9)]
+        public void RoundResult_ShortRowsHaveEqualGapsAndStayCentered(int count)
+        {
+            var panel = Create<RoundResultMsgBox>("GamePanel/RoundResultMsgBox.prefab");
+            panel.Info = new RoundResult { Community = new List<Poker>(), PlayerResults =
+                Enumerable.Range(0, count).Select(i => new RoundResult.Player { PlayerName = "Player" + i }).ToList() };
+            var list = (RectTransform)Field<Transform>(panel, "_listTransform");
+            var grid = list.GetComponent<CenteredResultGridLayoutGroup>();
+            Assert.NotNull(grid);
+            _root.SetActive(true);
+            list.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 1500);
+            grid.CalculateLayoutInputHorizontal(); grid.SetLayoutHorizontal();
+            grid.CalculateLayoutInputVertical(); grid.SetLayoutVertical();
+            var rows = Field<List<RoundResultListItem>>(panel, "_listItems");
+            var shortCount = count % 4;
+            var first = count - shortCount;
+            var rect = (RectTransform)rows[first].transform;
+            var previousRight = rect.anchoredPosition.x - rect.pivot.x * rect.rect.width;
+            var gap = previousRight - grid.padding.left;
+            for (int i = first; i < count; i++)
+            {
+                rect = (RectTransform)rows[i].transform;
+                var left = rect.anchoredPosition.x - rect.pivot.x * rect.rect.width;
+                if (i > first) Assert.AreEqual(gap, left - previousRight, 0.1f);
+                previousRight = left + rect.rect.width;
+            }
+            Assert.AreEqual(gap, list.rect.width - grid.padding.right - previousRight, 0.1f);
+        }
+
+        [TestCase(GameStage.Preflop, false, true, false, false)]
+        [TestCase(GameStage.Flop, true, true, false, true)]
+        [TestCase(GameStage.River, false, true, false, false)]
+        [TestCase(GameStage.Turn, true, false, true, false)]
+        [TestCase(GameStage.RoundOver, false, true, false, true)]
+        public void DailyTaskRewardsRequireRealFoldOrInterHandStage(GameStage stage, bool fold,
+            bool participated, bool waiting, bool expected)
+        {
+            var info = new ServerGameInfo { Stage = stage, HandId = "hand" };
+            info.Players.Add(new ServerGameInfo.PlayerInfo { IsOccupied = true, IsFold = fold,
+                ParticipatedThisHand = participated, IsWaitingForNextHand = waiting });
+            Assert.AreEqual(expected, RewardPhase(info, 0));
+            Assert.AreEqual(stage == GameStage.RoundOver, RewardPhase(info, -1));
+            info.HandId = null;
+            Assert.IsFalse(RewardPhase(info, 0));
+        }
+
+        private static bool RewardPhase(ServerGameInfo info, int playerIndex)
+        {
+            var method = typeof(GameManager).GetMethod("IsTaskRewardPhase",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.NotNull(method);
+            return (bool)method.Invoke(null, new object[] { info, playerIndex });
         }
 
         [Test]
         public void ResolutionDropdown_FirstOpenSelectsActualSizeInDeduplicatedList()
         {
-            var panel = Create<OptionPanel>("OptionPanel.prefab");
+            var panel = Create<OptionPanel>("OptionPanel/OptionPanel.prefab");
             Invoke(panel, "RefreshResolutions");
             var dropdown = Field<TMP_Dropdown>(panel, "_resolution");
             Assert.AreEqual($"{Screen.width}x{Screen.height}", dropdown.options[dropdown.value].text);
@@ -293,25 +385,48 @@ namespace Game.Tests
             Assert.AreEqual(hasPlace, Field<Button>(panel, "_participationButton").interactable);
             Assert.AreEqual(hasPlace ? "下一手参战" : "参战名额已满",
                 Field<TextMeshProUGUI>(panel, "_participationButtonLabel").text);
-            Assert.IsTrue(Field<Button>(panel, "_keepSpectatingButton").gameObject.activeSelf);
+            Assert.IsFalse(Field<Button>(panel, "_keepSpectatingButton").gameObject.activeSelf);
         }
 
-        [Test]
-        public void PendingParticipation_UIAllowsContinuingToWatchAndClearsOnDisable()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void PendingParticipation_UIAllowsContinuingToWatchAndClearsOnDisable(bool canJoin)
         {
             var panel = CreateGamePanel();
             var info = CreateInfo();
             info.CurrentPlayerIndex = -1;
-            panel.ApplySync(new GameInfoSync
+            var sync = new GameInfoSync
             {
-                Info = info, JoinNextHand = true, CanJoinNextHand = true,
+                Info = info, JoinNextHand = true, CanJoinNextHand = canJoin,
                 ParticipationStatus = TableParticipationStatus.WaitingForNextHand, CanLeaveImmediately = true,
-            });
-            Assert.AreEqual("已申请下一手", Field<TextMeshProUGUI>(panel, "_participationButtonLabel").text);
-            Assert.IsFalse(Field<Button>(panel, "_participationButton").interactable);
-            Assert.IsTrue(Field<Button>(panel, "_keepSpectatingButton").interactable);
+            };
+            panel.ApplySync(sync);
+            var participation = Field<Button>(panel, "_participationButton");
+            var label = Field<TextMeshProUGUI>(panel, "_participationButtonLabel");
+            Assert.AreEqual("继续旁观", label.text);
+            Assert.IsTrue(participation.interactable);
+            Assert.IsFalse(Field<Button>(panel, "_keepSpectatingButton").gameObject.activeSelf);
+            Assert.AreEqual("等待下一手", Field<TextMeshProUGUI>(panel, "_tableStatus").text);
+
+            panel.SetLeaveRequestInFlight(true);
+            Assert.IsFalse(participation.interactable);
+            panel.SetLeaveRequestInFlight(false);
+            Assert.IsTrue(participation.interactable);
             panel.SetParticipationRequestInFlight(true);
-            Assert.IsFalse(Field<Button>(panel, "_keepSpectatingButton").interactable);
+            Assert.IsFalse(participation.interactable);
+            Assert.AreEqual("处理中…", label.text);
+            panel.SetParticipationRequestInFlight(false);
+
+            sync.JoinNextHand = false;
+            sync.CanJoinNextHand = true;
+            sync.ParticipationStatus = TableParticipationStatus.Spectating;
+            panel.ApplySync(sync);
+            Assert.AreEqual("下一手参战", label.text);
+            Assert.IsTrue(participation.interactable);
+            Assert.IsFalse(Field<Button>(panel, "_keepSpectatingButton").gameObject.activeSelf);
+            Assert.AreEqual("旁观中", Field<TextMeshProUGUI>(panel, "_tableStatus").text);
+
+            panel.SetParticipationRequestInFlight(true);
             Invoke(panel, "OnDisable");
             Assert.IsFalse(Field<bool>(panel, "_participationRequestInFlight"));
         }
@@ -349,7 +464,7 @@ namespace Game.Tests
         [Test]
         public void ServerShutdownNotice_ShowsStorageReasonWithoutRecoveryPromises()
         {
-            var box = Create<MsgBox>("MsgBox.prefab");
+            var box = Create<MsgBox>("MsgBox/MsgBox.prefab");
             NetworkRoom.ConfigureServerShutdownMessage(box);
             Assert.AreEqual("服务器已停止服务", box.Title);
             StringAssert.Contains("数据保存失败", box.Message);
@@ -419,7 +534,7 @@ namespace Game.Tests
         [TestCase(true, "房间列表")]
         public void InsufficientPlayers_ExplainsCorrectDestination(bool spectator, string destination)
         {
-            var box = Create<MsgBox>("MsgBox.prefab");
+            var box = Create<MsgBox>("MsgBox/MsgBox.prefab");
             NetworkRoom.ConfigureRoomTransition(box, RoomTransitionReason.InsufficientPlayers, spectator);
             StringAssert.Contains("不足两人", box.Message);
             StringAssert.Contains(destination, box.Message);
@@ -429,7 +544,7 @@ namespace Game.Tests
         [Test]
         public void SpectatorIntro_ExplainsExplicitEntryAndSeatLimit()
         {
-            var box = Create<MsgBox>("MsgBox.prefab");
+            var box = Create<MsgBox>("MsgBox/MsgBox.prefab");
             NetworkRoom.ConfigureSpectatorIntro(box);
             StringAssert.Contains("下一手参战", box.Message);
             StringAssert.Contains("名额只统计参战玩家", box.Message);
@@ -446,7 +561,7 @@ namespace Game.Tests
                 var eventSystem = go.GetComponent<UnityEngine.EventSystems.EventSystem>();
                 Invoke(eventSystem, "OnEnable");
                 UnityEngine.EventSystems.EventSystem.current = eventSystem;
-                var box = Create<MsgBox>("MsgBox.prefab");
+                var box = Create<MsgBox>("MsgBox/MsgBox.prefab");
                 box.Type = MsgboxType.ConfirmAndCancel;
                 box.PreferCancel = true;
                 Invoke(box, "SelectDefaultButton");

@@ -28,6 +28,9 @@ namespace Game.UI.GamePanelElement
         [SerializeField]
         private Transform _listTransform;
 
+        [SerializeField] private RectTransform _content;
+        [SerializeField] private ScrollRect _scroll;
+
         private List<RoundResultListItem> _listItems = new List<RoundResultListItem>();
 
         private RoundResult _info;
@@ -58,12 +61,13 @@ namespace Game.UI.GamePanelElement
 
             foreach (var tmp in _listItems)
             {
+                tmp.gameObject.SetActive(false);
                 Destroy(tmp.gameObject);
             }
             _listItems.Clear();
 
             // Only rank hands that the server actually disclosed at showdown.
-            var entries = _info.PlayerResults.Select(player =>
+            var entries = _info.PlayerResults.Where(player => !player.IsFold).Select(player =>
             {
                 bool showPattern = _info.Community.Count == 5 && !player.IsFold && player.Hole.Count == 2;
                 Poker[] hand = null;
@@ -97,11 +101,25 @@ namespace Game.UI.GamePanelElement
                 component.ChipEarned = entry.player.ChipEarned;
                 _listItems.Add(component);
             }
+            LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)_listTransform);
+            _scroll.StopMovement();
+            _scroll.verticalNormalizedPosition = 1f;
         }
 
 
+        private void OnRectTransformDimensionsChange() => FitContent();
+
+        private void FitContent()
+        {
+            if (_content == null) return;
+            var size = ((RectTransform)transform).rect.size;
+            if (size.x > 0 && size.y > 0)
+                _content.localScale = Vector3.one * Mathf.Min(size.x / 1800f, size.y / 1040f);
+        }
+
         private void OnEnable()
         {
+            FitContent();
             _closeButton.onClick.AddListener(Hide);
             _confirmButton.onClick.AddListener(Hide);
         }

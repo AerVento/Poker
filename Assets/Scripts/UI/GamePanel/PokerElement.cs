@@ -15,6 +15,38 @@ namespace Game.UI
 
         private Poker _poker;
         private bool _isShowing = true;
+        private CardFaceView _visual;
+        private CardFaceProductSO _appearance;
+
+        private void OnEnable()
+        {
+            CardFaceAppearance.Changed += RefreshAppearance;
+            RefreshAppearance();
+        }
+
+        private void OnDisable() => CardFaceAppearance.Changed -= RefreshAppearance;
+
+        private void RefreshAppearance()
+        {
+            var product = CardFaceAppearance.Current;
+            if (_appearance != product || _visual == null)
+            {
+                if (_visual != null) { _visual.gameObject.SetActive(false); Destroy(_visual.gameObject); }
+                _appearance = product;
+                if (product != null && product.Prefab != null)
+                {
+                    _visual = Instantiate(product.Prefab, transform);
+                    var rect = (RectTransform)_visual.transform;
+                    rect.anchorMin = Vector2.zero;
+                    rect.anchorMax = Vector2.one;
+                    rect.offsetMin = rect.offsetMax = Vector2.zero;
+                    rect.localScale = Vector3.one;
+                }
+            }
+            if (_image != null) _image.enabled = _visual == null;
+            if (_visual != null) _visual.Display(_poker, _isShowing);
+            else if (_image != null) _image.sprite = _isShowing ? GetSO().GetSprite(_poker) : GetSO().Back;
+        }
 
         private PokerCardsSO GetSO() => SingletonSOManager.Instance.GetSOFile<PokerCardsSO>();
 
@@ -27,10 +59,7 @@ namespace Game.UI
             set
             {
                 _poker = value;
-                if (_isShowing)
-                {
-                    _image.sprite = GetSO().GetSprite(_poker);
-                }
+                RefreshAppearance();
             }
         }
 
@@ -43,10 +72,7 @@ namespace Game.UI
             set
             {
                 _isShowing = value;
-                if (value)
-                    _image.sprite = GetSO().GetSprite(_poker);
-                else
-                    _image.sprite = GetSO().Back;
+                RefreshAppearance();
 
             }
         }

@@ -15,7 +15,7 @@ namespace Game.Network.Accounts
         IDailyRewardRepository,
         ILeaderboardRepository
     {
-        public const int SchemaVersion = 9;
+        public const int SchemaVersion = 11;
 
         private static readonly object RuntimeInitializationLock = new object();
         private static bool _runtimeInitialized;
@@ -87,6 +87,12 @@ namespace Game.Network.Accounts
 
                     if (version < 9)
                         CreateItemGrantSchema(connection, transaction);
+
+                    if (version < 10)
+                        CreateAchievementSchema(connection, transaction);
+
+                    if (version < 11)
+                        CreateCardFaceSchema(connection, transaction);
 
                     SetSchemaVersion(connection, transaction, SchemaVersion);
 
@@ -733,9 +739,12 @@ FROM poker_hand_participants WHERE hand_id = $handId;";
                             return HandSettlementResult.InvalidDistribution;
                         contributions = checked(contributions + entry.Contribution);
                         credits = checked(credits + entry.Award + entry.Refund);
+                        var taskRewards = ReadInHandTaskRewards(connection, transaction, handId, entry.AccountId);
+                        if ((ulong)final + taskRewards > uint.MaxValue) return HandSettlementResult.InvalidDistribution;
                         balances.Add(entry.AccountId, new HandSettlementBalance
                         {
                             AccountId = entry.AccountId, StartingChips = participant.Starting, Chips = (uint)final,
+                            AccountChips = checked((uint)final + taskRewards),
                         });
                     }
                     if (contributions != credits)
@@ -756,14 +765,16 @@ FROM poker_hand_participants WHERE hand_id = $handId;";
                     {
                         var account = FindById(connection, transaction, entry.AccountId);
                         var balance = balances[entry.AccountId];
-                        if (account == null || account.Chips != balance.StartingChips)
+                        var taskRewards = ReadInHandTaskRewards(connection, transaction, handId, entry.AccountId);
+                        if (account == null || (ulong)account.Chips != (ulong)balance.StartingChips + taskRewards)
                             return HandSettlementResult.InvalidDistribution;
-                        if (balance.Chips != account.Chips)
+                        var accountAfter = balance.AccountChips.Value;
+                        if (accountAfter != account.Chips)
                         {
-                            UpdateAccountBalance(connection, transaction, account, balance.Chips, now);
+                            UpdateAccountBalance(connection, transaction, account, accountAfter, now);
                             InsertLedger(connection, transaction, Guid.NewGuid().ToString("N"),
                                 "hand-net:" + handId + ":" + entry.AccountId, entry.AccountId, "HandNetSettlement",
-                                (long)balance.Chips - account.Chips, account.Chips, balance.Chips, roomId, handId, now);
+                                (long)accountAfter - account.Chips, account.Chips, accountAfter, roomId, handId, now);
                         }
                         using (var command = connection.CreateCommand())
                         {
@@ -791,6 +802,14 @@ WHERE hand_id = $handId AND account_id = $accountId;";
                                 throw new InvalidOperationException("Settlement fact identity mismatch.");
                             InsertHandFact(connection, transaction, entry.OutcomeFact);
                         }
+                    }
+                    var achievementContext = entries.FirstOrDefault(e => e.AchievementContext != null)?.AchievementContext;
+                    if (achievementContext != null)
+                    {
+                        if (achievementContext.HandId != handId || achievementContext.Stage != GameStage.RoundOver ||
+                            !new HashSet<string>(entries.Select(e => e.AccountId)).SetEquals(achievementContext.Players.Select(p => p.AccountId)))
+                            throw new InvalidOperationException("Settlement achievement context mismatch.");
+                        InsertAchievementEvent(connection, transaction, achievementContext);
                     }
                     MarkHandCompleted(connection, transaction, handId, "Settled", now);
                     InsertHandRequest(connection, transaction, requestId, handId, "NetSettlement", now);
@@ -1227,6 +1246,7 @@ VALUES (
                 CreatedAtUtc = ParseDateTime(reader.GetString(9)),
                 UpdatedAtUtc = ParseDateTime(reader.GetString(10)),
                 EquippedNamecardId = reader.GetString(11),
+                EquippedCardFaceId = reader.GetString(12),
             };
         }
 
@@ -1457,7 +1477,7 @@ WHERE hand_id = $handId AND contributed_chips > 0;";
 
         private const string AccountSelect = @"
 SELECT account_id, user_name, password_algorithm, password_hash, password_salt,
-       password_iterations, chips, last_room_id, version, created_at_utc, updated_at_utc, equipped_namecard
+       password_iterations, chips, last_room_id, version, created_at_utc, updated_at_utc, equipped_namecard, equipped_card_face
 FROM player_accounts";
     }
 }

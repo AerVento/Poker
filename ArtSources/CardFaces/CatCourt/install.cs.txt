@@ -1,0 +1,115 @@
+// Execute this method body through Unity MCP execute_code after export.ps1.
+// Creates only Cat Court assets; appends the product without replacing existing entries.
+const string sprites = "Assets/Sprites/CardFaces/CatCourt";
+const string cardsPath = "Assets/Resources/SO/CardFaces/CatCourtCards.asset";
+const string productPath = "Assets/Resources/SO/CardFaces/CatCourt.asset";
+const string prefabPath = "Assets/Prefabs/UI/Panels/GamePanel/CatCourtCardFace.prefab";
+string[] suits = { "Heart", "Diamond", "Club", "Spade" };
+string[] ranks = { "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A" };
+AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+var paths = new System.Collections.Generic.List<string>();
+foreach (var suit in suits)
+    foreach (var rank in ranks) paths.Add(sprites + "/" + suit + "_" + rank + ".png");
+paths.Add(sprites + "/Back.png");
+foreach (var path in paths)
+{
+    var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+    if (importer == null) throw new System.InvalidOperationException("Missing texture: " + path);
+    importer.textureType = TextureImporterType.Sprite;
+    importer.spriteImportMode = SpriteImportMode.Single;
+    importer.alphaSource = TextureImporterAlphaSource.FromInput;
+    importer.alphaIsTransparency = true;
+    importer.mipmapEnabled = false;
+    importer.isReadable = false;
+    importer.npotScale = TextureImporterNPOTScale.None;
+    importer.maxTextureSize = 2048;
+    importer.textureCompression = TextureImporterCompression.Uncompressed;
+    importer.filterMode = FilterMode.Bilinear;
+    importer.wrapMode = TextureWrapMode.Clamp;
+    importer.spritePixelsPerUnit = 100;
+    var settings = new TextureImporterSettings();
+    importer.ReadTextureSettings(settings);
+    settings.spriteMeshType = SpriteMeshType.FullRect;
+    settings.spriteAlignment = 0;
+    settings.spritePivot = new Vector2(0.5f, 0.5f);
+    importer.SetTextureSettings(settings);
+    importer.SaveAndReimport();
+}
+var cards = AssetDatabase.LoadAssetAtPath<Game.SO.PokerCardsSO>(cardsPath);
+if (cards == null)
+{
+    cards = ScriptableObject.CreateInstance<Game.SO.PokerCardsSO>();
+    AssetDatabase.CreateAsset(cards, cardsPath);
+}
+var cardsData = new SerializedObject(cards);
+var items = cardsData.FindProperty("_items");
+items.arraySize = 52;
+for (int s = 0; s < 4; s++)
+{
+    for (int r = 0; r < 13; r++)
+    {
+        var item = items.GetArrayElementAtIndex(s * 13 + r);
+        item.FindPropertyRelative("Suit").enumValueIndex = s;
+        item.FindPropertyRelative("Rank").enumValueIndex = r;
+        item.FindPropertyRelative("Front").objectReferenceValue =
+            AssetDatabase.LoadAssetAtPath<Sprite>(sprites + "/" + suits[s] + "_" + ranks[r] + ".png");
+    }
+}
+cardsData.FindProperty("_back").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>(sprites + "/Back.png");
+cardsData.ApplyModifiedPropertiesWithoutUndo();
+EditorUtility.SetDirty(cards);
+if (AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath) == null)
+{
+    if (!AssetDatabase.CopyAsset("Assets/Prefabs/UI/Panels/GamePanel/ClassicCardFace.prefab", prefabPath))
+        throw new System.InvalidOperationException("Could not copy classic visual prefab.");
+}
+var root = PrefabUtility.LoadPrefabContents(prefabPath);
+try
+{
+    root.name = "CatCourtCardFace";
+    var view = root.GetComponent<Game.UI.CardFaceView>();
+    var data = new SerializedObject(view);
+    data.FindProperty("_cards").objectReferenceValue = cards;
+    data.ApplyModifiedPropertiesWithoutUndo();
+    view.Image.sprite = cards.GetSprite(new Game.Poker(Game.PokerSuit.Spade, Game.PokerRank.Ace));
+    view.Image.preserveAspect = true;
+    foreach (var graphic in root.GetComponentsInChildren<UnityEngine.UI.Graphic>(true)) graphic.raycastTarget = false;
+    var rect = (RectTransform)root.transform;
+    rect.anchorMin = Vector2.zero;
+    rect.anchorMax = Vector2.one;
+    rect.offsetMin = Vector2.zero;
+    rect.offsetMax = Vector2.zero;
+    PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+}
+finally { PrefabUtility.UnloadPrefabContents(root); }
+var product = AssetDatabase.LoadAssetAtPath<Game.SO.CardFaceProductSO>(productPath);
+if (product == null)
+{
+    product = ScriptableObject.CreateInstance<Game.SO.CardFaceProductSO>();
+    AssetDatabase.CreateAsset(product, productPath);
+}
+var productData = new SerializedObject(product);
+productData.FindProperty("_id").stringValue = "cat-court";
+productData.FindProperty("_displayName").stringValue = "猫猫宫廷";
+productData.FindProperty("_description").stringValue = "四种花色化作可爱猫头，宫廷猫咪演绎 J、Q、K。含 52 张牌面与专属牌背。";
+productData.FindProperty("_prefab").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Game.UI.CardFaceView>(prefabPath);
+productData.ApplyModifiedPropertiesWithoutUndo();
+EditorUtility.SetDirty(product);
+var catalog = AssetDatabase.LoadAssetAtPath<Game.SO.CardFaceCatalogSO>("Assets/Resources/SO/CardFaces/CardFaceCatalog.asset");
+var catalogData = new SerializedObject(catalog);
+var products = catalogData.FindProperty("_products");
+bool found = false;
+for (int i = 0; i < products.arraySize; i++)
+    if (products.GetArrayElementAtIndex(i).objectReferenceValue == product) found = true;
+if (!found)
+{
+    products.arraySize++;
+    products.GetArrayElementAtIndex(products.arraySize - 1).objectReferenceValue = product;
+    catalogData.ApplyModifiedPropertiesWithoutUndo();
+    EditorUtility.SetDirty(catalog);
+}
+AssetDatabase.SaveAssetIfDirty(cards);
+AssetDatabase.SaveAssetIfDirty(product);
+AssetDatabase.SaveAssetIfDirty(catalog);
+Game.Editor.CardFaceEditor.Validate();
+return "Cat Court installed: 52 faces, 1 back, cards SO, visual prefab, product, catalog entry.";

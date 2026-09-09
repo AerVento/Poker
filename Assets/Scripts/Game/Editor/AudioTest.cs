@@ -249,7 +249,7 @@ namespace Game.Tests
                 Assert.That(clip.length, Is.InRange(40f, 70f));
                 StringAssert.Contains("_Loop_", AssetDatabase.GetAssetPath(clip));
             }
-            var options = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Panels/OptionPanel.prefab");
+            var options = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Panels/OptionPanel/OptionPanel.prefab");
             var serialized = new SerializedObject(options.GetComponent<OptionPanel>());
             foreach (var field in new[] { "_musicVolume", "_soundVolume" })
             {

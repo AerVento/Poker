@@ -33,8 +33,8 @@ namespace Game.Network.Diagnostics
                 { Fail("Zero-balance account cannot buy a free contract."); yield break; }
                 Click(view, "_action");
                 var box = FindObjectsOfType<MsgBox>().FirstOrDefault(b => b.Title == "购买物品");
-                if (box == null || !box.Message.Contains(rewards[_clientIndex].ToString("N0")))
-                { Fail("Contract confirmation did not show its reward."); yield break; }
+                if (box == null || !box.Message.Contains("免费购买"))
+                { Fail("Contract confirmation did not show its free price."); yield break; }
                 Click(box, "_cancelButton");
                 if (view.Snapshot.QuantityOf(ids[_clientIndex]) != 0 || GameController.Instance.State.Chips != 0)
                     Fail("Cancelling contract changed account.");
@@ -54,11 +54,13 @@ namespace Game.Network.Diagnostics
             if (view.Snapshot.QuantityOf(ids[_clientIndex]) != 1) Fail("Contract ownership did not persist.");
             panel.Open(ShopPageMode.Collection);
             view.SelectItem(ids[_clientIndex]);
-            if (Field<Button>(view, "_action").interactable) Fail("Permanent contract could be consumed.");
+            var costs = new uint[] { 1100, 11000, 110000 };
+            if (Field<Button>(view, "_action").interactable != (view.Snapshot.Balance >= costs[_clientIndex]))
+                Fail("Contract repayment button differs from its authoritative balance condition.");
             Click(panel, "_back");
             Click(TitlePanel.Instance, "_start");
             WriteResult("contracts-" + _clientIndex + (purchase ? "-purchase" : "-reopen") + ".checked",
-                "Production assets: free quote, zero-balance condition, cancel, reward, disabled ineligible buttons and permanent collection.");
+                "Production assets: free quote, zero-balance condition, cancel, reward, disabled ineligible buttons and consumable inventory.");
         }
     }
 }

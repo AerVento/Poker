@@ -78,5 +78,15 @@
     "Id": "satan-service",
     "Price": 0,
     "Listed": false
+  },
+  {
+    "Id": "straight-flush",
+    "Price": 0,
+    "Listed": false
+  },
+  {
+    "Id": "royal-straight-flush",
+    "Price": 0,
+    "Listed": false
   }
 ]

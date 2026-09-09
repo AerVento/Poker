@@ -160,11 +160,32 @@ WHERE r.event_id IS NULL ORDER BY f.sequence LIMIT $limit;";
                 Account = account; Document = document; AlreadyConsumed = consumed;
                 HasActiveHand = IsAccountInActiveHand(connection, transaction, account.AccountId);
             }
+            private TaskRewardAccess _rewardAccess;
+            public override DailyTaskResult RewardBlockReason => _rewardAccess != null ? DailyTaskResult.Success : base.RewardBlockReason;
+
+            public override void AuthorizeRewardAccess(TaskRewardAccess access)
+            {
+                _rewardAccess = null;
+                if (access == null || access.AccountId != Account.AccountId || Account.LastRoomId != access.RoomId) return;
+                using var check = _connection.CreateCommand();
+                check.Transaction = _transaction;
+                check.CommandText = @"SELECT hand.hand_id,hand.accounting_mode,hand.room_id FROM poker_hands hand
+INNER JOIN poker_hand_participants participant ON participant.hand_id=hand.hand_id
+WHERE participant.account_id=$account AND hand.status='Active';";
+                check.Parameters.AddWithValue("$account", Account.AccountId);
+                using var reader = check.ExecuteReader();
+                if (reader.Read())
+                {
+                    if (reader.GetString(0) != access.HandId || reader.GetInt32(1) != 1 || reader.GetInt32(2) != access.RoomId) return;
+                }
+                else if (access.HandId != null) return;
+                _rewardAccess = access;
+            }
+
             public override bool HasLegacyClaim(string key) => LedgerRequestExists(_connection, _transaction, key);
             public override DailyTaskResult Grant(Reward reward, IReadOnlyDictionary<string, uint> limits, string claimKey)
             {
-                if (Account.LastRoomId.HasValue) return DailyTaskResult.OutsideRoomRequired;
-                if (HasActiveHand) return DailyTaskResult.ActiveHand;
+                if (RewardBlockReason != DailyTaskResult.Success) return RewardBlockReason;
                 if ((ulong)Account.Chips + reward.Chip > uint.MaxValue) return DailyTaskResult.BalanceLimit;
                 var owned = ReadItemStacks(_connection, _transaction, Account.AccountId).ToDictionary(i => i.ItemId, i => i.Quantity);
                 foreach (var item in reward.Items)
@@ -198,7 +219,7 @@ ON CONFLICT(account_id,item_id) DO UPDATE SET quantity=quantity+excluded.quantit
                     update.ExecuteNonQuery();
                 }
                 InsertLedger(_connection, _transaction, Guid.NewGuid().ToString("N"), claimKey, Account.AccountId,
-                    "TaskReward", reward.Chip, before, after, null, null, DateTime.UtcNow);
+                    "TaskReward", reward.Chip, before, after, _rewardAccess?.RoomId, _rewardAccess?.HandId, DateTime.UtcNow);
                 Account.Chips = after;
                 Account.Version++;
                 Changed = true;

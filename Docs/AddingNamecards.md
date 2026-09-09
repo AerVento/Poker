@@ -22,7 +22,7 @@ Inspector 设置：Texture Type = Sprite (2D and UI)、Sprite Mode = Single、Me
 | 价格（账户筹码） | 使用现有账户余额支付，由服务器最终核定。 |
 | 默认款 | 新商品不要勾选。只有 `default.asset` 勾选，价格固定为 0。 |
 | 上架 | 新商品勾选；下架时取消，保留 SO 和目录引用。已拥有者仍可装备。 |
-| 可购买 | 默认勾选。取消后，上架商品仍显示，按钮灰显“不可购买”，不提供购买或手动装备入口；仍显示配置价格，说明写入商品介绍。 |
+| 可购买 | 默认勾选。取消后，上架商品仍显示，未拥有时按钮灰显“不可购买”；已拥有时可免费装备。“可购买”不限制装备资格。 |
 
 ## 3. 加入目录与预览
 
@@ -84,3 +84,7 @@ Sprite compact = catalog.GetArtwork("galaxy", 4f / 3f);
 ## 8. 通过物品 ID 发放名片
 
 名片在统一物品身份中使用 `namecard-<原ID>`，例如 `namecard-galaxy`。通过 `NamecardItemId.ToItemId` / `ToNamecardId` 及对应的 `Try` 方法双向转换；JSON、SO 和原装备接口继续使用 `galaxy`。服务端可调用 `NetworkRoom.GrantItem(accountId, itemId, operationId)` 发放，已拥有不重复发放，不扣款、不自动装备，普通背包不展示名片。接口约定、回执与版本 9 迁移见 [NamecardItemIdsAndGrants.md](NamecardItemIdsAndGrants.md)。
+
+## 9. 成就奖励名片
+
+勾选商品 SO「成就奖励」可禁售并展示为奖励名片；介绍只使用主题文案，不提示获取途径。在现有成就的 Reward.Items 中配置 namecard-<ID>，名片随筹码奖励在同一次领奖事务发放，已拥有时不重复入库且不阻塞筹码奖励。详情见 [同花顺奖励名片](NamecardPreviews/reward-namecards-v1.md)。

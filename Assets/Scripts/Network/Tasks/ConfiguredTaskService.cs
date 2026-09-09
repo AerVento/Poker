@@ -66,7 +66,7 @@ namespace Game.Network.Tasks
             var timestamp = now.ToUnixTimeMilliseconds();
             if (document.FixedPeriod != period)
             {
-                document.Instances.RemoveAll(i => i.ExpiresAt <= timestamp && !i.State.HasPendingReward);
+                CleanFinished(tx, now, false);
                 foreach (var entry in _catalog.Fixed.Where(e => e.Enabled).OrderBy(e => e.SortOrder).ThenBy(e => e.TaskId))
                 {
                     var instance = Create(entry, false, now);
@@ -86,15 +86,102 @@ namespace Game.Network.Tasks
                 document.FixedPeriod = period;
                 tx.Changed = true;
             }
+            var legacySlots = new HashSet<int>(document.Instances.Where(i => i.IsRandom && i.SlotId.HasValue).Select(i => i.SlotId.Value));
+            foreach (var legacy in document.Instances.Where(i => i.IsRandom && !i.SlotId.HasValue))
+            {
+                legacy.SlotId = FirstFreeSlot(legacySlots);
+                legacySlots.Add(legacy.SlotId.Value);
+                tx.Changed = true;
+            }
             if (!fillRandom || document.RandomPeriod == period) return;
-            var occupied = document.Instances.Where(i => i.IsRandom && i.ExpiresAt > timestamp &&
+            CleanFinished(tx, now, true);
+            var occupied = document.Instances.Where(i => i.IsRandom && !i.OutDated && i.ExpiresAt > timestamp &&
                 i.State.CompletedCount < i.State.MaxCompletions).ToArray();
+            var slots = new HashSet<int>();
+            foreach (var instance in occupied.OrderBy(i => i.AssignedAt).ThenBy(i => i.InstanceId, StringComparer.Ordinal))
+            {
+                if (!instance.SlotId.HasValue || !slots.Add(instance.SlotId.Value))
+                {
+                    instance.SlotId = FirstFreeSlot(slots);
+                    slots.Add(instance.SlotId.Value);
+                }
+            }
             var ids = new HashSet<string>(occupied.Select(i => i.DefinitionId), StringComparer.Ordinal);
             foreach (var entry in _selector.Select(_catalog.Random.Where(e => !ids.Contains(e.TaskId)),
                 Math.Max(0, _catalog.Capacity - occupied.Length)))
-                document.Instances.Add(Create(entry, true, now));
+            {
+                var instance = Create(entry, true, now);
+                instance.SlotId = FirstFreeSlot(slots);
+                slots.Add(instance.SlotId.Value);
+                document.Instances.Add(instance);
+            }
             document.RandomPeriod = period;
             tx.Changed = true;
+        }
+
+        private static int FirstFreeSlot(HashSet<int> slots)
+        {
+            var slot = 0;
+            while (slots.Contains(slot)) slot++;
+            return slot;
+        }
+
+        private void CleanFinished(TaskAccountTransaction tx, DateTimeOffset now, bool random)
+        {
+            var timestamp = now.ToUnixTimeMilliseconds();
+            foreach (var instance in tx.Document.Instances.Where(i => i.IsRandom == random).ToArray())
+            {
+                var completed = instance.State.CompletedCount >= instance.State.MaxCompletions;
+                if (!completed && instance.ExpiresAt > timestamp && !instance.OutDated) continue;
+                instance.OutDated = true;
+                tx.Changed = true;
+                // Expired incomplete tasks retain only their earned reward; never create another round.
+                if (completed && instance.State.HasPendingReward)
+                    GrantRound(tx, instance, Definition(instance).Rule, false, out _);
+                if (!instance.State.HasPendingReward) Remove(tx, instance);
+            }
+        }
+
+        private static void Remove(TaskAccountTransaction tx, PlayerTaskInstance instance)
+        {
+            if (!tx.Document.DeletedInstanceIds.Contains(instance.InstanceId))
+                tx.Document.DeletedInstanceIds.Add(instance.InstanceId);
+            tx.Document.Instances.Remove(instance);
+            tx.Changed = true;
+        }
+
+        private static bool CanRefresh(PlayerTaskInstance instance, long now) => instance.IsRandom &&
+            !instance.OutDated && instance.ExpiresAt > now && !instance.RefreshUsed && instance.State.ClaimedCount == 0;
+
+        public TaskDeleteOutcome Reroll(string accountId, string instanceId, TaskRewardAccess access = null)
+        {
+            if (!Guid.TryParseExact(instanceId, "N", out _)) return new TaskDeleteOutcome { Result = DailyTaskResult.InvalidRequest };
+            var now = _now();
+            return _repository.TransactTasks(accountId, tx =>
+            {
+                tx.AuthorizeRewardAccess(access);
+                var outcome = new TaskDeleteOutcome { Account = tx.Account, Result = DailyTaskResult.RefreshUnavailable };
+                var instance = tx.Document.Instances.Find(i => i.InstanceId == instanceId);
+                if (instance == null || !CanRefresh(instance, now.ToUnixTimeMilliseconds())) return outcome;
+                if (tx.RewardBlockReason != DailyTaskResult.Success) { outcome.Result = tx.RewardBlockReason; return outcome; }
+                // Other slots may contain the replacement. Only the original definition is excluded.
+                var entry = _selector.Select(_catalog.Random.Where(e => e.TaskId != instance.DefinitionId), 1).FirstOrDefault();
+                if (entry == null) { outcome.Result = DailyTaskResult.NoAlternative; return outcome; }
+                var replacement = Create(entry, true, now);
+                replacement.SlotId = instance.SlotId;
+                replacement.RefreshUsed = true;
+                var rule = Definition(instance).Rule;
+                if (rule.Available(new TaskContext { IsWithinValidity = true, PlayerChip = tx.Account.Chips }, instance.State))
+                {
+                    outcome.Result = GrantRound(tx, instance, rule, true, out var receipt);
+                    if (outcome.Result != DailyTaskResult.Success) return outcome;
+                    outcome.AutoClaim = receipt;
+                }
+                Remove(tx, instance);
+                tx.Document.Instances.Add(replacement);
+                outcome.Result = DailyTaskResult.Success;
+                return outcome;
+            });
         }
 
         private PlayerTaskInstance Create(TaskPoolEntry entry, bool random, DateTimeOffset now)
@@ -139,21 +226,22 @@ namespace Game.Network.Tasks
                 if (tx.AlreadyConsumed) return false;
                 foreach (var instance in tx.Document.Instances)
                 {
-                    if (instance.AssignedAt > now || instance.ExpiresAt <= now || !instance.State.CanAccumulate) continue;
+                    if (instance.OutDated || instance.AssignedAt > now || instance.ExpiresAt <= now || !instance.State.CanAccumulate) continue;
                     if (Definition(instance).Rule.Evaluate(fact, instance.State)) tx.Changed = true;
                 }
                 return tx.Changed;
             }, fact.EventId);
         }
 
-        public DailyTasksSnapshot GetStatus(string accountId, int offset = 0, long revision = 0)
+        public DailyTasksSnapshot GetStatus(string accountId, int offset = 0, long revision = 0, TaskRewardAccess access = null)
         {
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
             var now = _now();
             return _repository.TransactTasks(accountId, tx =>
             {
+                tx.AuthorizeRewardAccess(access);
                 var visible = tx.Document.Instances.Where(i => i.ExpiresAt > now.ToUnixTimeMilliseconds() || i.State.HasPendingReward)
-                    .OrderBy(i => i.IsRandom).ThenBy(i => i.DisplayOrder).ThenBy(i => i.AssignedAt).ThenBy(i => i.InstanceId, StringComparer.Ordinal).ToArray();
+                    .OrderBy(i => i.IsRandom).ThenBy(i => i.OutDated).ThenBy(i => i.IsRandom ? i.SlotId ?? int.MaxValue : i.DisplayOrder).ThenBy(i => i.AssignedAt).ThenBy(i => i.InstanceId, StringComparer.Ordinal).ToArray();
                 if (offset > 0 && revision != tx.Document.Revision)
                     return new DailyTasksSnapshot { Revision = tx.Document.Revision, Tasks = null };
                 var page = visible.Skip(offset).Take(PageSize).Select(i => Project(i, tx, now)).ToArray();
@@ -175,15 +263,15 @@ namespace Game.Network.Tasks
             var rule = definition.Rule;
             var state = instance.State;
             var reward = rule.GetReward();
-            var valid = instance.ExpiresAt > now.ToUnixTimeMilliseconds();
+            var valid = !instance.OutDated && instance.ExpiresAt > now.ToUnixTimeMilliseconds();
             var available = rule.Available(new TaskContext { IsWithinValidity = valid, PlayerChip = tx.Account.Chips }, state);
             var availability = available ? DailyTaskAvailability.Claimable :
                 state.ClaimedCount >= state.MaxCompletions ? DailyTaskAvailability.Claimed :
                 !valid ? DailyTaskAvailability.Expired : rule.IsDirectClaim ? DailyTaskAvailability.BalanceTooHigh : DailyTaskAvailability.InProgress;
             if (available)
             {
-                if (tx.HasActiveHand) availability = DailyTaskAvailability.ActiveHand;
-                else if (tx.Account.LastRoomId.HasValue) availability = DailyTaskAvailability.OutsideRoom;
+                if (tx.RewardBlockReason == DailyTaskResult.ActiveHand) availability = DailyTaskAvailability.ActiveHand;
+                else if (tx.RewardBlockReason != DailyTaskResult.Success) availability = DailyTaskAvailability.OutsideRoom;
                 else if ((ulong)tx.Account.Chips + reward.Chip > uint.MaxValue) availability = DailyTaskAvailability.BalanceLimit;
             }
             return new DailyTaskState
@@ -193,6 +281,8 @@ namespace Game.Network.Tasks
                 RewardItems = reward.Items.Select(i => new TaskRewardItemState { ItemId = i.ItemId, Count = i.Quantity }).ToArray(),
                 IsRandom = instance.IsRandom, IsDirectClaim = rule.IsDirectClaim, Availability = availability,
                 CanDelete = instance.IsRandom && (valid || state.HasPendingReward),
+                CanRefresh = CanRefresh(instance, now.ToUnixTimeMilliseconds()),
+                OutDated = instance.OutDated, SlotId = instance.SlotId ?? -1,
                 CompletedCount = state.CompletedCount, ClaimedCount = state.ClaimedCount, MaxCompletions = state.MaxCompletions,
                 ClaimOrdinal = state.ClaimedCount + 1, ExpiresAtUnixSeconds = instance.ExpiresAt / 1000,
                 Objectives = rule.Objectives.Select((o, i) => new TaskObjectiveState
@@ -200,13 +290,14 @@ namespace Game.Network.Tasks
             };
         }
 
-        public TaskClaimOutcome Claim(string accountId, string instanceId, int ordinal)
+        public TaskClaimOutcome Claim(string accountId, string instanceId, int ordinal, TaskRewardAccess access = null)
         {
             if (!Guid.TryParseExact(instanceId, "N", out _) || ordinal < 1 || ordinal > 1000)
                 return new TaskClaimOutcome { Result = DailyTaskResult.InvalidRequest };
             var now = _now().ToUnixTimeMilliseconds();
             return _repository.TransactTasks(accountId, tx =>
             {
+                tx.AuthorizeRewardAccess(access);
                 var outcome = new TaskClaimOutcome { Account = tx.Account, Result = DailyTaskResult.InvalidRequest };
                 var prior = tx.Document.Receipts.Find(r => r.InstanceId == instanceId && r.Ordinal == ordinal);
                 if (prior != null)
@@ -219,7 +310,7 @@ namespace Game.Network.Tasks
                 if (instance == null) return outcome;
                 var state = instance.State;
                 if (ordinal != state.ClaimedCount + 1 || ordinal > state.MaxCompletions) return outcome;
-                var valid = instance.ExpiresAt > now;
+                var valid = !instance.OutDated && instance.ExpiresAt > now;
                 var rule = Definition(instance).Rule;
                 if (!rule.Available(new TaskContext { IsWithinValidity = valid, PlayerChip = tx.Account.Chips }, state))
                 {
@@ -228,6 +319,8 @@ namespace Game.Network.Tasks
                 }
                 outcome.Result = GrantRound(tx, instance, rule, valid, out var receipt);
                 outcome.Receipt = receipt;
+                if (outcome.Result == DailyTaskResult.Success && instance.OutDated && !state.HasPendingReward)
+                    Remove(tx, instance);
                 return outcome;
             });
         }
@@ -245,6 +338,7 @@ namespace Game.Network.Tasks
             var result = tx.Grant(reward, instance.ItemLimits, "TaskReward:" + tx.Account.AccountId + ":" + instance.InstanceId + ":" + ordinal);
             if (result != DailyTaskResult.Success) return result;
             state.ClaimedCount++;
+            instance.RefreshUsed = true;
             if (rule.IsDirectClaim) state.CompletedCount++;
             if (valid && state.ClaimedCount < state.MaxCompletions) state.Progress = new int[rule.Objectives.Count];
             receipt = new TaskClaimReceipt
@@ -257,20 +351,20 @@ namespace Game.Network.Tasks
             return result;
         }
 
-        public TaskDeleteOutcome Delete(string accountId, string instanceId)
+        public TaskDeleteOutcome Delete(string accountId, string instanceId, TaskRewardAccess access = null)
         {
             if (!Guid.TryParseExact(instanceId, "N", out _)) return new TaskDeleteOutcome { Result = DailyTaskResult.InvalidRequest };
             var now = _now().ToUnixTimeMilliseconds();
             return _repository.TransactTasks(accountId, tx =>
             {
+                tx.AuthorizeRewardAccess(access);
                 var outcome = new TaskDeleteOutcome { Account = tx.Account, Result = DailyTaskResult.InvalidRequest };
                 if (tx.Document.DeletedInstanceIds.Contains(instanceId)) { outcome.Result = DailyTaskResult.AlreadyDeleted; return outcome; }
                 var instance = tx.Document.Instances.Find(i => i.InstanceId == instanceId);
                 if (instance == null) return outcome;
                 if (!instance.IsRandom) { outcome.Result = DailyTaskResult.FixedTask; return outcome; }
-                if (tx.Account.LastRoomId.HasValue) { outcome.Result = DailyTaskResult.OutsideRoomRequired; return outcome; }
-                if (tx.HasActiveHand) { outcome.Result = DailyTaskResult.ActiveHand; return outcome; }
-                var valid = instance.ExpiresAt > now;
+                if (tx.RewardBlockReason != DailyTaskResult.Success) { outcome.Result = tx.RewardBlockReason; return outcome; }
+                var valid = !instance.OutDated && instance.ExpiresAt > now;
                 if (!valid && !instance.State.HasPendingReward) { outcome.Result = DailyTaskResult.Expired; return outcome; }
                 var rule = Definition(instance).Rule;
                 if (rule.Available(new TaskContext { IsWithinValidity = valid, PlayerChip = tx.Account.Chips }, instance.State))

@@ -6,7 +6,7 @@
 
 ## 设计依据
 
-核对了 `Docs/NamecardArtStandard.md`、`Docs/AddingNamecards.md`、`Assets/Scripts/UI/NamecardLayout.cs` 和 `Assets/Scripts/Game/Editor/NamecardArtValidation.cs`。
+核对了 `Docs/NamecardArtStandard.md`、`Docs/AddingNamecards.md`、`Assets/Scripts/UI/Namecards/NamecardLayout.cs` 和 `Assets/Scripts/Game/Editor/NamecardArtValidation.cs`。
 
 保留双人背靠背、长发、蓝紫洞窟与花海。将白发、肤色、光球和金色花朵压成低对比暮色，去除中央强光与亮粒子；搭配银紫细线和小型花晶角饰。两版独立构图，未将横版裁切或压扁为紧凑版。背景保持不透明且有完整场景，没有烘焙姓名、筹码或状态图标。
 

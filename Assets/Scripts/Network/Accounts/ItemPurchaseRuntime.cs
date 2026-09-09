@@ -15,8 +15,9 @@ namespace Game.Network.Accounts
         public bool Listed { get; }
         public uint MaxQuantity { get; }
         public ItemPurchasePolicy Policy { get; }
+        public ItemUsePolicy UsePolicy { get; }
 
-        internal ItemPurchaseProduct(ServerItemDefinition product, ItemPurchasePolicy policy)
+        internal ItemPurchaseProduct(ServerItemDefinition product, ItemPurchasePolicy policy, ItemUsePolicy usePolicy)
         {
             Id = product.Id;
             Kind = product.Kind;
@@ -24,6 +25,7 @@ namespace Game.Network.Accounts
             Listed = product.Listed;
             MaxQuantity = product.MaxQuantity;
             Policy = policy;
+            UsePolicy = usePolicy;
         }
     }
 
@@ -34,18 +36,20 @@ namespace Game.Network.Accounts
         public string Revision { get; }
         private readonly Dictionary<string, ItemPurchaseProduct> _byId;
 
-        public ItemPurchaseRuntime(ItemServerCatalog catalog, ItemPurchaseRegistry registry)
+        public ItemPurchaseRuntime(ItemServerCatalog catalog, ItemPurchaseRegistry registry, ItemUseRegistry useRegistry = null)
         {
             if (catalog == null || registry == null) throw new ArgumentNullException();
             catalog.Validate();
-            var products = catalog.Products.Select(p => new ItemPurchaseProduct(p, registry.Get(p.Id))).ToArray();
+            var products = catalog.Products.Select(p => new ItemPurchaseProduct(p, registry.Get(p.Id), useRegistry?.Get(p.Id))).ToArray();
             Products = Array.AsReadOnly(products);
             _byId = products.ToDictionary(p => p.Id, StringComparer.Ordinal);
             using var sha = SHA256.Create();
             var versioned = products.OrderBy(p => p.Id, StringComparer.Ordinal).Select(p => new
             {
                 p.Id, p.Kind, p.Price, p.Listed, p.MaxQuantity,
-                Conditions = p.Policy.ConditionDescriptors, Effects = p.Policy.EffectDescriptors
+                Conditions = p.Policy.ConditionDescriptors, Effects = p.Policy.EffectDescriptors,
+                UseConditions = p.UsePolicy?.Conditions.Select(c => c.Descriptor).ToArray(),
+                UseEffects = p.UsePolicy?.Effects.Select(e => new { Kind = PurchaseEffectKind.DebitChips, e.Version, e.Amount }).ToArray()
             });
             Revision = BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(versioned)))).Replace("-", "");
         }
@@ -53,6 +57,18 @@ namespace Game.Network.Accounts
         public ItemPurchaseProduct Find(string itemId) => itemId != null && _byId.TryGetValue(itemId, out var product) ? product : null;
 
         // Used for both read-only eligibility projection and transaction validation. Does not plan effects.
+        public static ItemShopResult CheckUse(ItemUseContext context, bool outsideRoom)
+        {
+            if (!outsideRoom) return ItemShopResult.OutsideRoomRequired;
+            if (context.Product == null) return ItemShopResult.UnknownItem;
+            if (context.OwnedQuantity == 0) return ItemShopResult.NotOwned;
+            if (context.Product.Kind != ItemKind.Consumable) return ItemShopResult.NotConsumable;
+            var policy = context.Product.UsePolicy;
+            if (policy == null) return ItemShopResult.EffectUnavailable;
+            if (policy.Conditions.Any(c => !c.Check(context))) return ItemShopResult.UseConditionNotMet;
+            return context.BalanceBefore < policy.Cost ? ItemShopResult.InsufficientChips : ItemShopResult.Success;
+        }
+
         public static ItemShopResult CheckPurchase(PurchaseContext context, bool outsideRoom,
             out PurchaseConditionDescriptor failedCondition)
         {
@@ -73,6 +89,13 @@ namespace Game.Network.Accounts
 
     public static class ContractPurchaseRegistration
     {
+        private static void RegisterRepayment(ItemUseRegistry registry, string itemId, uint cost)
+        {
+            registry.Register(itemId, new ItemUsePolicy(
+                new IItemUseCondition[] { new UseBalanceCondition(ComparisonType.GreaterThanOrEqual, cost) },
+                new IItemUseEffect[] { new PayChipsEffect(cost) }));
+        }
+
         public static ItemPurchaseRuntime CreateRuntime(ItemServerCatalog catalog)
         {
             var registry = new ItemPurchaseRegistry();
@@ -87,9 +110,13 @@ namespace Game.Network.Accounts
                 new IPurchaseEffect[] { new RewardChipsEffect(100000) }));
             catalog.Validate();
             foreach (var product in catalog.Products)
-                if (product.Price != 0 || product.Kind != ItemKind.NonConsumable || product.MaxQuantity != 1)
-                    throw new InvalidOperationException("Contract catalog must use free permanent products with limit one.");
-            return new ItemPurchaseRuntime(catalog, registry);
+                if (product.Price != 0 || product.Kind != ItemKind.Consumable || product.MaxQuantity != uint.MaxValue)
+                    throw new InvalidOperationException("Contract catalog must use free consumable products without a purchase limit.");
+            var uses = new ItemUseRegistry();
+            RegisterRepayment(uses, "devil-contract", 1100);
+            RegisterRepayment(uses, "archdevil-contract", 11000);
+            RegisterRepayment(uses, "satan-contract", 110000);
+            return new ItemPurchaseRuntime(catalog, registry, uses);
         }
     }
 }

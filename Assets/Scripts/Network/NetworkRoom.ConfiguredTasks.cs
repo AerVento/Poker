@@ -29,6 +29,7 @@ namespace Game.Network
         public override void Update()
         {
             base.Update();
+            TickAchievements();
             if (!NetworkServer.active || _configuredTasks == null || _serverStorageFailed || Time.realtimeSinceStartupAsDouble < _nextTaskTick) return;
             _nextTaskTick = Time.realtimeSinceStartupAsDouble + 0.1;
             try { RefreshTaskDay(); _configuredTasks.DrainFacts(); }
@@ -42,18 +43,21 @@ namespace Game.Network
             _configuredTasks.RefreshAllFixed();
             foreach (var connection in NetworkServer.connections.Values)
                 if (connection != null && connection.isAuthenticated && _playerManager.TryGetAccount(connection, out var account))
+                {
                     _configuredTasks.OnLogin(account.AccountId);
+                    SendAccountBalance(connection, account.UserName);
+                }
             _taskBusinessPeriod = period;
         }
 
-        private DailyTasksSnapshot ReadConfiguredTasks(string accountId, DailyTasksRequest request)
+        private DailyTasksSnapshot ReadConfiguredTasks(string accountId, DailyTasksRequest request, TaskRewardAccess access)
         {
             RefreshTaskDay();
             _configuredTasks.DrainFacts();
-            return _configuredTasks.GetStatus(accountId, request.Offset, request.Revision);
+            return _configuredTasks.GetStatus(accountId, request.Offset, request.Revision, access);
         }
 
-        private TaskClaimOutcome ClaimConfiguredTask(string accountId, DailyTaskClaimRequest request)
+        private TaskClaimOutcome ClaimConfiguredTask(string accountId, DailyTaskClaimRequest request, TaskRewardAccess access)
         {
             RefreshTaskDay();
             _configuredTasks.DrainFacts();
@@ -71,7 +75,7 @@ namespace Game.Network
                 instanceId = state.InstanceId;
                 ordinal = 1;
             }
-            return _configuredTasks.Claim(accountId, instanceId, ordinal);
+            return _configuredTasks.Claim(accountId, instanceId, ordinal, access);
         }
 
         public ulong RequestDailyTasksPage(int offset, long revision)
@@ -84,7 +88,7 @@ namespace Game.Network
 
         public ulong RequestDailyTaskClaim(string instanceId, int ordinal)
         {
-            if (!CanOpenDailyTasks) return 0;
+            if (!CanClaimDailyTasks) return 0;
             var requestId = ++_nextDailyTaskRequest;
             NetworkClient.Send(new DailyTaskClaimRequest { RequestId = requestId, InstanceId = instanceId, CompletionOrdinal = ordinal });
             return requestId;

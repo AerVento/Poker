@@ -69,6 +69,7 @@ namespace Game.UI
         private Button _settingsButton;
 
         private GameInfoSync _sync;
+        public bool CanClaimDailyTaskRewards => _sync.CanClaimDailyTaskRewards;
         private bool _participationRequestInFlight;
         private bool _canLeaveImmediately;
         private bool _leaveAfterHand;
@@ -235,7 +236,9 @@ namespace Game.UI
         {
             if (_info.IsSpectator)
             {
-                if (_sync.CanJoinNextHand && !_sync.JoinNextHand)
+                if (_sync.JoinNextHand)
+                    SendParticipation(TableParticipationAction.KeepSpectating);
+                else if (_sync.CanJoinNextHand)
                     SendParticipation(TableParticipationAction.JoinNextHand);
             }
             else
@@ -271,16 +274,16 @@ namespace Game.UI
                 return;
             var spectator = _info.IsSpectator;
             _participationButton.gameObject.SetActive(true);
-            _participationButton.interactable = _info.RoomInfo != null && !_participationRequestInFlight &&
-                (_canLeaveImmediately || !_leaveAfterHand) && (!spectator || (_sync.CanJoinNextHand && !_sync.JoinNextHand));
+            _participationButton.interactable = _info.RoomInfo != null && !_participationRequestInFlight && !_leaveRequestInFlight &&
+                (_canLeaveImmediately || !_leaveAfterHand) && (!spectator || _sync.JoinNextHand || _sync.CanJoinNextHand);
             _participationButtonLabel.text = _participationRequestInFlight ? "处理中…" :
-                spectator ? (_sync.JoinNextHand ? "已申请下一手" :
+                spectator ? (_sync.JoinNextHand ? "继续旁观" :
                     _sync.CanJoinNextHand ? "下一手参战" : _accountChips < _bigBlind ? "筹码不足" : "参战名额已满") :
                 _canLeaveImmediately ? "转为旁观" : _sync.SitOutAfterHand ? "取消转旁观" : "本手后旁观";
             if (_keepSpectatingButton != null)
             {
-                _keepSpectatingButton.gameObject.SetActive(spectator ||
-                    (_canLeaveImmediately && (_leaveAfterHand || _sync.SitOutAfterHand)));
+                _keepSpectatingButton.gameObject.SetActive(!spectator &&
+                    _canLeaveImmediately && (_leaveAfterHand || _sync.SitOutAfterHand));
                 _keepSpectatingButton.interactable = !_participationRequestInFlight && !_leaveRequestInFlight;
                 var label = _keepSpectatingButton.GetComponentInChildren<TMP_Text>();
                 if (label != null)

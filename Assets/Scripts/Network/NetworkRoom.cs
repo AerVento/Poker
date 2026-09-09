@@ -241,9 +241,11 @@ namespace Game.Network
                 _gameManager.SetAccountRepository(accountAuthenticator.AccountRepository);
             RegisterLeaderboardServerHandler();
             RegisterShopServerHandlers();
+            RegisterCardFaceShopServerHandlers();
             RegisterItemServerHandlers();
             InitializeItemGrants();
             RegisterDailyTaskServerHandlers();
+            RegisterAchievementServerHandlers();
             if (_serverStorageFailed) return;
             RegisterServerHandler<PlayerChangeReadyMessage>(PlayerChangeReadyMessageHandler, requireAuthentication: true);
             RegisterServerHandler<PlayerCreateRoomRequest>(PlayerCreateRoomRequestHandler, requireAuthentication: true);
@@ -266,6 +268,7 @@ namespace Game.Network
             _itemRequests.Clear();
             _itemRuntime = null;
             ClearItemGrants();
+            ClearAchievementServer();
             ItemPurchaseEvents.Clear();
             _dailyTaskService = null;
             _configuredTasks = null;
@@ -277,6 +280,13 @@ namespace Game.Network
             NetworkConnectionToClient conn)
         {
             _configuredTasks?.OnLogin(account.AccountId);
+            var fresh = (authenticator as AccountAuthenticator)?.AccountRepository?.FindById(account.AccountId);
+            if (fresh != null)
+            {
+                account.Chips = fresh.Chips;
+                account.Version = fresh.Version;
+                account.EquippedCardFaceId = fresh.EquippedCardFaceId;
+            }
             return _playerManager.BindAccount(account, conn);
         }
 
@@ -326,7 +336,10 @@ namespace Game.Network
             _dailyTaskRequestSequences.Remove(conn);
             _leaderboardRequests.Remove(conn);
             _shopRequests.Remove(conn);
+            _cardFaceShopRequests.Remove(conn);
             _itemRequests.Remove(conn);
+            _achievementRequests.Remove(conn);
+            _achievementSent.Remove(conn);
 
             if (!_serverStorageFailed && _playerManager.RemoveConnection(conn, out var name))
             {
@@ -335,11 +348,11 @@ namespace Game.Network
                 if (_roomManager.WhichRoom(name, out var roomId))
                 {
                     var room = _roomManager.FindRoom(roomId);
-                    // 等待大厅中断线时立即释放参赛座位，但保留旁观成员和 LastRoomId。
+                    // Waiting-room disconnects leave membership and clear the recovery bookmark.
                     if (room.IsWaiting)
                     {
-                        _roomManager.MoveToSpectator(roomId, name);
-                        BroadcastRoomInfo(room);
+                        if (_departures.Request(roomId, name) == RoomLeaveStatus.Left)
+                            RefreshRoomAfterDeparture(roomId);
                     }
                     else // 游戏已经开始
                     {
@@ -381,7 +394,9 @@ namespace Game.Network
             RegisterDailyTaskClientHandlers();
             RegisterLeaderboardClientHandler();
             RegisterShopClientHandlers();
+            RegisterCardFaceShopClientHandlers();
             RegisterItemClientHandlers();
+            RegisterAchievementClientHandlers();
             
             if (!_silentConnectionAttempt)
                 ShowConnectingMessage();
@@ -596,6 +611,8 @@ namespace Game.Network
 
         public override void OnClientDisconnect()
         {
+            ClearAchievementClient();
+            CardFaceAppearance.Equip(null);
             // base.OnClientDisconnect();
 
             // 销毁连接时打开的Msgbox
@@ -1931,6 +1948,7 @@ namespace Game.Network
             {
                 Info = new ClientGameInfo(gameInfo, playerIndex),
                 AccountChips = accountChips,
+                CanClaimDailyTaskRewards = GameManager.IsTaskRewardPhase(gameInfo, playerIndex),
                 BigBlind = bigBlind,
                 ParticipationStatus = participationStatus,
                 CanLeaveImmediately = !_gameManager.RequiresDeferredLeave(gameInfo.RoomInfo.Id, playerName),

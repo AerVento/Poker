@@ -289,7 +289,7 @@ namespace Game.Tests
         [Test]
         public void DailyTasksPrefabHasCompleteEntryCardsAndNavigationReferences()
         {
-            var title = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Panels/TitlePanel.prefab").GetComponent<TitlePanel>();
+            var title = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Panels/TitlePanel/TitlePanel.prefab").GetComponent<TitlePanel>();
             Assert.IsNotNull(Field<UnityEngine.UI.Button>(title, "_tasks"));
             var panel = _ui.PushPanel<DailyTaskPanel>();
             foreach (var name in new[] { "_back", "_refresh" })
@@ -350,14 +350,15 @@ namespace Game.Tests
         [TestCase("pending")]
         [TestCase("active")]
         [TestCase("last-room")]
-        public void TasksCannotOpenDuringRoomEntryOrFromInsideRoom(string state)
+        public void TasksCanBeViewedInsideRoomButClaimsRequireEligibleGameState(string state)
         {
             Assert.IsTrue(_network.CanOpenDailyTasks);
             if (state == "pending") Set(_network, "_roomEntryPending", true);
             if (state == "active") Set(_network, "_activeClientRoomId", (int?)42);
             if (state == "last-room") _controller.State.SetLastRoom(42);
-            Assert.IsFalse(_network.CanOpenDailyTasks);
-            Assert.AreEqual(0, _network.RequestDailyTasks());
+            Assert.AreEqual(state != "pending", _network.CanOpenDailyTasks);
+            Assert.IsFalse(_network.CanClaimDailyTasks);
+            if (state == "pending") Assert.AreEqual(0, _network.RequestDailyTasks());
             Assert.AreEqual(0, _network.RequestDailyTaskClaim(Game.Network.Accounts.DailyTaskId.DailySupply, 20260905));
         }
 
@@ -422,7 +423,7 @@ namespace Game.Tests
         [Test]
         public void AccountFeaturesExistOnlyOnTitle()
         {
-            var title = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Panels/TitlePanel.prefab").GetComponent<TitlePanel>();
+            var title = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Panels/TitlePanel/TitlePanel.prefab").GetComponent<TitlePanel>();
             foreach (var field in new[] { "_shop", "_leaderboard" })
                 Assert.IsNotNull(Field<UnityEngine.UI.Button>(title, field));
             var lobby = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Panels/RoomListPanel/RoomListPanel.prefab");

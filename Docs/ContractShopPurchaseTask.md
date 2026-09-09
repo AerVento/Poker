@@ -1,5 +1,11 @@
 # 契约商品上架与购买行为扩展任务书
 
+## 2026-09-09 更新
+
+三种契约现为消耗品，取消原单种持有上限 1。余额为 0 时仍可免费签约；仓库还款分别扣除 1,100 / 11,000 / 110,000，并消耗一份契约。以下旧阶段中“不可消耗”“只能购买一次”的描述和历史测试结论不再代表当前行为。
+
+实现计划见 [UIPolishAndContractRepaymentPlan.md](UIPolishAndContractRepaymentPlan.md)。
+
 日期：2026-09-07。设计修订：条件与效果独立组合，余额条件使用比较运算符和阈值参数。状态：代码与配置已实施，验证记录见文末。
 
 ## 1. 目标与交付范围
@@ -17,7 +23,7 @@
 | `Assets/Resources/SO/Items/DevilContract.asset` | ID `devil-contract`，名称、图标、说明完整 | 当前 `_kind: 0`，需改为不可消耗 |
 | `Assets/Resources/SO/Items/ArchdevilContract.asset` | ID `archdevil-contract`，名称、图标、说明完整 | 当前 `_kind: 0`，需改为不可消耗 |
 | `Assets/Resources/SO/Items/SatanContract.asset` | ID `satan-contract`，名称、图标、说明完整 | 当前 `_kind: 0`，需改为不可消耗 |
-| `Assets/Prefabs/UI/Panels/ShopPanel.prefab` | `ItemsView._definitions` 已引用上述三个资产 | 复用已有引用和布局 |
+| `Assets/Prefabs/UI/Panels/ShopPanel/ShopPanel.prefab` | `ItemsView._definitions` 已引用上述三个资产 | 复用已有引用和布局 |
 | `Assets/Resources/SO/Shop/ItemServerCatalog.json` | 当前为 `[]` | 添加三个正式报价 |
 | `SqliteAccountRepository.Items.cs` | 购买、入库、扣款、账本、幂等回执在同一事务内 | 支持购买条件与正向赠款效果 |
 | `ItemShopMessages.cs` / `ItemInventory.cs` | 报价只有 ID、价格、上架状态等基础信息 | 提供奖励、购买条件与拒绝原因的展示数据 |

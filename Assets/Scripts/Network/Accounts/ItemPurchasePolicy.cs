@@ -39,7 +39,7 @@ namespace Game.Network.Accounts
         public bool Check(PurchaseContext context) => Descriptor.Matches(context.BalanceBefore);
     }
 
-    public enum PurchaseEffectKind : byte { CreditChips = 1 }
+    public enum PurchaseEffectKind : byte { CreditChips = 1, DebitChips = 2 }
 
     public sealed class PurchaseEffectDescriptor
     {

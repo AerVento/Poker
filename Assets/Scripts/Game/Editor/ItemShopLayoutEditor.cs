@@ -11,7 +11,7 @@ namespace Game.EditorTools
         [MenuItem("Poker/UI/Update Item Detail Scroll")]
         public static void UpdateDetailScroll()
         {
-            const string path = "Assets/Prefabs/UI/Panels/ShopPanel.prefab";
+            const string path = "Assets/Prefabs/UI/Panels/ShopPanel/ShopPanel.prefab";
             var root = PrefabUtility.LoadPrefabContents(path);
             try
             {

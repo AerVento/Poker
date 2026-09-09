@@ -115,7 +115,8 @@ PRIMARY KEY(account_id, operation_id));"
                 if (result == ItemShopResult.Success)
                 {
                     // Plan only after all conditions pass. Build and validate all commands before any write.
-                    result = PlanItemEffects(context, effects, out finalBalance);
+                    result = action == ItemShopAction.Purchase ? PlanItemEffects(context, effects, out finalBalance) :
+                        PlanItemUseEffects(new ItemUseContext(accountId, account.Chips, product, owned), effects, out finalBalance);
                 }
                 if (result == ItemShopResult.Success)
                 {
@@ -137,19 +138,22 @@ WHERE account_id=$account AND version=$version;";
 ON CONFLICT(account_id,item_id) DO UPDATE SET quantity=excluded.quantity;";
                         inventory.Parameters.AddWithValue("$account", accountId);
                         inventory.Parameters.AddWithValue("$item", itemId);
-                        inventory.Parameters.AddWithValue("$quantity", (long)checked(owned + 1));
+                        inventory.Parameters.AddWithValue("$quantity", (long)(action == ItemShopAction.Purchase ? checked(owned + 1) : checked(owned - 1)));
                         inventory.ExecuteNonQuery();
                     }
-                    InsertLedger(connection, transaction, Guid.NewGuid().ToString("N"),
-                        "item:" + accountId + ":" + operationId, accountId,
-                        "ItemPurchase", -(long)product.Price,
-                        account.Chips, account.Chips - product.Price, null, null, now);
+                    if (action == ItemShopAction.Purchase)
+                        InsertLedger(connection, transaction, Guid.NewGuid().ToString("N"),
+                            "item:" + accountId + ":" + operationId, accountId,
+                            "ItemPurchase", -(long)product.Price,
+                            account.Chips, account.Chips - product.Price, null, null, now);
                     foreach (var effect in effects)
                         InsertLedger(connection, transaction, Guid.NewGuid().ToString("N"),
                             "item-effect:" + accountId + ":" + operationId + ":" + effect.EffectIndex + ":" + effect.CommandIndex,
-                            accountId, "ItemPurchaseReward", effect.Amount, effect.BalanceBefore, effect.BalanceAfter, null, null, now);
+                            accountId, effect.Kind == PurchaseEffectKind.CreditChips ? "ItemPurchaseReward" : "ItemUsePayment",
+                            effect.Kind == PurchaseEffectKind.CreditChips ? (long)effect.Amount : -(long)effect.Amount,
+                            effect.BalanceBefore, effect.BalanceAfter, null, null, now);
                 }
-                var outcome = new ItemPurchaseOutcome(1, itemId, result == ItemShopResult.Success ? product.Price : 0,
+                var outcome = new ItemPurchaseOutcome(1, itemId, result == ItemShopResult.Success && action == ItemShopAction.Purchase ? product.Price : 0,
                     account.Chips, result == ItemShopResult.Success ? finalBalance : account.Chips, runtime.Revision,
                     failedCondition, result == ItemShopResult.Success ? effects : Array.Empty<ItemEffectOutcome>());
                 using (var receipt = connection.CreateCommand())
@@ -168,6 +172,32 @@ VALUES($account,$operation,$fingerprint,$result,$now,$outcome);";
                 transaction.Commit();
                 return new ItemChangeExecution(result, outcome, result == ItemShopResult.Success);
             }
+        }
+
+        private static ItemShopResult PlanItemUseEffects(ItemUseContext context, List<ItemEffectOutcome> results, out uint balance)
+        {
+            balance = context.BalanceBefore;
+            var policy = context.Product.UsePolicy;
+            for (var effectIndex = 0; effectIndex < policy.Effects.Count; effectIndex++)
+            {
+                var effect = policy.Effects[effectIndex];
+                var commands = effect.Plan(context);
+                if (commands == null || commands.Count == 0 || commands.Count > 16)
+                    throw new InvalidOperationException("Invalid item use command plan.");
+                ulong amount = 0;
+                for (var commandIndex = 0; commandIndex < commands.Count; commandIndex++)
+                {
+                    var debit = commands[commandIndex] ?? throw new InvalidOperationException("Missing item use command.");
+                    if (balance < debit.Amount) return ItemShopResult.InsufficientChips;
+                    var next = checked(balance - debit.Amount);
+                    results.Add(new ItemEffectOutcome(effectIndex, commandIndex, PurchaseEffectKind.DebitChips,
+                        effect.Version, debit.Amount, balance, next));
+                    balance = next;
+                    amount += debit.Amount;
+                }
+                if (amount != effect.Amount) throw new InvalidOperationException("Item use effect differs from its quote.");
+            }
+            return ItemShopResult.Success;
         }
 
         private static ItemShopResult PlanItemEffects(PurchaseContext context, List<ItemEffectOutcome> results, out uint balance)
@@ -208,10 +238,8 @@ VALUES($account,$operation,$fingerprint,$result,$now,$outcome);";
                 return ItemShopResult.CatalogChanged;
             if (action == ItemShopAction.Purchase)
                 return ItemPurchaseRuntime.CheckPurchase(context, outsideRoom, out failedCondition);
-            if (context.OwnedQuantity == 0) return ItemShopResult.NotOwned;
-            if (product.Kind != ItemKind.Consumable) return ItemShopResult.NotConsumable;
-            // Reserved for server-defined use conditions/effects; never consume without applying an effect.
-            return ItemShopResult.EffectUnavailable;
+            return ItemPurchaseRuntime.CheckUse(new ItemUseContext(context.AccountId, context.BalanceBefore,
+                product, context.OwnedQuantity), outsideRoom);
         }
     }
 }

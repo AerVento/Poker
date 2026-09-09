@@ -91,7 +91,11 @@ namespace Game.Tests
             if (route != "fold")
             {
                 info.Stage = GameStage.River;
-                for (int i = 0; i < 5; i++) info.Community.Add(info.Deck.Dequeue());
+                // A random board can split the pot, never reaching the positive-balance fault trigger.
+                info.Players[0].Hole = new List<Poker> { new Poker(PokerSuit.Heart, PokerRank.Ace), new Poker(PokerSuit.Diamond, PokerRank.Ace) };
+                info.Players[1].Hole = new List<Poker> { new Poker(PokerSuit.Heart, PokerRank.King), new Poker(PokerSuit.Diamond, PokerRank.King) };
+                info.Community = new List<Poker> { new Poker(PokerSuit.Club, PokerRank.Two), new Poker(PokerSuit.Spade, PokerRank.Three),
+                    new Poker(PokerSuit.Heart, PokerRank.Five), new Poker(PokerSuit.Diamond, PokerRank.Seven), new Poker(PokerSuit.Club, PokerRank.Nine) };
             }
             var before = _raw.ReconcileChips();
             Sql("CREATE TRIGGER fail_settlement BEFORE UPDATE OF chips ON player_accounts WHEN NEW.chips > OLD.chips BEGIN SELECT RAISE(ABORT, 'Injected settlement failure'); END;");

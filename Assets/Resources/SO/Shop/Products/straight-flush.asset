@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1954ec352f7042869473612a923ad2bc, type: 3}
+  m_Name: straight-flush
+  m_EditorClassIdentifier: 
+  _id: straight-flush
+  _displayName: "\u540C\u82B1\u987A"
+  _description: "\u7FE0\u5F71\u6D41\u5149\uFF0C\u4E94\u8292\u4E00\u8109\u76F8\u8FDE\u3002"
+  _artwork: {fileID: 21300000, guid: ef764bb35145fcc499ad59a7d29e5d42, type: 3}
+  _artwork4x3: {fileID: 21300000, guid: 9da954ee6f2a6944b8f4a8ac25e9f3b3, type: 3}
+  _price: 0
+  _isDefault: 0
+  _isListed: 1
+  _canPurchase: 0
+  _isReward: 1

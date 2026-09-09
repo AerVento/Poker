@@ -25,7 +25,11 @@ namespace Game.SO
         [Tooltip("When disabled, a listed card remains visible with a disabled purchase button.")]
         [SerializeField] private bool _canPurchase = true;
 
-        public bool CanPurchase => _isDefault || _canPurchase;
+        [Tooltip("Achievement reward: cannot be purchased, but can be equipped after claiming.")]
+        [SerializeField] private bool _isReward;
+
+        public bool IsReward => !_isDefault && _isReward;
+        public bool CanPurchase => _isDefault || (!_isReward && _canPurchase);
         public bool IsListed => _isDefault || _isListed;
         public bool IsDefault => _isDefault;
         public string Id => _id;

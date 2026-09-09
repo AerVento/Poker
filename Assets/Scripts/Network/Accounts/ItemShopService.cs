@@ -39,7 +39,7 @@ namespace Game.Network.Accounts
         public string RuleRevision { get; }
         public PurchaseConditionDescriptor FailedCondition { get; }
         public IReadOnlyList<ItemEffectOutcome> Effects { get; }
-        [JsonIgnore] public uint RewardChips => checked((uint)Effects.Sum(e => (long)e.Amount));
+        [JsonIgnore] public uint RewardChips => checked((uint)Effects.Where(e => e.Kind == PurchaseEffectKind.CreditChips).Sum(e => (long)e.Amount));
 
         [JsonConstructor]
         public ItemPurchaseOutcome(int formatVersion, string itemId, uint chargedPrice, uint balanceBefore,

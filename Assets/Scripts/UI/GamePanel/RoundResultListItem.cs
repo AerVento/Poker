@@ -65,7 +65,8 @@ namespace Game.UI.GamePanelElement
             set
             {
                 _chipEarned = value;
-                _chipEarnedText.text = "+$" + ChipAmountFormatter.Format(value);
+                _chipEarnedText.text = (value > 0 ? "+$" : "$") + ChipAmountFormatter.Format(value);
+                _chipEarnedText.color = value > 0 ? new Color(0.97f, 0.79f, 0.41f) : new Color(0.58f, 0.66f, 0.61f);
             }
         }
 
@@ -91,18 +92,8 @@ namespace Game.UI.GamePanelElement
 
         public void SetPattern(PokerPattern pattern, Poker[] hand)
         {
-            StringBuilder builder = new StringBuilder(pattern.ToString());
-            List<Poker> sorted = hand.ToList(); ;
-            sorted.Sort((a, b) => a.BiggerThan(b) ? -1 : 1);
-            builder.Append("\n[");
-            builder.Append(sorted[0].ToString());
-            for(int i = 1; i < sorted.Count; i++)
-            {
-                builder.Append(", ");
-                builder.Append(sorted[i].ToString());
-            }
-            builder.Append("]");
-            _patternText.text = builder.ToString();
+            var sorted = hand.OrderByDescending(card => card.Rank);
+            _patternText.text = pattern + "\n[" + string.Join(", ", sorted.Select(card => card.ToString())) + "]";
         }
 
 

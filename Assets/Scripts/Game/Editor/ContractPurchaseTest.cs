@@ -103,7 +103,7 @@ namespace Game.Tests
         [TestCase("devil-contract", 1000u)]
         [TestCase("archdevil-contract", 10000u)]
         [TestCase("satan-contract", 100000u)]
-        public void ProductionContractsGrantOnceAndPersistOriginalOutcome(string id, uint reward)
+        public void ProductionContractsCanBePurchasedAgainAndPersistOriginalOutcome(string id, uint reward)
         {
             Assert.AreEqual(ItemShopResult.BalanceConditionNotMet, Buy(id).Result);
             Balance(0);
@@ -121,9 +121,100 @@ namespace Game.Tests
             Assert.IsFalse(replay.IsNewlyApplied);
             Assert.AreEqual(reward, replay.Outcome.RewardChips);
             Balance(0);
-            Assert.AreEqual(ItemShopResult.AlreadyOwned, Buy(id).Result);
+            Assert.AreEqual(ItemShopResult.Success, Buy(id).Result);
+            Assert.AreEqual(2, _repository.ReadItems(_account.AccountId).Items.Single().Quantity);
+            Assert.AreEqual(2, Sql("SELECT COUNT(*) FROM chip_ledger WHERE transaction_type='ItemPurchaseReward';"));
+            Assert.IsTrue(_repository.ReconcileChips().IsConsistent);
+        }
+
+        private ItemChangeExecution Use(string id, string operation = null, string revision = null, bool inRoom = false)
+            => _repository.ChangeItem(_account.AccountId, operation ?? Guid.NewGuid().ToString("N"),
+                ItemShopAction.Use, id, 1, 0, revision ?? _runtime.Revision, _runtime, inRoom);
+
+        [TestCase("devil-contract", 1100u, 1ul)]
+        [TestCase("archdevil-contract", 11000u, 10ul)]
+        [TestCase("satan-contract", 110000u, 100ul)]
+        public void RepaymentRequiresExactFundsConsumesOneAndCanSignAgain(string id, uint cost, ulong years)
+        {
+            Balance(0);
+            Assert.AreEqual(ItemShopResult.Success, Buy(id).Result);
+            Assert.AreEqual(years, _repository.ReadServiceYears(new[] { _account.AccountId })[_account.AccountId]);
+            Balance(cost - 1);
+            Assert.AreEqual(ItemShopResult.UseConditionNotMet, Use(id).Result);
+            Assert.AreEqual(1, _repository.ReadItems(_account.AccountId).Items.Single().Quantity);
+            Assert.AreEqual(cost - 1, _repository.FindById(_account.AccountId).Chips);
+            Balance(cost);
+            var operation = Guid.NewGuid().ToString("N");
+            var use = Use(id, operation);
+            Assert.AreEqual(ItemShopResult.Success, use.Result);
+            Assert.AreEqual(0, use.Outcome.RewardChips);
+            Assert.AreEqual(PurchaseEffectKind.DebitChips, use.Outcome.Effects.Single().Kind);
+            Assert.AreEqual(cost, use.Outcome.Effects.Single().Amount);
+            Assert.AreEqual(0, _repository.FindById(_account.AccountId).Chips);
+            Assert.IsEmpty(_repository.ReadItems(_account.AccountId).Items);
+            Assert.AreEqual(0, _repository.ReadServiceYears(new[] { _account.AccountId })[_account.AccountId]);
+            Assert.AreEqual(ItemShopResult.Success, Buy(id).Result);
+            _repository.Initialize();
+            Assert.IsFalse(Use(id, operation, inRoom: true).IsNewlyApplied);
+            Assert.AreEqual(1, _repository.ReadItems(_account.AccountId).Items.Single().Quantity);
+            Assert.AreEqual(1, Sql("SELECT COUNT(*) FROM chip_ledger WHERE transaction_type='ItemUsePayment';"));
+            Assert.IsTrue(_repository.ReconcileChips().IsConsistent);
+        }
+
+        [TestCase("BEFORE UPDATE ON player_accounts")]
+        [TestCase("BEFORE INSERT ON account_items")]
+        [TestCase("BEFORE INSERT ON chip_ledger WHEN NEW.transaction_type='ItemUsePayment'")]
+        [TestCase("BEFORE INSERT ON item_requests")]
+        public void RepaymentWriteFailureRollsBackAllChanges(string trigger)
+        {
+            Balance(0);
+            Buy();
+            Balance(1100);
+            var version = _repository.FindById(_account.AccountId).Version;
+            var ledgerCount = Sql("SELECT COUNT(*) FROM chip_ledger;");
+            var receipts = Sql("SELECT COUNT(*) FROM item_requests;");
+            Sql("CREATE TRIGGER repayment_fail " + trigger + " BEGIN SELECT RAISE(ABORT,'Injected'); END;");
+            Assert.Throws<SqliteException>(() => Use("devil-contract"));
+            Assert.AreEqual(1100, _repository.FindById(_account.AccountId).Chips);
+            Assert.AreEqual(version, _repository.FindById(_account.AccountId).Version);
+            Assert.AreEqual(1, _repository.ReadItems(_account.AccountId).Items.Single().Quantity);
+            Assert.AreEqual(ledgerCount, Sql("SELECT COUNT(*) FROM chip_ledger;"));
+            Assert.AreEqual(receipts, Sql("SELECT COUNT(*) FROM item_requests;"));
+        }
+
+        [Test]
+        public void UseRequiresCurrentRulesAndRoomExitAndDoesNotCallPurchaseEffects()
+        {
+            Balance(0);
+            Buy();
+            Balance(1100);
+            Assert.AreEqual(ItemShopResult.CatalogChanged, Use("devil-contract", revision: "old").Result);
+            Assert.AreEqual(ItemShopResult.OutsideRoomRequired, Use("devil-contract", inRoom: true).Result);
+            Assert.AreEqual(ItemShopResult.Success, Use("devil-contract").Result);
+            Assert.AreEqual(ItemShopResult.NotOwned, Use("devil-contract").Result);
             Assert.AreEqual(1, Sql("SELECT COUNT(*) FROM chip_ledger WHERE transaction_type='ItemPurchaseReward';"));
             Assert.IsTrue(_repository.ReconcileChips().IsConsistent);
+        }
+
+        [Test]
+        public void UseConditionAndEffectAreIndependentAndVersioned()
+        {
+            var purchases = new ItemPurchaseRegistry();
+            purchases.Register("plain", new ItemPurchasePolicy());
+            var catalog = new ItemServerCatalog { Products = new[] {
+                new ServerItemDefinition { Id = "plain", Kind = ItemKind.Consumable, MaxQuantity = 9 } } };
+            var use = new ItemUseRegistry();
+            use.Register("plain", new ItemUsePolicy(new[] { new UseBalanceCondition(ComparisonType.GreaterThanOrEqual, 200) },
+                new[] { new PayChipsEffect(100) }));
+            var runtime = new ItemPurchaseRuntime(catalog, purchases, use);
+            Assert.AreEqual(ItemShopResult.UseConditionNotMet, ItemPurchaseRuntime.CheckUse(new ItemUseContext("a", 150, runtime.Find("plain"), 1), true));
+            Assert.AreEqual(ItemShopResult.Success, ItemPurchaseRuntime.CheckUse(new ItemUseContext("a", 200, runtime.Find("plain"), 1), true));
+            var effectsOnly = new ItemUseRegistry();
+            effectsOnly.Register("plain", new ItemUsePolicy(null, new[] { new PayChipsEffect(100) }));
+            var other = new ItemPurchaseRuntime(catalog, purchases, effectsOnly);
+            Assert.AreNotEqual(runtime.Revision, other.Revision);
+            Assert.AreEqual(ItemShopResult.Success, ItemPurchaseRuntime.CheckUse(new ItemUseContext("a", 150, other.Find("plain"), 1), true));
+            Assert.Throws<ArgumentException>(() => new ItemUsePolicy(null, null));
         }
 
         [Test]

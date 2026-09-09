@@ -12,7 +12,7 @@ using UnityEngine;
 
 namespace Game.Tests
 {
-    public class DailyTaskTest
+    public partial class DailyTaskTest
     {
         private string _path;
         private SqliteAccountRepository _repository;
@@ -238,8 +238,9 @@ namespace Game.Tests
                     expected = DailyTaskResult.Unavailable;
                 }
                 var query = (DailyTasksResponse)Invoke(network, "ProcessDailyTasksRequest", connection, new DailyTasksRequest { RequestId = 1 });
-                Assert.AreEqual(expected, query.Result);
-                Assert.IsNull(query.Snapshot.Tasks);
+                Assert.AreEqual(expected == DailyTaskResult.Unavailable ? expected : DailyTaskResult.Success, query.Result);
+                if (expected == DailyTaskResult.Unavailable) Assert.IsNull(query.Snapshot.Tasks);
+                else Assert.IsNotNull(query.Snapshot.Tasks);
                 var response = ServerClaim(network, connection, 2);
                 Assert.AreEqual(expected, response.Result);
                 Assert.AreEqual(0, response.GrantedAmount);

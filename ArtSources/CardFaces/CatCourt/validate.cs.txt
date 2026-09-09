@@ -1,0 +1,47 @@
+Game.Editor.CardFaceEditor.Validate();
+var product = AssetDatabase.LoadAssetAtPath<Game.SO.CardFaceProductSO>("Assets/Resources/SO/CardFaces/CatCourt.asset");
+if (product == null || product.Id != "cat-court") throw new System.InvalidOperationException("Cat Court product missing.");
+var cards = product.Prefab.Cards;
+var unique = new System.Collections.Generic.HashSet<Sprite>();
+foreach (var poker in Game.Poker.GetAll())
+{
+    var sprite = cards.GetSprite(poker);
+    if (sprite == null || !unique.Add(sprite)) throw new System.InvalidOperationException("Missing or duplicate face: " + poker);
+    if (sprite.rect.width != 816 || sprite.rect.height != 1152) throw new System.InvalidOperationException("Wrong dimensions: " + poker);
+    var importer = (TextureImporter)AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(sprite));
+    if (importer.textureType != TextureImporterType.Sprite || importer.mipmapEnabled ||
+        !importer.alphaIsTransparency || importer.textureCompression != TextureImporterCompression.Uncompressed)
+        throw new System.InvalidOperationException("Wrong import settings: " + poker);
+}
+if (cards.Back == null || unique.Contains(cards.Back)) throw new System.InvalidOperationException("Invalid back.");
+var previous = Game.UI.CardFaceAppearance.EquippedId;
+GameObject root = null;
+try
+{
+    Game.UI.CardFaceAppearance.Equip("cat-court");
+    root = UnityEngine.Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Panels/GamePanel/Poker.prefab"));
+    root.hideFlags = HideFlags.HideAndDontSave;
+    var slot = root.GetComponent<Game.UI.PokerElement>();
+    foreach (var poker in Game.Poker.GetAll())
+    {
+        slot.Poker = poker;
+        slot.IsShowing = true;
+        var view = root.GetComponentInChildren<Game.UI.CardFaceView>();
+        if (view.Cards != cards || view.Image.sprite != cards.GetSprite(poker)) throw new System.InvalidOperationException("Front display mismatch: " + poker);
+        slot.IsShowing = false;
+        if (view.Image.sprite != cards.Back) throw new System.InvalidOperationException("Hidden card leaks front: " + poker);
+        if (view.Image.raycastTarget || !view.Image.preserveAspect) throw new System.InvalidOperationException("Invalid image settings.");
+    }
+}
+finally
+{
+    if (root != null) UnityEngine.Object.DestroyImmediate(root);
+    Game.UI.CardFaceAppearance.Equip(previous);
+}
+var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+int missingScripts = 0;
+foreach (var sceneRoot in scene.GetRootGameObjects())
+    foreach (var transform in sceneRoot.GetComponentsInChildren<Transform>(true))
+        missingScripts += GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(transform.gameObject);
+if (missingScripts != 0) throw new System.InvalidOperationException("Missing scripts in scene: " + missingScripts);
+return "PASS: 52 unique faces, 816x1152, uncompressed Sprite imports, 52 front/back PokerElement transitions, original appearance restored; scene=" + scene.path + ", missingScripts=" + missingScripts;

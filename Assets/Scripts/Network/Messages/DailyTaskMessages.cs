@@ -7,10 +7,12 @@ namespace Game.Network
     {
         public ulong RequestId;
         public string InstanceId;
+        public bool Refresh;
     }
 
     public struct DailyTaskDeleteResponse : NetworkMessage
     {
+        public bool Refreshed;
         public ulong RequestId;
         public string AccountId;
         public string InstanceId;

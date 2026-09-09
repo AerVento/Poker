@@ -1,5 +1,5 @@
 [
-  { "Id": "devil-contract", "Kind": 1, "Price": 0, "Listed": true, "MaxQuantity": 1 },
-  { "Id": "archdevil-contract", "Kind": 1, "Price": 0, "Listed": true, "MaxQuantity": 1 },
-  { "Id": "satan-contract", "Kind": 1, "Price": 0, "Listed": true, "MaxQuantity": 1 }
+  { "Id": "devil-contract", "Kind": 0, "Price": 0, "Listed": true, "MaxQuantity": 4294967295 },
+  { "Id": "archdevil-contract", "Kind": 0, "Price": 0, "Listed": true, "MaxQuantity": 4294967295 },
+  { "Id": "satan-contract", "Kind": 0, "Price": 0, "Listed": true, "MaxQuantity": 4294967295 }
 ]

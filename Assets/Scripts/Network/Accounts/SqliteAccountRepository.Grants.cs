@@ -26,7 +26,8 @@ PRIMARY KEY(account_id, operation_id));";
             uint quantity, ItemIdentityRegistry registry)
         {
             if (string.IsNullOrWhiteSpace(accountId) || !Guid.TryParseExact(operationId, "N", out _) || quantity == 0 ||
-                (!NamecardServerCatalog.IsValidId(itemId) && !NamecardItemId.TryToNamecardId(itemId, out _)))
+                (!NamecardServerCatalog.IsValidId(itemId) && !NamecardItemId.TryToNamecardId(itemId, out _) &&
+                 !CardFaceItemId.TryToCardFaceId(itemId, out _)))
                 return new ItemGrantExecution(ItemGrantResult.InvalidRequest);
             if (registry == null)
                 return new ItemGrantExecution(ItemGrantResult.Unavailable);
@@ -60,6 +61,7 @@ PRIMARY KEY(account_id, operation_id));";
                 {
                     owned = identity.IsNamecard
                         ? (ReadOwnedNamecards(connection, transaction, accountId).Contains(identity.NamecardId) ? 1u : 0u)
+                        : identity.IsCardFace ? (ReadOwnedCardFaces(connection, transaction, accountId).Contains(identity.CardFaceId) ? 1u : 0u)
                         : ReadItemStacks(connection, transaction, accountId).FirstOrDefault(item => item.ItemId == itemId)?.Quantity ?? 0;
                 }
                 var grantResult = ValidateItemGrant(identity, owned, quantity);
@@ -76,6 +78,13 @@ PRIMARY KEY(account_id, operation_id));";
                             inventory.CommandText = @"INSERT INTO account_namecards(account_id,product_id,purchased_at_utc)
 VALUES($account,$product,$now);";
                             inventory.Parameters.AddWithValue("$product", identity.NamecardId);
+                            inventory.Parameters.AddWithValue("$now", FormatDateTime(now));
+                        }
+                        else if (identity.IsCardFace)
+                        {
+                            inventory.CommandText = @"INSERT INTO account_card_faces(account_id,product_id,purchased_at_utc)
+VALUES($account,$product,$now);";
+                            inventory.Parameters.AddWithValue("$product", identity.CardFaceId);
                             inventory.Parameters.AddWithValue("$now", FormatDateTime(now));
                         }
                         else

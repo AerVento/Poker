@@ -1,5 +1,11 @@
 # 富豪榜与服役榜
 
+## 2026-09-09 更新
+
+服刑榜背景改为根 Canvas 下等比覆盖全屏，允许裁切边缘以适应非 16:9。年数继续由当前契约库存计算，因此还款消耗契约会减少对应的服刑年数。
+
+实现计划见 [UIPolishAndContractRepaymentPlan.md](UIPolishAndContractRepaymentPlan.md)。
+
 - 标题页进入排行榜时默认显示富豪榜；两个页签共享同一次服务器查询，切换即时生效，不额外触发请求限流。
 - 两榜沿用前 10 名与固定本人行，列表使用 Vertical Layout Group、ScrollRect、Viewport 裁剪和竖向滚动条。每位玩家占一行；刷新、切换页签后回到顶部。
 - 服役年数 = `devil-contract` 数量 × 1 + `archdevil-contract` 数量 × 10 + `satan-contract` 数量 × 100。以数据库当前库存为准，不计算消费历史或其他物品。

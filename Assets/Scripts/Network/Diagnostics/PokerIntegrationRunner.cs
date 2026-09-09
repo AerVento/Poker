@@ -89,6 +89,9 @@ namespace Game.Network.Diagnostics
             runner._testResultReview = runner._reviewScenario == "review-bust" || runner._reviewScenario == "review-actions";
             runner._testDepartures = GetArgument("-pokerIntegrationScenario") == "departures";
             runner._testTasks = GetArgument("-pokerIntegrationScenario") == "tasks";
+            runner._testInGameTasks = runner._reviewScenario == "task-ingame";
+            runner._testAchievements = runner._reviewScenario == "achievements";
+            runner._testRewardNamecards = runner._reviewScenario == "reward-namecards";
             runner._testSpectators = GetArgument("-pokerIntegrationScenario") == "spectators" || runner._testTasks;
             runner._testStorage = (GetArgument("-pokerIntegrationScenario") ?? "").StartsWith("storage-");
             runner._testLeaderboard = runner._reviewScenario == "leaderboard" || runner._reviewScenario == "idle";
@@ -137,7 +140,10 @@ namespace Game.Network.Diagnostics
                 typeof(AccountAuthenticator).GetField("_initialChips", System.Reflection.BindingFlags.Instance |
                     System.Reflection.BindingFlags.NonPublic).SetValue(_authenticator, (uint)0);
             _networkRoom.StartServer();
+            if (_testTasks) ConfigureCardFaceFixture();
             // Keep purchase fixtures independent of production catalog prices.
+            if (_testAchievements) ConfigureAchievementFixture();
+            if (_testRewardNamecards) ConfigureRewardNamecardFixture();
             if (_testShop) Field<NamecardServerCatalog>(_networkRoom, "_shopCatalog").Products.Single(p => p.Id == "galaxy").Price = 6000;
             if (_testItems) ConfigureIntegrationItems();
             if (_testLeaderboard) SeedLeaderboard();
@@ -170,6 +176,7 @@ namespace Game.Network.Diagnostics
                     yield break;
                 }
 
+                if (_testTasks) GrantCardFaceFixture();
                 if (_testStorage && !_storageFaultArmed && File.Exists(Path.Combine(_outputDirectory, "storage-first-hand.finished")))
                 {
                     ExecuteStorageTestSql("CREATE TRIGGER integration_fail_settlement BEFORE UPDATE OF chips ON player_accounts WHEN NEW.chips > OLD.chips BEGIN SELECT RAISE(ABORT, 'Injected settlement write failure'); END;");
@@ -186,7 +193,7 @@ namespace Game.Network.Diagnostics
                         Fail("Final chip reconciliation failed: " + JsonSerializer.Serialize(report));
                         yield break;
                     }
-                    if (report.ActiveHandCount != 0 || report.AccountBalanceTotal != (_testContracts ? 111000 : _testTasks ? 13700 : _testItems ? 11100 : _testShop ? 12000 : _testLeaderboard ? 5530000 : 30000))
+                    if (report.ActiveHandCount != 0 || report.AccountBalanceTotal != (_testRewardNamecards ? 100000 : _testInGameTasks ? 32000 : _testContracts ? 111000 : _testTasks ? 13700 : _testItems ? 11100 : _testShop ? 12000 : _testLeaderboard ? 5530000 : _testAchievements ? 31000 : 30000))
                     {
                         Fail("Unexpected final chip totals: " + JsonSerializer.Serialize(report));
                         yield break;
@@ -434,6 +441,18 @@ namespace Game.Network.Diagnostics
                 yield return null;
             if (Field<DailyTasksSnapshot>(deletePanel, "_snapshot").Tasks.Any(t => t.InstanceId == deletedId))
             { Fail("Deleted task remained in UI."); yield break; }
+            var replacementTask = Field<DailyTasksSnapshot>(deletePanel, "_snapshot").Tasks.Single(t => t.IsRandom && t.SlotId == randomBefore[0].SlotId);
+            if (replacementTask.CanRefresh || replacementTask.DefinitionId == randomBefore[0].DefinitionId ||
+                Field<DailyTasksSnapshot>(deletePanel, "_snapshot").Tasks.Count(t => t.IsRandom) != randomBefore.Length)
+            { Fail("Refresh did not replace the same slot exactly once."); yield break; }
+            deletedId = replacementTask.InstanceId;
+            deleteCard = Field<UI.DailyTaskCard[]>(deletePanel, "_cards").First(c => Field<DailyTaskState>(c, "_state").InstanceId == deletedId);
+            Click(deleteCard, "_delete");
+            Click(Field<UI.MsgBox>(deletePanel, "_deleteConfirmation"), "_confirmButton");
+            deleteDeadline = Time.realtimeSinceStartup + 10;
+            while (Time.realtimeSinceStartup < deleteDeadline &&
+                (!Field<bool>(deletePanel, "_hasSnapshot") || Field<DailyTasksSnapshot>(deletePanel, "_snapshot").Tasks.Any(t => t.InstanceId == deletedId)))
+                yield return null;
             yield return WaitForDailyTaskBalance(expected);
             if (_finishing) yield break;
             Click(UI.DailyTaskPanel.Instance, "_back");
@@ -470,6 +489,8 @@ namespace Game.Network.Diagnostics
             if (afterDelete.Any(t => t.InstanceId == deletedId) || afterDelete.Count(t => t.IsRandom) != randomBefore.Length - 1)
             { Fail("Same-day navigation or relogin refilled a deleted task."); yield break; }
             Click(UI.DailyTaskPanel.Instance, "_back");
+            yield return CheckCardFaceUI();
+            if (_finishing) yield break;
             Click(UI.TitlePanel.Instance, "_start");
             WriteResult("tasks-" + _clientIndex + ".ready", "Single-card UI, delete/cancel, no same-day refill, registration, claim and relogin passed; balance=" + expected);
         }
@@ -519,13 +540,13 @@ namespace Game.Network.Diagnostics
         private void RegisterClientHandlers()
         {
             ObserveAudioRequests();
-            if (_testTasks)
+            if (_testTasks || _testInGameTasks)
             {
                 RegisterClientHandler<DailyTasksResponse>("DailyTasksResponseHandler", _ => { });
                 RegisterClientHandler<DailyTaskClaimResponse>("DailyTaskClaimResponseHandler", response =>
                 {
                     _lastDailyClaimResponse = response;
-                    if (_taskRoomRejectionSent && response.Result == DailyTaskResult.OutsideRoomRequired && response.GrantedAmount == 0)
+                    if (_taskRoomRejectionSent && response.Result == DailyTaskResult.ActiveHand && response.GrantedAmount == 0)
                         _taskRoomRejectionReceived = true;
                 });
             }
@@ -718,6 +739,8 @@ namespace Game.Network.Diagnostics
                 Click(intro, "_confirmButton");
                 WriteResult($"client-{_clientIndex}.intro.checked", "First observer introduction acknowledged");
             }
+            InspectAchievementBanner();
+            if (_testTasks) CheckCardFaceGame();
             if (_testShop) CheckShopGame(message);
             if (_testContracts) CheckInfernalGame(message);
             _latestGameInfo = message;
@@ -933,17 +956,19 @@ namespace Game.Network.Diagnostics
 
         private void TryOperate(GameInfoSync message)
         {
+            InspectAchievementBanner();
             if (_testResultReview)
             {
                 TryReviewOperate(message);
                 return;
             }
             var info = message.Info;
+            if (_testInGameTasks && CheckInGameTaskPhase(message)) return;
             if (_testTasks && !_taskRoomRejectionSent && info.Round < GameStage.RoundOver)
             {
-                if (_networkRoom.CanOpenDailyTasks || _networkRoom.RequestDailyTaskClaim(DailyTaskId.DailySupply, _taskPeriod) != 0)
+                if (!_networkRoom.CanOpenDailyTasks || _networkRoom.RequestDailyTaskClaim(DailyTaskId.DailySupply, _taskPeriod) != 0)
                 {
-                    Fail("Client allowed a reward claim from inside a room.");
+                    Fail("Client did not permit read-only tasks or allowed an active-player reward claim.");
                     return;
                 }
                 _taskRoomRejectionSent = true;
@@ -998,6 +1023,9 @@ namespace Game.Network.Diagnostics
                         ? PlayerOperationType.Call : PlayerOperationType.Check;
                 }
             }
+            if (_testInGameTasks && _roundsCompleted == 1 && _clientIndex != 0 &&
+                !File.Exists(Path.Combine(_outputDirectory, "tasks-folded.checked")))
+                operation = info.CurrentPlayer.StageBet < info.CurrentHighestPlayerBet ? PlayerOperationType.Call : PlayerOperationType.Check;
             if ((_testSpectators || _testStorage) && _clientIndex == 0 && !_confirmationChecked)
             {
                 CheckOperationConfirmations(info);
@@ -1114,6 +1142,8 @@ namespace Game.Network.Diagnostics
             _roundsCompleted++;
             _lastResultTime = Time.realtimeSinceStartup;
             _actionPending = false;
+            if (_testInGameTasks && _clientIndex == 0 && _roundsCompleted == 1)
+                StartCoroutine(CheckInGameTaskUI("between"));
             if (_testResultReview)
             {
                 StartCoroutine(CheckResultViewing());
@@ -1147,6 +1177,11 @@ namespace Game.Network.Diagnostics
         private IEnumerator FinishClient()
         {
             _finishing = true;
+            if (_testInGameTasks && !File.Exists(Path.Combine(_outputDirectory, "tasks-folded.checked")))
+            {
+                Fail("In-hand folded reward was not verified.");
+                yield break;
+            }
             if (!_authenticated || !_joined || !_sawCountdown || !_sawRiver || !_sawBet || _roundsCompleted < 2)
             {
                 Fail("Client did not observe the complete authentication, room, countdown and hand flow.");
@@ -1187,6 +1222,16 @@ namespace Game.Network.Diagnostics
                 if (File.Exists(ResultPath(_clientIndex, "fail"))) yield break;
             }
             yield return new WaitForSecondsRealtime(0.2f);
+            if (_testAchievements)
+            {
+                yield return CheckAchievementUI();
+                if (File.Exists(ResultPath(_clientIndex, "fail"))) yield break;
+            }
+            if (_testRewardNamecards)
+            {
+                yield return CheckRewardNamecardsUI();
+                if (File.Exists(ResultPath(_clientIndex, "fail"))) yield break;
+            }
             LoginCredentialStore.Clear();
             _networkRoom.StopClient();
             WriteResult(ResultPath(_clientIndex, "pass"), JsonSerializer.Serialize(new

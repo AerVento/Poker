@@ -31,7 +31,7 @@ namespace Game.Network.Accounts
         BalanceLimit,
         Unavailable,
         NotComplete, Expired, ItemLimit, SnapshotChanged,
-        AlreadyDeleted, FixedTask,
+        AlreadyDeleted, FixedTask, RefreshUnavailable, NoAlternative,
     }
 
     public struct TaskObjectiveState
@@ -54,6 +54,9 @@ namespace Game.Network.Accounts
         public string DefinitionId;
         public bool IsRandom;
         public bool CanDelete;
+        public bool CanRefresh;
+        public bool OutDated;
+        public int SlotId;
         public bool IsDirectClaim;
         public int CompletedCount;
         public int ClaimedCount;

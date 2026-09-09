@@ -1,0 +1,52 @@
+{
+  "generator": "Built-in image_gen tool",
+  "icons": [
+    {
+      "name": "Wealth-v1",
+      "prompt": "Use case: stylized-concept. Asset type: single square achievement icon for a Unity poker game, legible at 92 pixels. One centered circular medallion, dark emerald enamel face, restrained warm brushed-gold rim, subtle beveled highlights, simple bold gold and ivory emblem with ample negative space. Premium poker UI, clean restrained shapes rather than intricate ornament. The entire circular badge fits inside the square with 6% empty margin on every side. Genuinely transparent background outside the circle, preserve alpha, no checkerboard pattern. No words, numbers, labels, watermark, extra frames or extra badges. Subject: a generous shallow golden bowl filled with large gold coins, three clean coin stacks rising behind it, symbolizing accumulated winnings.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a085e7-b3b3-7213-bd4e-9374629c8b43\\exec-a2dc5555-d15e-4024-ab88-ff1df948c8a5.png",
+      "asset": "Assets/Resources/UI/Achievements/Wealth-v1.png"
+    },
+    {
+      "name": "Champion-v1",
+      "prompt": "Use case: stylized-concept. Asset type: single square achievement icon for a Unity poker game, legible at 92 pixels. One centered circular medallion, dark emerald enamel face, restrained warm brushed-gold rim, subtle beveled highlights, simple bold gold and ivory emblem with ample negative space. Premium poker UI, clean restrained shapes rather than intricate ornament. The entire circular badge fits inside the square with 6% empty margin on every side. Genuinely transparent background outside the circle, preserve alpha, no checkerboard pattern. No words, numbers, labels, watermark, extra frames or extra badges. Subject: a bold elegant three-point golden crown above one large ivory spade emblem, symbolizing poker mastery and a royal winning hand.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a085e7-b3b3-7213-bd4e-9374629c8b43\\exec-bf0a8054-7968-44c8-ad10-0c44d58e0036.png",
+      "asset": "Assets/Resources/UI/Achievements/Champion-v1.png"
+    },
+    {
+      "name": "Cards-v1",
+      "prompt": "Use case: stylized-concept. Asset type: single square achievement icon for a Unity poker game, legible at 92 pixels. One centered circular medallion, dark emerald enamel face, restrained warm brushed-gold rim, subtle beveled highlights, simple bold gold and ivory emblem with ample negative space. Premium poker UI, clean restrained shapes rather than intricate ornament. The entire circular badge fits inside the square with 6% empty margin on every side. Genuinely transparent background outside the circle, preserve alpha, no checkerboard pattern. No words, numbers, labels, watermark, extra frames or extra badges. Subject: three ivory playing cards fanned out, each marked only by a large simple gold or dark emerald card suit emblem; no ranks or letters. Symbolizes poker hand achievements.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a085e7-b3b3-7213-bd4e-9374629c8b43\\exec-bfda55cf-95bd-46c5-b4a2-cc44d9142478.png",
+      "asset": "Assets/Resources/UI/Achievements/Cards-v1.png"
+    },
+    {
+      "name": "FoodChain-v1",
+      "prompt": "Use case: stylized-concept. Asset type: single square achievement icon for a Unity poker game, legible at 92 pixels. One centered circular medallion, dark emerald enamel face, restrained warm brushed-gold rim, subtle beveled highlights, simple bold gold and ivory emblem with ample negative space. Premium poker UI, clean restrained shapes rather than intricate ornament. The entire circular badge fits inside the square with 6% empty margin on every side. Genuinely transparent background outside the circle, preserve alpha, no checkerboard pattern. No words, numbers, labels, watermark, extra frames or extra badges. Subject: three clearly separated gold silhouettes arranged along a descending diagonal: one large fish with open mouth, one smaller fish, and one tiny curved shrimp. Readable playful food-chain symbol, no gore.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a085e7-b3b3-7213-bd4e-9374629c8b43\\exec-96861572-b472-4a2a-9b90-2f88866d8b7c.png",
+      "asset": "Assets/Resources/UI/Achievements/FoodChain-v1.png"
+    }
+  ],
+  "styleUnification": {
+    "generator": "Built-in image_gen tool",
+    "styleGuide": "Assets/Resources/UI/Achievements/AGENTS.md",
+    "icons": [
+      {
+        "name": "Default",
+        "prompt": "Use case: style-transfer. Unify an existing Unity poker achievement icon. Image 1 is the approved STYLE AND BADGE GEOMETRY reference (Cards-v1); image 2 is the old icon whose SUBJECT is to be redesigned. Rebuild image 2 as a sibling of image 1. Match image 1's circular badge diameter and placement, thick warm brushed gold beveled rim, deep emerald enamel face, top-left lighting, gentle three-dimensional relief, ivory accents and contrast. A single centered badge, square canvas, transparent alpha outside the circle, no checkerboard pattern. Keep the complete rim inside the canvas with the same small empty margin. No purple, no flat vector or pixel-art treatment, no labels, letters, words, numbers, watermarks, extra badges or decorative sparkles. Bold, clean shapes readable at 92px, keep peripheral ornament minimal. Subject: one classic gold trophy cup with two symmetrical curved handles, a short stem and a solid pedestal. Large clean silhouette, restrained metallic relief like the crown in this icon family, centered with comfortable breathing space. Remove the playing cards from image 1.",
+        "referenced_image_paths": [
+          "D:/GitHubRepos/Poker/Assets/Resources/UI/Achievements/Cards-v1.png",
+          "D:/GitHubRepos/Poker/Assets/Resources/UI/Achievements/Default.png"
+        ],
+        "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a085e7-b3b3-7213-bd4e-9374629c8b43\\exec-1e697bf8-358a-43e2-88a4-b65ea49d0424.png",
+        "asset": "Assets/Resources/UI/Achievements/Default.png"
+      },
+      {
+        "name": "FullHouse",
+        "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a085e7-b3b3-7213-bd4e-9374629c8b43\\exec-cb0286da-d07c-4a18-81d5-4458567eaf78.png",
+        "asset": "Assets/Resources/UI/Achievements/FullHouse.png",
+        "prompt": "Use case: stylized-concept. Asset type: single square achievement icon for a Unity poker game, legible at 92 pixels. One centered circular medallion, dark emerald enamel face, restrained warm brushed-gold rim, subtle beveled highlights, simple bold gold and ivory emblem with ample negative space. Premium poker UI, clean restrained shapes rather than intricate ornament. The entire circular badge fits inside the square with 6% empty margin on every side. Genuinely transparent background outside the circle, preserve alpha, no checkerboard pattern. No words, numbers, labels, watermark, extra frames or extra badges. Subject: TWO ivory playing cards tilted slightly apart. The left card bears exactly THREE large golden diamond pips in one vertical column. The right card bears exactly TWO large dark emerald diamond pips in one vertical column. All five pips clearly visible. The card edges have a slender gold bevel, the diamonds are shallow embossed metal or green enamel. This is a THREE PLUS TWO full-house poker achievement symbol. Clean broad gold ring, subtle top-left warm lighting and a deep emerald inner face. Output a transparent PNG icon.",
+        "notes": "Reference-based edits repeatedly produced baked checkerboards. Final generated from the original shared style prompt and visually matched to Cards-v1; actual alpha checked before import."
+      }
+    ]
+  }
+}

@@ -316,6 +316,8 @@ namespace Framework.UI
 
         private void TrackPanel(string identifier, bool bringForward)
         {
+            if (_showingPanels[identifier].GetComponent<BasePanel>() is BasePanel panel && !panel.ParticipatesInNavigation)
+                return;
             int existing = _panelOrder.FindIndex(entry => entry.Identifier == identifier);
             if (existing >= 0 && !bringForward)
                 return;

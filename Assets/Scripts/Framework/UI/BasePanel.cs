@@ -8,6 +8,9 @@ namespace Framework.UI
 
         public bool IsShowing { get; protected set; }
 
+        // Passive overlays can stay visible without taking input ownership from the current panel.
+        public virtual bool ParticipatesInNavigation => true;
+
         public virtual void Show()
         {
             IsShowing = true;

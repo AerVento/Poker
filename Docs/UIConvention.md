@@ -4,9 +4,12 @@
 
 ## 1. 目录与命名
 
-- 可独立显示的面板放在 `Assets/Prefabs/UI/Panels`。
-- 结构较小的单文件面板直接使用 `Panels/<PanelName>.prefab`，例如 `TitlePanel.prefab`、`MsgBox.prefab`。
-- 带专用列表项或嵌套元素的面板使用 `Panels/<PanelName>/` 子目录，例如 `GamePanel/GamePanel.prefab` 和 `RoomPanel/RoomPanel.prefab`。
+- 所有面板及配套列表项、嵌套预制体按功能放在 `Assets/Prefabs/UI/Panels/<功能目录>/`，单文件面板也使用独立目录，例如 `TitlePanel/TitlePanel.prefab`、`MsgBox/MsgBox.prefab`。
+- UI 脚本使用对应的 `Assets/Scripts/UI/<功能目录>/`，同一面板的 partial 文件、列表项、专用滚动组件放在一起；目录变化不改变命名空间或类型名。
+- 商城与仓库共用 `ShopPanel/`；主菜单设置与游戏内设置共用 `OptionPanel/`；成就页面、成就横幅与列表项共用 `AchievementPanel/`。
+- 其他功能目录为 `DailyTaskPanel/`、`LeaderboardPanel/`、`LoginPanel/`、`RoomListPanel/`、`RoomPanel/`、`GamePanel/`。
+- 名片通用组件放在脚本 `Namecards/`，展示预制体仍在 `Assets/Prefabs/UI/Namecards/`；金额格式化等无独立面板的通用工具放在脚本 `Shared/`。
+- Canvas 与 EventSystem 保留在 `Assets/Prefabs/UI/`；礼物特效保留在既有 `Assets/Prefabs/Gifts/` 和 `Assets/Scripts/UI/Gifts/`。
 - 面板 prefab 根对象、脚本类型和 prefab 文件名保持一致，例如根对象 `RoomPanel` 挂载 `Game.UI.RoomPanel`。
 - 可复用列表项使用职责名称，例如 `Player`、`RoomItem`、`RoundResultListItem`；不要把面板脚本挂在列表项根对象上。
 

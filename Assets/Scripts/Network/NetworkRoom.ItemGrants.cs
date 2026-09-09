@@ -11,8 +11,8 @@ namespace Game.Network
 
         private void InitializeItemGrants()
         {
-            if (_shopCatalog == null || _itemRuntime == null)
-                throw new InvalidOperationException("Load both shop catalogs before initializing item grants.");
+            if (_shopCatalog == null || _itemRuntime == null || _cardFaceShopCatalog == null)
+                throw new InvalidOperationException("Load all shop catalogs before initializing item grants.");
             ItemIdentities = new ItemIdentityRegistry(_shopCatalog, new ItemServerCatalog
             {
                 Products = _itemRuntime.Products.Select(product => new ServerItemDefinition
@@ -20,7 +20,7 @@ namespace Game.Network
                     Id = product.Id, Kind = product.Kind, MaxQuantity = product.MaxQuantity,
                     Price = product.Price, Listed = product.Listed
                 }).ToArray()
-            });
+            }, _cardFaceShopCatalog);
         }
 
         private void ClearItemGrants()

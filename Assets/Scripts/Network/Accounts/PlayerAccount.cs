@@ -18,6 +18,8 @@ namespace Game.Network.Accounts
 
         public string EquippedNamecardId { get; set; } = string.Empty;
 
+        public string EquippedCardFaceId { get; set; } = string.Empty;
+
         public uint Chips { get; set; }
 
         public int? LastRoomId { get; set; }
@@ -40,6 +42,7 @@ namespace Game.Network.Accounts
                 PasswordIterations = PasswordIterations,
                 Chips = Chips,
                 EquippedNamecardId = EquippedNamecardId,
+                EquippedCardFaceId = EquippedCardFaceId,
                 LastRoomId = LastRoomId,
                 Version = Version,
                 CreatedAtUtc = CreatedAtUtc,

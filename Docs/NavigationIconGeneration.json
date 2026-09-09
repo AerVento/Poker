@@ -1,0 +1,13 @@
+{
+  "tool": "built-in image_gen",
+  "reference": "Assets/Sprites/UITheme/SettingsButton-v1.png",
+  "outputs": [
+    "Assets/Sprites/UITheme/ShopButton-v1.png",
+    "Assets/Sprites/UITheme/CollectionButton-v1.png"
+  ],
+  "prompts": [
+    "Use case: precise-object-edit. Asset type: Unity poker game UI button sprite. Input image is the edit target and exact style reference. Replace ONLY the central golden gear emblem with a large unmistakable golden SHOPPING CART symbol, side view with basket, short handle, two wheels. Keep the square dark emerald green softly padded leather button, rounded polished gold border, framing, lighting, alpha transparency outside, and dimensions visually identical. Central emblem is simple solid bevelled brushed gold, highly legible at 80 pixels. No letters, no numbers, no additional objects. Export single button PNG, genuinely transparent outside border.",
+    "Use case: precise-object-edit. Asset type: Unity poker game UI button sprite. Input image is the edit target and exact style reference. Replace ONLY the central golden gear emblem with a large unmistakable golden STORAGE BOX symbol, a closed square packing crate seen from a slightly raised three-quarter view, with simple lid and central clasp. Keep the square dark emerald green softly padded leather button, rounded polished gold border, framing, lighting, alpha transparency outside, and dimensions visually identical. Central emblem is simple solid bevelled brushed gold, highly legible at 80 pixels. No letters, no numbers, no additional objects. Export single button PNG, genuinely transparent outside border."
+  ],
+  "integration": "Generated originals preserved. Unity uses the existing SettingsButton alpha as a Mask over the rectangular icon sprite; the button's full 88x88 Image is its raycast target."
+}

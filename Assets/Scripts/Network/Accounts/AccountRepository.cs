@@ -52,6 +52,8 @@ namespace Game.Network.Accounts
         public uint Award { get; set; }
         public uint Refund { get; set; }
         public Game.Facts.HandFact OutcomeFact { get; set; }
+        // The first participant carries the shared, server-only context into the settlement transaction.
+        public Game.Achievements.AchievementContext AchievementContext { get; set; }
     }
 
     public sealed class HandSettlementBalance
@@ -59,6 +61,8 @@ namespace Game.Network.Accounts
         public string AccountId { get; set; }
         public uint StartingChips { get; set; }
         public uint Chips { get; set; }
+        // Chips is the immutable hand result; AccountChips also includes independently claimed rewards.
+        public uint? AccountChips { get; set; }
     }
 
     public sealed class ChipReconciliationReport

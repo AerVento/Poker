@@ -34,6 +34,7 @@ namespace Game.Network
         public string AccountId;
         public string UserName;
         public uint Chips;
+        public string EquippedCardFaceId;
         public bool HasLastRoom;
         public int LastRoomId;
         public bool RequiresRoomRecovery;
