@@ -68,6 +68,9 @@ namespace Game.UI
         [SerializeField]
         private Button _settingsButton;
 
+        [SerializeField]
+        private GamePanelControls _controls;
+
         private GameInfoSync _sync;
         public bool CanClaimDailyTaskRewards => _sync.CanClaimDailyTaskRewards;
         private bool _participationRequestInFlight;
@@ -78,8 +81,14 @@ namespace Game.UI
 
         private ClientGameInfo _info;
         private uint _accountChips;
+        private uint _accountDollars;
         private uint _bigBlind;
+        private bool _showSpectators;
         private TableParticipationStatus _participationStatus;
+        public ClientGameInfo CurrentInfo => _info;
+        public GameInfoSync CurrentSync => _sync;
+        public OperationArea OperationArea => _operationArea;
+        public bool ShowSpectators => _showSpectators;
         public ClientGameInfo Info
         {
             get => _info;
@@ -102,6 +111,8 @@ namespace Game.UI
         {
             _sync = message;
             _accountChips = message.AccountChips;
+            if (GameController.Available)
+                _accountDollars = GameController.Instance.State.Dollars;
             _bigBlind = message.BigBlind;
             _participationStatus = message.ParticipationStatus;
             _canLeaveImmediately = message.CanLeaveImmediately;
@@ -296,8 +307,28 @@ namespace Game.UI
         public void SetAccountChips(uint chips)
         {
             _accountChips = chips;
+            RefreshAccountStatus();
+        }
+
+        public void SetAccountDollars(uint dollars)
+        {
+            _accountDollars = dollars;
+            RefreshAccountStatus();
+        }
+
+        public void SetShowSpectators(bool show)
+        {
+            if (_showSpectators == show)
+                return;
+            _showSpectators = show;
+            Refresh();
+        }
+
+        private void RefreshAccountStatus()
+        {
             if (_accountStatus != null)
-                _accountStatus.text = $"账户余额  ${ChipAmountFormatter.Format(chips)}";
+                _accountStatus.text = $"美金 ${ChipAmountFormatter.Format(_accountDollars)}  ·  筹码 ${ChipAmountFormatter.Format(_accountChips)}";
+            _controls?.PresentWallet(_accountDollars, _accountChips);
         }
 
         public void SetInterHandCountdown(bool isActive, int secondsRemaining, bool canStartNextHand = true)
@@ -319,7 +350,9 @@ namespace Game.UI
             if (_playerListItems == null)
                 _playerListItems = new List<PlayerListItem>();
             int occupiedCount = _info.Players?.Count(player => player.IsOccupied) ?? 0;
-            var prefab = occupiedCount <= 4 ? _playerPrefab : occupiedCount <= 8 ? _playerPrefab8 : _playerPrefab16;
+            int spectatorCount = _info.RoomInfo.Spectators?.Count ?? 0;
+            int displayedCount = occupiedCount + (_showSpectators ? spectatorCount : 0);
+            var prefab = displayedCount <= 4 ? _playerPrefab : displayedCount <= 8 ? _playerPrefab8 : _playerPrefab16;
             string countdownPlayer = null;
             double countdownRemaining = 0;
             bool layoutChanged = _activePlayerPrefab != prefab;
@@ -341,17 +374,18 @@ namespace Game.UI
                 }
                 _playerListItems.Clear();
                 _activePlayerPrefab = prefab;
-                var split = occupiedCount <= 4 ? _singleColumnSplit : _twoColumnSplit;
+                var split = displayedCount <= 4 ? _singleColumnSplit : _twoColumnSplit;
                 _playerRegion.anchorMax = new Vector2(split.x, _playerRegion.anchorMax.y);
                 _tableRegion.anchorMin = new Vector2(split.y, _tableRegion.anchorMin.y);
-                _playerGrid.SetTemplate(prefab.GetComponent<PlayerListItem>(), occupiedCount <= 4 ? 1 : 2);
+                _playerGrid.SetTemplate(prefab.GetComponent<PlayerListItem>(), displayedCount > 4 ? 2 : 1);
             }
-            while (_playerListItems.Count < _info.PlayersCount)
+            int requiredItems = _info.PlayersCount + (_showSpectators ? spectatorCount : 0);
+            while (_playerListItems.Count < requiredItems)
             {
                 var obj = Instantiate(prefab, _playerList);
                 _playerListItems.Add(obj.GetComponent<PlayerListItem>());
             }
-            for (int i = _info.PlayersCount; i < _playerListItems.Count; i++)
+            for (int i = requiredItems; i < _playerListItems.Count; i++)
             {
                 _playerListItems[i].IsOperating = false;
                 _playerListItems[i].gameObject.SetActive(false);
@@ -370,7 +404,9 @@ namespace Game.UI
                 }
                 if (listItem.PlayerName != playerInfo.PlayerName)
                     listItem.IsOperating = false;
-                listItem.ThinkingTime = _info.RoomInfo.ThinkingTime;
+                listItem.ThinkingTime = i == _info.OperatingPlayer && _info.ActionTimeLimit > 0
+                    ? _info.ActionTimeLimit
+                    : _info.RoomInfo.ThinkingTime;
                 listItem.IsDealer = i == _info.Dealer;
                 listItem.IsSmallBlind = i == _info.SmallBlind;
                 listItem.IsBigBlind = i == _info.BigBlind;
@@ -381,8 +417,30 @@ namespace Game.UI
                 listItem.SetNamecard(_info.RoomInfo.GetNamecard(playerInfo.PlayerName), _info.RoomInfo.GetServiceYears(playerInfo.PlayerName));
                 listItem.Chip = playerInfo.Chips;
                 listItem.Operation = playerInfo.LastOperation;
-                if (layoutChanged && listItem.IsOperating && playerInfo.PlayerName == countdownPlayer)
+                listItem.GetComponent<PlayerListItemStateView>()?.Present(false, playerInfo.IsFold);
+                if (listItem.IsOperating && _info.ActionDeadline.HasValue)
+                    listItem.RestoreCountdown(Math.Max(0d, _info.ActionDeadline.Value - Mirror.NetworkTime.time));
+                else if (layoutChanged && listItem.IsOperating && playerInfo.PlayerName == countdownPlayer)
                     listItem.RestoreCountdown(countdownRemaining);
+            }
+            if (_showSpectators)
+            {
+                for (int i = 0; i < spectatorCount; i++)
+                {
+                    var listItem = _playerListItems[_info.PlayersCount + i];
+                    var spectatorName = _info.RoomInfo.Spectators[i];
+                    listItem.gameObject.SetActive(true);
+                    listItem.IsOperating = false;
+                    listItem.IsDealer = false;
+                    listItem.IsSmallBlind = false;
+                    listItem.IsBigBlind = false;
+                    listItem.IsFold = false;
+                    listItem.IsDisconnected = false;
+                    listItem.PlayerName = spectatorName;
+                    listItem.SetNamecard(_info.RoomInfo.GetNamecard(spectatorName), _info.RoomInfo.GetServiceYears(spectatorName));
+                    listItem.Operation = null;
+                    listItem.GetComponent<PlayerListItemStateView>()?.Present(true, false);
+                }
             }
 
             // 更新操作区
@@ -403,8 +461,8 @@ namespace Game.UI
             };
             _title.text = $"房间 {_info.RoomInfo.Id} · {stage} · 奖池 ${ChipAmountFormatter.Format(_info.TotalPot)}";
 
-            if (_accountStatus != null)
-                _accountStatus.text = $"账户余额  ${ChipAmountFormatter.Format(_accountChips)}";
+            RefreshAccountStatus();
+            _controls?.Present(_info, _sync);
             if (_tableStatus != null)
             {
                 _tableStatus.text = _leaveAfterHand ? string.Empty : _participationStatus switch

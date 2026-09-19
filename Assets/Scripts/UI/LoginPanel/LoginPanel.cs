@@ -15,7 +15,14 @@ namespace Game.UI
         Leaderboard,
         Shop,
         Collection,
-        Achievements
+        Achievements,
+        Exchange,
+    }
+
+    internal enum LoginMode
+    {
+        Login,
+        Register,
     }
 
     public class LoginPanel : SingletonPanel<LoginPanel>
@@ -25,33 +32,54 @@ namespace Game.UI
         private TMP_InputField _userName;
         [SerializeField]
         private TMP_InputField _password;
+        [SerializeField]
+        private TMP_InputField _passwordConfirmation;
+        [SerializeField]
+        private GameObject _passwordConfirmationGroup;
 
         [Header("Buttons")]
         [SerializeField]
-        private Button _login;
+        private Button _loginTab;
         [SerializeField]
-        private Button _register;
+        private Button _registerTab;
+        [SerializeField]
+        private Button _submit;
         [SerializeField]
         private Button _back;
 
         [Header("Labels")]
         [SerializeField]
+        private TextMeshProUGUI _submitLabel;
+        [SerializeField]
         private TextMeshProUGUI _status;
+        [SerializeField]
+        private TextMeshProUGUI _title;
+
+        [Header("Tab State")]
+        [SerializeField]
+        private GameObject _loginTabSelected;
+        [SerializeField]
+        private GameObject _registerTabSelected;
 
         private AccountAuthenticator _authenticator;
         private bool _subscribed;
         private bool _savedLoginStarted;
+        private LoginMode _mode;
 
         internal LoginDestination DestinationAfterLogin { get; private set; }
 
         private void OnEnable()
         {
-            _login.onClick.AddListener(Login);
-            _register.onClick.AddListener(Register);
+            _loginTab.onClick.AddListener(ShowLogin);
+            _registerTab.onClick.AddListener(ShowRegister);
+            _submit.onClick.AddListener(Submit);
             _back.onClick.AddListener(Back);
             _password.contentType = TMP_InputField.ContentType.Password;
             _password.ForceLabelUpdate();
+            _passwordConfirmation.contentType = TMP_InputField.ContentType.Password;
+            _passwordConfirmation.ForceLabelUpdate();
             _userName.text = LoginCredentialStore.SavedUserName;
+            SetMode(LoginMode.Login);
             SetStatus(string.Empty);
             ResolveAuthenticator();
             RefreshControls();
@@ -63,22 +91,26 @@ namespace Game.UI
         {
             ResolveAuthenticator();
             var pending = _authenticator != null && _authenticator.IsAuthenticationPending;
-            _login.interactable = !pending;
-            _register.interactable = !pending;
+            _loginTab.interactable = !pending && _mode != LoginMode.Login;
+            _registerTab.interactable = !pending && _mode != LoginMode.Register;
+            _submit.interactable = !pending;
             _back.interactable = true;
             _userName.interactable = !pending;
             _password.interactable = !pending;
+            _passwordConfirmation.interactable = !pending;
         }
 
         private void OnDisable()
         {
-            _login.onClick.RemoveListener(Login);
-            _register.onClick.RemoveListener(Register);
+            _loginTab.onClick.RemoveListener(ShowLogin);
+            _registerTab.onClick.RemoveListener(ShowRegister);
+            _submit.onClick.RemoveListener(Submit);
             _back.onClick.RemoveListener(Back);
             Unsubscribe();
             _savedLoginStarted = false;
             DestinationAfterLogin = LoginDestination.Lobby;
             _password.text = string.Empty;
+            _passwordConfirmation.text = string.Empty;
         }
 
         public void BeginTaskLogin() => BeginAccountLogin(LoginDestination.DailyTasks);
@@ -102,15 +134,13 @@ namespace Game.UI
                 SetStatus("正在恢复登录状态……");
         }
 
-        private void Login()
-        {
-            Authenticate(AccountAuthenticationOperation.Login);
-        }
+        private void ShowLogin() => SetMode(LoginMode.Login);
 
-        private void Register()
-        {
-            Authenticate(AccountAuthenticationOperation.Register);
-        }
+        private void ShowRegister() => SetMode(LoginMode.Register);
+
+        private void Submit() => Authenticate(_mode == LoginMode.Register
+            ? AccountAuthenticationOperation.Register
+            : AccountAuthenticationOperation.Login);
 
         private void Authenticate(AccountAuthenticationOperation operation)
         {
@@ -125,6 +155,12 @@ namespace Game.UI
                 SetStatus("用户名和密码不能为空。");
                 return;
             }
+            if (operation == AccountAuthenticationOperation.Register &&
+                _password.text != _passwordConfirmation.text)
+            {
+                SetStatus("两次输入的密码不一致。");
+                return;
+            }
 
             SetStatus(operation == AccountAuthenticationOperation.Register
                 ? "正在注册……"
@@ -133,6 +169,22 @@ namespace Game.UI
                 _authenticator.Register(_userName.text, _password.text);
             else
                 _authenticator.Login(_userName.text, _password.text);
+        }
+
+        private void SetMode(LoginMode mode)
+        {
+            _mode = mode;
+            bool registering = mode == LoginMode.Register;
+            _passwordConfirmationGroup.SetActive(registering);
+            _loginTabSelected.SetActive(!registering);
+            _registerTabSelected.SetActive(registering);
+            _submitLabel.text = registering ? "注册" : "登录";
+            if (_title != null)
+                _title.text = registering ? "创建账户" : "账户登录";
+            if (!registering)
+                _passwordConfirmation.text = string.Empty;
+            SetStatus(string.Empty);
+            RefreshControls();
         }
 
         private void Back()

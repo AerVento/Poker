@@ -17,6 +17,8 @@ namespace Game.UI
         [SerializeField] private RectTransform _layout;
         [SerializeField] private Button _back;
         [SerializeField] private Button _refresh;
+        [SerializeField] private Button _claimAll;
+        [SerializeField] private TextMeshProUGUI _claimAllLabel;
         [SerializeField] private TextMeshProUGUI _summary;
         [SerializeField] private TextMeshProUGUI _feedback;
         [SerializeField] private TextMeshProUGUI _empty;
@@ -24,41 +26,51 @@ namespace Game.UI
         [SerializeField] private Button _tabTemplate;
         [SerializeField] private ScrollRect _scroll;
         [SerializeField] private AchievementRow _rowPrefab;
-        private readonly List<AchievementView> _pages = new List<AchievementView>();
         private readonly List<AchievementRow> _rows = new List<AchievementRow>();
         private readonly List<Button> _tabButtons = new List<Button>();
         private AchievementView[] _views = Array.Empty<AchievementView>();
         private string _category;
         private ulong _statusRequest;
         private ulong _claimRequest;
-        private long _revision;
-        private int _offset;
-        private int _restarts;
-        private double _deadline;
-        private double _nextPageAt;
-        private bool _pagePending;
+        private NetworkRoom _network;
         private bool _canClaim;
-        private bool _dirty;
         private string _claimFeedback;
-        private bool Busy => _statusRequest != 0 || _claimRequest != 0 || _pagePending;
+        private bool Busy => (_network != null && (_network.AchievementCacheBusy || _network.PendingAchievementClaim != 0)) || _claimRequest != 0;
 
         private void OnEnable()
         {
             Fit();
             _back.onClick.AddListener(Back);
             _refresh.onClick.AddListener(Refresh);
-            Refresh();
+            _claimAll?.onClick.AddListener(ClaimAll);
+            _network = NetworkManager.singleton as NetworkRoom;
+            if (_network != null)
+            {
+                _network.AchievementCacheChanged += ReceiveCache;
+                _network.AchievementClaimReceived += ReceiveClaim;
+                _network.AchievementBatchClaimReceived += ReceiveBatchClaim;
+                _network.OpenCachedAchievements();
+            }
+            ReceiveCache();
         }
 
         private void OnDisable()
         {
             _back.onClick.RemoveListener(Back);
             _refresh.onClick.RemoveListener(Refresh);
+            _claimAll?.onClick.RemoveListener(ClaimAll);
+            if (_network != null)
+            {
+                _network.AchievementCacheChanged -= ReceiveCache;
+                _network.AchievementClaimReceived -= ReceiveClaim;
+                _network.AchievementBatchClaimReceived -= ReceiveBatchClaim;
+                _network.CloseCachedAchievements();
+            }
+            _network = null;
             _statusRequest = _claimRequest = 0;
-            _pagePending = _dirty = _canClaim = false;
+            _canClaim = false;
             _claimFeedback = null;
             _views = Array.Empty<AchievementView>();
-            _pages.Clear();
             ClearRows();
         }
 
@@ -73,86 +85,67 @@ namespace Game.UI
 
         private void Update()
         {
-            if (Busy && Time.realtimeSinceStartupAsDouble >= _deadline)
+            if (_network != null)
             {
-                _statusRequest = _claimRequest = 0;
-                _pagePending = false;
-                _canClaim = false;
-                _feedback.text = "响应超时，请刷新查看最新状态。";
-                DisplayRows();
+                if (_claimRequest != 0 && _network.PendingAchievementClaim != _claimRequest)
+                {
+                    _claimRequest = 0;
+                    ReceiveCache();
+                }
+                var canClaim = _network.CanClaimCachedAchievements;
+                if (_canClaim != canClaim)
+                {
+                    _canClaim = canClaim;
+                    DisplayRows();
+                }
             }
-            if (_pagePending && Time.realtimeSinceStartupAsDouble >= _nextPageAt)
-            {
-                _pagePending = false;
-                RequestPage();
-            }
-            if (_dirty && !Busy) Refresh();
             _refresh.interactable = !Busy;
+            UpdateClaimAll();
         }
 
         public void Refresh()
         {
             if (Busy) return;
-            _dirty = false;
-            _pages.Clear();
-            _offset = _restarts = 0;
-            _revision = 0;
-            _canClaim = false;
-            _feedback.text = "正在读取成就…";
-            RequestPage();
-            DisplayRows();
+            _claimFeedback = null;
+            _network?.OpenCachedAchievements(forceStateRefresh: true);
+            ReceiveCache();
         }
 
-        private void RequestPage()
+        private void ReceiveCache()
         {
-            _statusRequest = (NetworkManager.singleton as NetworkRoom)?.RequestAchievements(_offset, _revision) ?? 0;
-            _deadline = Time.realtimeSinceStartupAsDouble + 10;
-            if (_statusRequest == 0) _feedback.text = "请先登录，再查看成就。";
+            if (!isActiveAndEnabled) return;
+            // Kept as a busy marker for existing diagnostics; pagination belongs to NetworkRoom.
+            _statusRequest = _network != null && _network.AchievementCacheBusy ? 1UL : 0UL;
+            if (_network != null && _network.TryGetCachedAchievements(out var views))
+                Present(views, _network.CanClaimCachedAchievements);
+            else
+                Present(Array.Empty<AchievementView>(), false);
+            _feedback.text = _claimFeedback ?? _network?.AchievementCacheError ??
+                (_network == null || !_network.CanViewAchievements ? "请先登录，再查看成就。" :
+                    _network.AchievementCacheBusy ? "正在读取成就…" :
+                    _network.AchievementProgressDirty ? "进度有更新。" :
+                    "");
+            _refresh.interactable = !Busy;
+            UpdateClaimAll();
         }
 
+        // Compatibility for explicit legacy snapshot requests; normal panel loads never use this protocol.
         public void ReceiveStatus(AchievementsResponse response)
         {
-            if (!isActiveAndEnabled || _statusRequest == 0 || response.RequestId != _statusRequest) return;
-            _statusRequest = 0;
-            if (response.Result == AchievementResult.RevisionChanged && _restarts++ < 2)
-            {
-                _pages.Clear(); _offset = 0; _revision = 0;
-                SchedulePage();
-                return;
-            }
-            if (response.Result != AchievementResult.Success || response.Achievements == null || response.Offset != _offset)
-            {
-                _feedback.text = ResultMessage(response.Result);
-                DisplayRows();
-                return;
-            }
-            _revision = response.Revision;
-            _pages.AddRange(response.Achievements);
-            if (response.NextOffset > _offset)
-            {
-                _offset = response.NextOffset;
-                SchedulePage();
-                return;
-            }
-            Present(_pages.ToArray(), response.CanClaim);
-            _feedback.text = _claimFeedback ?? (response.CanClaim ? "每个成就仅可完成一次。" : "成就进度实时保存，奖励请回到大厅领取。");
-            _claimFeedback = null;
-        }
-
-        private void SchedulePage()
-        {
-            _pagePending = true;
-            _nextPageAt = Time.realtimeSinceStartupAsDouble + 0.15;
-            _deadline = Time.realtimeSinceStartupAsDouble + 10;
+            if (isActiveAndEnabled && response.Result == AchievementResult.Success && response.Offset == 0 && response.NextOffset == -1)
+                Present(response.Achievements ?? Array.Empty<AchievementView>(), _network != null && _network.CanClaimCachedAchievements);
         }
 
         public void Present(AchievementView[] views, bool canClaim)
         {
+            var keepScroll = _views.Length > 0;
+            var scrollPosition = _scroll.verticalNormalizedPosition;
             _views = views;
             _canClaim = canClaim;
             _summary.text = $"已达成  {_views.Count(v => v.CompletedAt > 0)} / {_views.Length}";
             BuildTabs();
             DisplayRows();
+            if (keepScroll) _scroll.verticalNormalizedPosition = scrollPosition;
         }
 
         private void BuildTabs()
@@ -207,7 +200,12 @@ namespace Game.UI
         private void DisplayRows()
         {
             ClearRows();
-            foreach (var view in _views.Where(v => _category == null || v.Category == _category))
+            var ordered = _views.Select((view, index) => new { View = view, Index = index })
+                .Where(item => _category == null || item.View.Category == _category)
+                .OrderBy(item => SortPriority(item.View))
+                .ThenBy(item => item.Index)
+                .Select(item => item.View);
+            foreach (var view in ordered)
             {
                 var row = Instantiate(_rowPrefab, _scroll.content);
                 row.gameObject.SetActive(true);
@@ -217,14 +215,37 @@ namespace Game.UI
             _empty.gameObject.SetActive(_rows.Count == 0);
             _empty.text = _views.Length == 0 ? "暂无成就数据" : "这个类别暂时没有成就";
             _scroll.verticalNormalizedPosition = 1;
+            UpdateClaimAll();
+        }
+
+        private static int SortPriority(AchievementView view)
+        {
+            if (view.CompletedAt > 0) return view.ClaimedAt == 0 ? 0 : 1;
+            return view.Hidden ? 3 : 2;
+        }
+
+        private void UpdateClaimAll()
+        {
+            if (_claimAll == null) return;
+            var count = _views.Count(view => (_category == null || view.Category == _category) &&
+                view.CompletedAt > 0 && view.ClaimedAt == 0);
+            _claimAll.interactable = !Busy && _canClaim && count > 0;
+            if (_claimAllLabel != null) _claimAllLabel.text = count > 0 ? $"一键领取  {count}" : "一键领取";
         }
 
         private void Claim(string id)
         {
             if (Busy || !_canClaim) return;
             _claimRequest = (NetworkManager.singleton as NetworkRoom)?.RequestAchievementClaim(id) ?? 0;
-            _deadline = Time.realtimeSinceStartupAsDouble + 10;
-            if (_claimRequest == 0) _feedback.text = "请回到大厅领取奖励。";
+            if (_claimRequest == 0) _feedback.text = "暂时无法领取奖励。";
+            DisplayRows();
+        }
+
+        private void ClaimAll()
+        {
+            if (Busy || !_canClaim) return;
+            _claimRequest = _network?.RequestAchievementBatchClaim(_category) ?? 0;
+            if (_claimRequest == 0) _feedback.text = "暂时无法领取奖励。";
             DisplayRows();
         }
 
@@ -232,22 +253,33 @@ namespace Game.UI
         {
             if (!isActiveAndEnabled || _claimRequest == 0 || response.RequestId != _claimRequest) return;
             _claimRequest = 0;
-            Refresh();
             _claimFeedback = response.Result == AchievementResult.Success
-                ? (response.GrantedChips > 0 ? $"领取成功，${response.GrantedChips:N0} 筹码已到账。" : "领取成功。") +
+                ? (response.GrantedDollars > 0 ? $"领取成功，${response.GrantedDollars:N0} 美金已到账。" : "领取成功。") +
                     (response.GrantedItems != null && response.GrantedItems.Length > 0 ? " 物品已加入背包。" : "")
                 : ResultMessage(response.Result);
-            _feedback.text = _claimFeedback;
+            ReceiveCache();
         }
 
-        public void AchievementChanged() { if (isActiveAndEnabled) _dirty = true; }
+        public void ReceiveBatchClaim(AchievementBatchClaimResponse response)
+        {
+            if (!isActiveAndEnabled || _claimRequest == 0 || response.RequestId != _claimRequest) return;
+            _claimRequest = 0;
+            _claimFeedback = response.Result == AchievementResult.Success
+                ? $"已领取 {response.ClaimedCount} 项奖励。" +
+                    (response.GrantedDollars > 0 ? $" ${response.GrantedDollars:N0} 美金已到账。" : "") +
+                    (response.GrantedItems != null && response.GrantedItems.Length > 0 ? " 物品已加入背包。" : "")
+                : response.Result == AchievementResult.AlreadyClaimed || response.Result == AchievementResult.NotComplete
+                    ? "当前页签没有可领取奖励。"
+                : ResultMessage(response.Result);
+            ReceiveCache();
+        }
 
         private static string ResultMessage(AchievementResult result) => result switch
         {
             AchievementResult.AlreadyClaimed => "这个成就的奖励已经领取。",
             AchievementResult.NotComplete => "尚未达成这个成就。",
-            AchievementResult.OutsideRoomRequired => "请回到大厅领取奖励。",
-            AchievementResult.BalanceLimit => "筹码余额已达上限，奖励仍保留待领取。",
+            AchievementResult.OutsideRoomRequired => "当前无法领取奖励。",
+            AchievementResult.BalanceLimit => "美金余额已达上限，奖励仍保留待领取。",
             AchievementResult.ItemLimit => "奖励物品数量已达上限，奖励仍保留待领取。",
             AchievementResult.RateLimited => "操作过于频繁，请稍后刷新。",
             AchievementResult.RevisionChanged => "成就状态发生变化，请刷新。",

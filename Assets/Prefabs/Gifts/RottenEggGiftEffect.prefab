@@ -55,5 +55,6 @@ MonoBehaviour:
   _slideDuration: 2
   _fadeDuration: 0.65
   _eggSize: 180
+  _effectScale: 0.5
   _arcHeight: 200
   _slideDistance: 52

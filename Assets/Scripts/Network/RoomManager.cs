@@ -48,7 +48,7 @@ namespace Game.Network
         /// <param name="roomId"></param>
         /// <param name="player"></param>
         /// <returns> 0 = success, -1 = room doesn't exist, -2 = already associated with a room, -3 = full room </returns>
-        public int Join(int roomId, string player)
+        public int Join(int roomId, string player, bool asSpectator = false)
         {
             var room = FindRoom(roomId);
             
@@ -64,7 +64,7 @@ namespace Game.Network
                 return -2;
             }
 
-            if (!room.IsWaiting)
+            if (!room.IsWaiting || asSpectator)
             {
                 room.Spectators.Add(player);
                 room.SynchronizeLegacyLists();
@@ -85,6 +85,8 @@ namespace Game.Network
                 IsReady = false,
                 State = room.IsWaiting ? RoomSeatState.Waiting : RoomSeatState.WaitingForNextHand,
             });
+            if (room.FindSeat(room.OwnerName) == null)
+                TransferOwnerIfNeeded(room, room.OwnerName);
             room.SynchronizeLegacyLists();
 
             Log.Write($"Player {player} joined room {roomId} at seat {seatIndex}.");
@@ -126,6 +128,8 @@ namespace Game.Network
                 IsReady = false,
                 State = room.IsWaiting ? RoomSeatState.Waiting : RoomSeatState.WaitingForNextHand,
             });
+            if (room.FindSeat(room.OwnerName) == null)
+                TransferOwnerIfNeeded(room, room.OwnerName);
             room.SynchronizeLegacyLists();
             return 0;
         }
@@ -309,6 +313,7 @@ namespace Game.Network
                 return;
 
             room.IsWaiting = true;
+            room.NextHandPlayers.Clear();
             room.EnsureSeatModel();
             foreach (var seat in room.Seats.Where(seat => seat.State != RoomSeatState.Leaving))
             {

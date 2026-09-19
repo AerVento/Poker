@@ -231,6 +231,12 @@ namespace Game.Network
             [JsonIgnore]
             public uint AccountChips { get; set; }
 
+            [JsonIgnore]
+            public uint LastActionStackBefore { get; set; }
+
+            [JsonIgnore]
+            public uint LastActionCommittedChips { get; set; }
+
             /// <summary>
             /// 筹码量
             /// </summary>

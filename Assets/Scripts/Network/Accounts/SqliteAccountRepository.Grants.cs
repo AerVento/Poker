@@ -121,6 +121,8 @@ VALUES($account,$operation,$item,$quantity,$result,$now);";
                     receipt.Parameters.AddWithValue("$now", FormatDateTime(now));
                     receipt.ExecuteNonQuery();
                 }
+                if (grantResult == ItemGrantResult.Success && !identity.IsNamecard && !identity.IsCardFace)
+                    RecordInventoryChanged(connection, transaction, accountId, operationId, "grant", now);
                 transaction.Commit();
                 return new ItemGrantExecution(grantResult, grantResult == ItemGrantResult.Success);
             }

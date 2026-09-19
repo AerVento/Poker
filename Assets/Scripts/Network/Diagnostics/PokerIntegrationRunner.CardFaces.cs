@@ -42,7 +42,7 @@ namespace Game.Network.Diagnostics
         private IEnumerator CardFaceWait(CardFaceBrowserView view)
         {
             var until = Time.realtimeSinceStartup + 15;
-            while (Field<CardFaceShopRequest>(view, "_pending").RequestId != 0 && Time.realtimeSinceStartup < until)
+            while ((Field<ulong>(_networkRoom, "_collectionRequest") != 0 || Field<CardFaceShopRequest>(view, "_pending").RequestId != 0) && Time.realtimeSinceStartup < until)
                 yield return null;
             if (!Field<CardFaceShopResponse>(view, "_snapshot").HasSnapshot)
                 Fail("Card-face shop did not return a snapshot.");
@@ -62,7 +62,16 @@ namespace Game.Network.Diagnostics
             var view = panel.CardFacesView;
             yield return CardFaceWait(view);
             if (_finishing) yield break;
-            if (view.GetComponentsInChildren<CardFaceView>().Length != 6)
+            while (view.transform.Find("CardFace-" + FaceFixtureId) == null)
+            {
+                var next = view.transform.Find("下一页")?.GetComponent<Button>();
+                if (next == null || !next.interactable)
+                { Fail("Card-face fixture was not found on any shop page."); yield break; }
+                next.onClick.Invoke();
+                yield return null;
+            }
+            var visibleCards = view.GetComponentsInChildren<CardFaceShopCard>();
+            if (visibleCards.Length == 0 || visibleCards.Any(item => item.GetComponentsInChildren<CardFaceView>().Length != 2))
             { Fail("Each card-face product must preview exactly a front and a back."); yield break; }
             var card = view.transform.Find("CardFace-" + FaceFixtureId);
             var button = card.GetComponentInChildren<Button>();

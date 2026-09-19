@@ -61,7 +61,7 @@ namespace Game.Network.Accounts
         public string AccountId { get; set; }
         public uint StartingChips { get; set; }
         public uint Chips { get; set; }
-        // Chips is the immutable hand result; AccountChips also includes independently claimed rewards.
+        // Chips is the immutable hand result; AccountChips includes exchanges made after folding.
         public uint? AccountChips { get; set; }
     }
 

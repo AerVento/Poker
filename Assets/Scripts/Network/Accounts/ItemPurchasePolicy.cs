@@ -8,13 +8,15 @@ namespace Game.Network.Accounts
     {
         public string AccountId { get; }
         public uint BalanceBefore { get; }
+        public ulong TotalAssets { get; }
         public ItemPurchaseProduct Product { get; }
         public uint OwnedQuantity { get; }
 
-        public PurchaseContext(string accountId, uint balanceBefore, ItemPurchaseProduct product, uint ownedQuantity)
+        public PurchaseContext(string accountId, uint balanceBefore, ItemPurchaseProduct product, uint ownedQuantity, ulong? totalAssets = null)
         {
             AccountId = accountId;
             BalanceBefore = balanceBefore;
+            TotalAssets = totalAssets ?? balanceBefore;
             Product = product;
             OwnedQuantity = ownedQuantity;
         }
@@ -36,7 +38,8 @@ namespace Game.Network.Accounts
             Descriptor = new PurchaseConditionDescriptor(PurchaseConditionKind.Balance, comparison, threshold);
         }
 
-        public bool Check(PurchaseContext context) => Descriptor.Matches(context.BalanceBefore);
+        public bool Check(PurchaseContext context) => Descriptor.Comparison == ComparisonType.Equal && Descriptor.Threshold == 0
+            ? context.TotalAssets == 0 : Descriptor.Matches(context.BalanceBefore);
     }
 
     public enum PurchaseEffectKind : byte { CreditChips = 1, DebitChips = 2 }

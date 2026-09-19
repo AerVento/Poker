@@ -6,9 +6,9 @@
 
 | 名称 | 名片 ID | 触发条件 | 商品 SO |
 | --- | --- | --- | --- |
-| 狱契之印 | devil-service | 地狱服役满 100 年 | Assets/Resources/SO/Shop/Products/devil-service.asset |
-| 深狱领主 | archdevil-service | 地狱服役满 500 年 | Assets/Resources/SO/Shop/Products/archdevil-service.asset |
-| 撒旦敕印 | satan-service | 地狱服役满 1000 年 | Assets/Resources/SO/Shop/Products/satan-service.asset |
+| 狱契之印 | devil-service | 地狱服役满 100 年 | Assets/Resources/SO/Shop/Namecards/Products/devil-service.asset |
+| 深狱领主 | archdevil-service | 地狱服役满 500 年 | Assets/Resources/SO/Shop/Namecards/Products/archdevil-service.asset |
+| 撒旦敕印 | satan-service | 地狱服役满 1000 年 | Assets/Resources/SO/Shop/Namecards/Products/satan-service.asset |
 
 六张图片位于 `Assets/Sprites/Namecards/{id}-wide-v1.png` 和 `{id}-4x3-v1.png`，原样复制自已认可预览。Unity 导入为 Sprite / Single / Full Rect，Max Size 1024、无 Mip Maps、Clamp、NPOT None；运行时宽版 1024×384、紧凑版 1024×768。
 

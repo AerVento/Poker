@@ -22,6 +22,10 @@ namespace Game.Network.Accounts
 
         public uint Chips { get; set; }
 
+        public uint Dollars { get; set; }
+
+        public ulong TotalAssets => (ulong)Dollars + Chips;
+
         public int? LastRoomId { get; set; }
 
         public long Version { get; set; }
@@ -41,6 +45,7 @@ namespace Game.Network.Accounts
                 PasswordSalt = PasswordSalt == null ? null : (byte[])PasswordSalt.Clone(),
                 PasswordIterations = PasswordIterations,
                 Chips = Chips,
+                Dollars = Dollars,
                 EquippedNamecardId = EquippedNamecardId,
                 EquippedCardFaceId = EquippedCardFaceId,
                 LastRoomId = LastRoomId,

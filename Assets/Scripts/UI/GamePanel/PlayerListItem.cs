@@ -5,11 +5,18 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 namespace Game.UI.GamePanelElement
 {
-    public class PlayerListItem : MonoBehaviour
+    public class PlayerListItem : MonoBehaviour, IPointerClickHandler
     {
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (eventData.button == PointerEventData.InputButton.Left)
+                Game.UI.Gifts.GiftInteractionController.EnsureActive()?.OpenFor(this);
+        }
+
         [SerializeField] private NamecardAppearance _namecard;
         public void SetNamecard(string id, ulong serviceYears = 0) => _namecard?.Present(id, serviceYears, _name);
         public void SetNamecard(Game.SO.NamecardProductSO product) => SetNamecard(product != null ? product.Id : null);

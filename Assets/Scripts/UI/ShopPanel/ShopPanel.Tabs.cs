@@ -33,7 +33,7 @@ namespace Game.UI
         {
             _itemsTab.onClick.AddListener(ShowItems);
             if (_cardFacesTab != null) _cardFacesTab.onClick.AddListener(ShowCardFaces);
-            if (_cardFacesView != null) _cardFacesView.BalanceChanged += OnCardFaceBalanceChanged;
+            if (_cardFacesView != null) _cardFacesView.WalletChanged += OnCardFaceWalletChanged;
             _namecardsTab.onClick.AddListener(ShowNamecards);
             _switchMode.onClick.AddListener(SwitchMode);
             _itemsView.ShopRequested += ShowShop;
@@ -45,7 +45,7 @@ namespace Game.UI
         {
             _itemsTab.onClick.RemoveListener(ShowItems);
             if (_cardFacesTab != null) _cardFacesTab.onClick.RemoveListener(ShowCardFaces);
-            if (_cardFacesView != null) _cardFacesView.BalanceChanged -= OnCardFaceBalanceChanged;
+            if (_cardFacesView != null) _cardFacesView.WalletChanged -= OnCardFaceWalletChanged;
             _namecardsTab.onClick.RemoveListener(ShowNamecards);
             _switchMode.onClick.RemoveListener(SwitchMode);
             _itemsView.ShopRequested -= ShowShop;
@@ -85,6 +85,8 @@ namespace Game.UI
             _namecardsTabLabel.text = Mode == ShopPageMode.Shop ? "名片商店" : "名片";
             SetTabAppearance(_itemsTab, _itemsTabLabel, items);
             SetTabAppearance(_namecardsTab, _namecardsTabLabel, namecards);
+            _switchMode.gameObject.SetActive(items);
+            if (_online) (Mirror.NetworkManager.singleton as Game.Network.NetworkRoom)?.LoadCollection();
             _switchModeIcon.sprite = Mode == ShopPageMode.Shop ? _collectionIcon : _shopIcon;
             _title.text = items ? Mode == ShopPageMode.Shop ? "物品商店" : "我的收藏" : "名片商店";
             _subtitle.text = items ? Mode == ShopPageMode.Shop ? "挑选游戏物品，丰富你的牌桌时光。" :
@@ -106,11 +108,13 @@ namespace Game.UI
 
         public CardFaceBrowserView CardFacesView => _cardFacesView;
         public void ReceiveCardFaces(Game.Network.CardFaceShopResponse response) => _cardFacesView?.Receive(response);
-        private void OnCardFaceBalanceChanged(uint chips)
+        private void OnCardFaceWalletChanged(uint dollars, uint availableChips, bool canExchange)
         {
             CloseConfirmation();
-            _chips = chips;
-            _itemsView.SetBalance(chips);
+            _dollars = dollars;
+            _availableChips = availableChips;
+            _canExchange = canExchange;
+            _itemsView.SetWallet(dollars, availableChips, canExchange, false);
             Redraw();
         }
         private void ShowCardFaces() => SelectTab(ShopTab.CardFaces);
@@ -122,7 +126,7 @@ namespace Game.UI
         private void OnItemSnapshotChanged(ItemInventorySnapshot snapshot)
         {
             CloseConfirmation();
-            _chips = snapshot.Balance;
+            _dollars = snapshot.Balance;
             Redraw();
         }
     }

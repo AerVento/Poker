@@ -1,4 +1,5 @@
 using UnityEngine;
+using Game.UI;
 
 namespace Framework.UI
 {
@@ -17,6 +18,10 @@ namespace Framework.UI
             gameObject.SetActive(true);
             if (UIManager.Available)
                 UIManager.Instance.NotifyPanelShown(this);
+            var shortcuts = GetComponent<PanelShortcutHandler>();
+            if (shortcuts == null)
+                shortcuts = gameObject.AddComponent<PanelShortcutHandler>();
+            shortcuts.InitializeForPanel(this);
         }
 
         public virtual void Hide()

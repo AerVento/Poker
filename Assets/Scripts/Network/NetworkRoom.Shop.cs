@@ -15,8 +15,7 @@ namespace Game.Network
             new Dictionary<NetworkConnectionToClient, (ulong Sequence, double Next)>();
         private ulong _nextShopRequest;
 
-        public bool CanOpenShop => HasAuthenticatedClient && !_roomEntryPending &&
-            !_activeClientRoomId.HasValue && !GameController.Instance.State.LastRoomId.HasValue;
+        public bool CanOpenShop => HasAuthenticatedClient && !_roomEntryPending;
 
         private void RegisterShopServerHandlers()
         {
@@ -26,8 +25,10 @@ namespace Game.Network
             {
                 var response = ProcessShopRequest(conn, request);
                 if (response.HasSnapshot)
-                    conn.Send(new AccountBalanceSync { Chips = response.Chips });
+                    conn.Send(new AccountBalanceSync { Chips = response.Chips, Dollars = response.Dollars });
                 conn.Send(response);
+                if (request.Action != ShopAction.Read && response.HasSnapshot)
+                    conn.Send(ReadCollection(conn));
             }, requireAuthentication: true);
         }
 
@@ -55,7 +56,7 @@ namespace Game.Network
                 return response;
             }
             _shopRequests[conn] = (request.RequestId, now + 0.2d);
-            if (_roomManager.WhichRoom(session.Account.UserName, out _) || session.Account.LastRoomId.HasValue)
+            if (request.Action == ShopAction.Equip && (_roomManager.WhichRoom(session.Account.UserName, out _) || session.Account.LastRoomId.HasValue))
             {
                 response.Result = ShopResult.OutsideRoomRequired;
                 return response;
@@ -63,18 +64,44 @@ namespace Game.Network
             var repository = (authenticator as AccountAuthenticator)?.AccountRepository as INamecardRepository;
             if (repository == null || _shopCatalog == null)
                 return response;
+            UpdateWalletHandAccess(session.Account);
             response.Result = request.Action == ShopAction.Read ? ShopResult.Success :
-                repository.ChangeNamecard(response.AccountId, request.OperationId, request.Action,
-                    request.ProductId, request.CatalogRevision, _shopCatalog);
+                repository is IWalletPaymentRepository payments
+                    ? payments.ChangeNamecard(response.AccountId, request.OperationId, request.Action,
+                        request.ProductId, request.CatalogRevision, _shopCatalog, request.AuthorizeChipConversion, request.AuthorizedShortfall)
+                    : repository.ChangeNamecard(response.AccountId, request.OperationId, request.Action,
+                        request.ProductId, request.CatalogRevision, _shopCatalog);
+            if (response.Result == ShopResult.ConversionRequired)
+            {
+                var current = WalletRepository?.ReadWallet(response.AccountId)?.Account;
+                var product = _shopCatalog.Products.FirstOrDefault(p => p.Id == request.ProductId);
+                if (current != null && product != null && product.Price > current.Dollars)
+                    response.RequiredConversion = product.Price - current.Dollars;
+            }
+            if (response.Result == ShopResult.Success && request.AuthorizeChipConversion)
+            {
+                var current = WalletRepository?.ReadWallet(response.AccountId)?.Account;
+                if (current != null) SynchronizeWalletBalance(current);
+            }
+            return PopulateNamecardSnapshot(response, repository, session);
+        }
+
+        private NamecardShopResponse PopulateNamecardSnapshot(NamecardShopResponse response, INamecardRepository repository, PlayerSession session)
+        {
             var snapshot = repository.ReadNamecards(response.AccountId);
             if (snapshot == null)
                 return response;
             session.Account = snapshot.Account.Copy();
             response.HasSnapshot = true;
             response.Chips = snapshot.Account.Chips;
+            response.Dollars = snapshot.Account.Dollars;
+            var wallet = ReadCurrentWallet(snapshot.Account);
+            response.AvailableChips = wallet?.AvailableChips ?? 0;
+            response.CanExchange = wallet?.CanExchange ?? false;
             response.OwnedIds = snapshot.OwnedIds;
             response.EquippedId = snapshot.Account.EquippedNamecardId;
-            response.CanAct = snapshot.CanAct;
+            response.CanAct = true;
+            response.CanEquip = snapshot.CanAct;
             response.CatalogRevision = _shopCatalog.Revision;
             response.Offers = _shopCatalog.Products.Select(p =>
                 new NamecardOfferMessage { Id = p.Id, Price = p.Price, Listed = p.Listed }).ToArray();
@@ -82,15 +109,17 @@ namespace Game.Network
         }
 
         public ulong RequestShop(ShopAction action = ShopAction.Read, string productId = null,
-            string revision = null, string operationId = null)
+            string revision = null, string operationId = null, bool authorizeChipConversion = false, uint authorizedShortfall = 0)
         {
             if (!CanOpenShop)
                 return 0;
+            if (action != ShopAction.Read) InvalidateCollection();
             var requestId = ++_nextShopRequest;
             NetworkClient.Send(new NamecardShopRequest
             {
                 RequestId = requestId, Action = action, ProductId = productId,
-                CatalogRevision = revision, OperationId = operationId
+                CatalogRevision = revision, OperationId = operationId,
+                AuthorizeChipConversion = authorizeChipConversion, AuthorizedShortfall = authorizedShortfall
             });
             return requestId;
         }

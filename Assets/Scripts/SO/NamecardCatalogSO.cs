@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using Game.Network.Accounts;
 using UnityEngine;
 
 namespace Game.SO
@@ -7,6 +9,8 @@ namespace Game.SO
     [CreateAssetMenu(fileName = "NamecardCatalog", menuName = "Poker/Shop/Namecard Catalog")]
     public sealed class NamecardCatalogSO : ScriptableObject
     {
+        public const string ResourcePath = "SO/Shop/Namecards/NamecardCatalog";
+
         [Tooltip("Listed products, in display order. Keep delisted products here so owners can equip them.")]
         [SerializeField] private NamecardProductSO[] _products = Array.Empty<NamecardProductSO>();
 
@@ -40,6 +44,30 @@ namespace Game.SO
                     result.Add(product);
             }
             return result;
+        }
+
+        public NamecardServerCatalog CreateServerCatalog()
+        {
+            if (_products == null || _products.Any(product => product == null))
+                throw new InvalidOperationException("Namecard shop catalog contains an empty product reference.");
+            var catalog = new NamecardServerCatalog
+            {
+                Products = _products.Select(product => new NamecardOffer
+                {
+                    Id = product.Id,
+                    Price = product.Price,
+                    Listed = product.IsListed && product.CanPurchase
+                }).ToArray()
+            };
+            catalog.Validate();
+            return catalog;
+        }
+
+        public static NamecardCatalogSO LoadDefault()
+        {
+            var catalog = Resources.Load<NamecardCatalogSO>(ResourcePath);
+            if (catalog == null) throw new InvalidOperationException("Missing namecard shop catalog SO.");
+            return catalog;
         }
     }
 }

@@ -1,5 +1,8 @@
 using System.Collections.Generic;
+using System.Text;
+using Framework.Configs;
 using Framework.UI;
+using Game.Network;
 using Game.SO;
 using Game.UI;
 using UnityEditor;
@@ -41,6 +44,17 @@ namespace Game.Editor
             EditorGUILayout.HelpBox("每页 4 款。拖动调整顺序，添加引用以增加商品，下架请在商品 SO 取消上架；默认款放在第一位。", MessageType.Info);
             EditorGUILayout.PropertyField(serializedObject.FindProperty("_products"), new GUIContent("上架商品（按顺序）"), true);
             serializedObject.ApplyModifiedProperties();
+            if (GUILayout.Button("导出默认配置…"))
+            {
+                var path = EditorUtility.SaveFilePanel("导出名片商店默认配置",
+                    ShopCatalogConfigManager.DefaultDirectory, NamecardCatalogLoader.FileName, "json");
+                if (!string.IsNullOrEmpty(path))
+                {
+                    ConfigManager.WriteAllTextAtPath(path,
+                        NamecardCatalogLoader.ExportDefaults((NamecardCatalogSO)target), new UTF8Encoding(false));
+                    AssetDatabase.Refresh();
+                }
+            }
         }
     }
 

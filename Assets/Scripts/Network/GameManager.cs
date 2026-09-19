@@ -15,6 +15,10 @@ namespace Game.Network
         private readonly Dictionary<int, ServerGameInfo> _games = new Dictionary<int, ServerGameInfo>();
         private readonly HashSet<int> _autoRunningRooms = new HashSet<int>();
         private IHandAccountRepository _accountRepository;
+        private readonly Dictionary<string, int> _consecutiveTimeouts = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        private enum ActionSource { Manual, Timeout, Disconnected }
+
 
         public event Action<int> OnGameInfoChanged;
         public event Action<int> OnGameStageEnded;
@@ -71,7 +75,7 @@ namespace Game.Network
 
             var gameInfo = ServerGameInfo.Create(room, accounts);
             _games.Add(room.Id, gameInfo);
-            gameInfo.Timer.OnTimeUp += () => AutoOperation(gameInfo);
+            gameInfo.Timer.OnTimeUp += () => AutoOperationCore(gameInfo, ActionSource.Timeout);
             return 0;
         }
 
@@ -104,8 +108,9 @@ namespace Game.Network
                 !player.IsLeaving &&
                 player.Chips >= GetBigBlindAmount(info) &&
                 !player.IsDisconnected &&
-                !info.RoomInfo.Seats.Any(seat =>
-                    seat.SeatIndex == player.SeatIndex && (seat.LeaveAfterHand || seat.SitOutAfterHand));
+                info.RoomInfo.Seats.Any(seat => seat.SeatIndex == player.SeatIndex &&
+                    seat.PlayerName == player.PlayerName && !seat.LeaveAfterHand && !seat.SitOutAfterHand &&
+                    seat.State != RoomSeatState.Watching && seat.State != RoomSeatState.Leaving);
         }
 
         private static int FindSeatAtOrAfter(
@@ -245,6 +250,8 @@ namespace Game.Network
             var roundBet = checked(player.RoundBet + chipCount);
             var pot = checked(info.TotalPot + chipCount);
             var sequence = checked(info.ActionSequence + 1);
+            player.LastActionStackBefore = player.Chips;
+            player.LastActionCommittedChips = chipCount;
             player.Chips -= chipCount;
             player.StageBet = stageBet;
             player.RoundBet = roundBet;
@@ -271,19 +278,30 @@ namespace Game.Network
             return true;
         }
 
-        private static void ResetActionTimer(ServerGameInfo info)
+        private void ResetActionTimer(ServerGameInfo info)
         {
-            if (info.Timer.IsCounting)
-                info.Timer.Clear();
-            else
-                info.Timer.Start();
+            info.Timer.Stop();
+            info.Timer.Clear();
+            var playerName = info.Players[info.OperatingPlayer].PlayerName;
+            var isIdle = _consecutiveTimeouts.TryGetValue(playerName, out var count) && count >= 2;
+            info.Timer.Duration = isIdle ? Math.Min(5d, info.RoomInfo.ThinkingTime) : info.RoomInfo.ThinkingTime;
+            info.Timer.Start();
         }
 
-        private void AdvanceAfterAction(ServerGameInfo info)
+        private void AdvanceAfterAction(ServerGameInfo info, ActionSource source = ActionSource.Manual)
         {
+            // Update only after an action has passed validation, before publishing the next turn.
+            var playerName = info.Players[info.OperatingPlayer].PlayerName;
+            if (source == ActionSource.Manual)
+                _consecutiveTimeouts.Remove(playerName);
+            else if (source == ActionSource.Timeout)
+            {
+                _consecutiveTimeouts.TryGetValue(playerName, out var count);
+                _consecutiveTimeouts[playerName] = Math.Min(2, count + 1);
+            }
             RecordAchievementAction(info);
             info.TurnId++;
-            ResetActionTimer(info);
+            info.Timer.Stop();
 
             if (IsBettingRoundComplete(info))
             {
@@ -298,6 +316,7 @@ namespace Game.Network
                 throw new InvalidOperationException("The betting round is incomplete but no player can act.");
 
             info.OperatingPlayer = nextPlayer;
+            ResetActionTimer(info);
             if (info.Players[nextPlayer].IsDisconnected)
                 AutoOperation(info);
             else
@@ -336,7 +355,7 @@ namespace Game.Network
             foreach (var player in info.Players)
             {
                 player.StageBet = 0;
-                player.LastOperation = null;
+                if (!player.IsFold) player.LastOperation = null;
                 player.HasActedThisStage = false;
                 player.BetFacedAtLastAction = 0;
             }
@@ -367,7 +386,7 @@ namespace Game.Network
             foreach (var player in info.Players)
             {
                 player.StageBet = 0;
-                player.LastOperation = null;
+                if (!player.IsFold) player.LastOperation = null;
                 player.HasActedThisStage = false;
                 player.BetFacedAtLastAction = 0;
             }
@@ -387,7 +406,14 @@ namespace Game.Network
 
             info.Stage = GameStage.RoundOver;
 
-            var roundResult = new RoundResult() { Community = info.Community };
+            var roundResult = new RoundResult
+            {
+                RoomId = info.RoomInfo.Id,
+                HandId = info.HandId,
+                Community = new List<Poker>(info.Community),
+                RevealPlayerName = revealShowdownHands ? null : info.Players
+                    .FirstOrDefault(p => p.ParticipatedThisHand && !p.IsFold)?.PlayerName,
+            };
             for (int i = 0; i < info.PlayersCount; i++)
             {
                 if (!info.Players[i].ParticipatedThisHand)
@@ -397,7 +423,7 @@ namespace Game.Network
                 {
                     PlayerName = info.Players[i].PlayerName,
                     Hole = revealShowdownHands && !info.Players[i].IsFold
-                        ? info.Players[i].Hole
+                        ? new List<Poker>(info.Players[i].Hole)
                         : new List<Poker>(),
                     IsFold = info.Players[i].IsFold,
                     IsDisconnected = info.Players[i].IsDisconnected,
@@ -405,6 +431,7 @@ namespace Game.Network
                 });
             }
 
+            RememberEndedHand(info, roundResult);
             OnRoomRoundEnded?.Invoke(info.RoomInfo.Id, roundResult);
         }
 
@@ -797,6 +824,7 @@ namespace Game.Network
                 return handStartResult == HandStartResult.InsufficientChips ? -2 : -7;
 
             ForgetHandFacts(info.HandId);
+            _endedHands.Remove(roomId);
             info.HandId = handId;
             info.TurnId = 1;
             info.ActionSequence = 0;
@@ -887,7 +915,7 @@ namespace Game.Network
             {
                 if (info.OperatingPlayer < 0)
                     throw new InvalidOperationException("A new hand has no player who can act.");
-                info.Timer.Start();
+                ResetActionTimer(info);
             }
 
             return 0;
@@ -978,22 +1006,32 @@ namespace Game.Network
 
         private void AutoOperation(ServerGameInfo info)
         {
+            AutoOperationCore(info, ActionSource.Disconnected);
+        }
+
+        private void AutoOperationCore(ServerGameInfo info, ActionSource source)
+        {
             var playerIndex = info.OperatingPlayer;
             if (playerIndex < 0 || playerIndex >= info.PlayersCount)
                 return;
 
             var playerName = info.Players[playerIndex].PlayerName;
-            if (Check(info.RoomInfo.Id, playerIndex) == 0)
+            if (CheckCore(info.RoomInfo.Id, playerIndex, source) == 0)
             {
                 Log.WriteInfo($"Time up! Player {playerName} in room {info.RoomInfo.Id} checked automatically.");
                 return;
             }
 
-            if (Fold(info.RoomInfo.Id, playerIndex) == 0)
+            if (FoldCore(info.RoomInfo.Id, playerIndex, source) == 0)
                 Log.WriteInfo($"Time up! Player {playerName} in room {info.RoomInfo.Id} folded automatically.");
         }
 
         public int Check(int roomId, int playerIndex)
+        {
+            return CheckCore(roomId, playerIndex, ActionSource.Manual);
+        }
+
+        private int CheckCore(int roomId, int playerIndex, ActionSource source)
         {
             if (!_games.TryGetValue(roomId, out var info))
                 return -1;
@@ -1006,10 +1044,12 @@ namespace Game.Network
             if (!CanAct(player) || player.StageBet != info.CurrentHighestPlayerBet)
                 return -4;
 
+            player.LastActionStackBefore = player.Chips;
+            player.LastActionCommittedChips = 0;
             player.LastOperation = new PlayerOperation() { Type = PlayerOperationType.Check, TurnId = info.TurnId };
             player.HasActedThisStage = true;
             player.BetFacedAtLastAction = info.CurrentHighestPlayerBet;
-            AdvanceAfterAction(info);
+            AdvanceAfterAction(info, source);
             return 0;
         }
 
@@ -1079,7 +1119,7 @@ namespace Game.Network
             player.LastOperation = new PlayerOperation()
             {
                 TurnId = info.TurnId,
-                Type = committed < required ? PlayerOperationType.AllIn : PlayerOperationType.Call,
+                Type = PlayerOperationType.Call,
                 Number = player.StageBet,
             };
             player.HasActedThisStage = true;
@@ -1130,6 +1170,11 @@ namespace Game.Network
 
         public int Fold(int roomId, int playerIndex)
         {
+            return FoldCore(roomId, playerIndex, ActionSource.Manual);
+        }
+
+        private int FoldCore(int roomId, int playerIndex, ActionSource source)
+        {
             if (!_games.TryGetValue(roomId, out var info))
                 return -1;
             if (playerIndex < 0 || playerIndex >= info.PlayersCount)
@@ -1142,10 +1187,12 @@ namespace Game.Network
                 return -4;
 
             player.IsFold = true;
+            player.LastActionStackBefore = player.Chips;
+            player.LastActionCommittedChips = 0;
             player.LastOperation = new PlayerOperation() { Type = PlayerOperationType.Fold, TurnId = info.TurnId };
             player.HasActedThisStage = true;
             player.BetFacedAtLastAction = info.CurrentHighestPlayerBet;
-            AdvanceAfterAction(info);
+            AdvanceAfterAction(info, source);
             return 0;
         }
 
@@ -1167,6 +1214,7 @@ namespace Game.Network
             }
             _autoRunningRooms.Clear();
             _achievementHistory.Clear();
+            _endedHands.Clear();
             _games.Clear();
         }
 
@@ -1182,6 +1230,7 @@ namespace Game.Network
                 SafeAbortHand(gameInfo.HandId, reason);
             ForgetHandFacts(gameInfo.HandId);
             _autoRunningRooms.Remove(roomId);
+            _endedHands.Remove(roomId);
             _games.Remove(roomId);
         }
 

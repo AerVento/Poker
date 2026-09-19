@@ -5,6 +5,8 @@ namespace Game.SO
     [CreateAssetMenu(fileName = "Item", menuName = "Poker/Items/Item Definition")]
     public sealed class ItemDefinitionSO : ScriptableObject
     {
+        public const string ResourceFolder = "SO/Shop/Items/Products";
+
         [Tooltip("Stable inventory ID. Keep unchanged after release.")]
         [SerializeField] private string _id;
         [SerializeField] private string _displayName;

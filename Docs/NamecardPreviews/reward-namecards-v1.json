@@ -6,7 +6,7 @@
       "id": "straight-flush",
       "variant": "8x3",
       "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a085f3-0568-7833-b957-f98df54b0f53\\exec-73ccfe7f-593b-4d62-bac8-a7f2026b1415.png",
-      "dest": "Assets/Sprites/Namecards/straight-flush-8x3-v1.png"
+      "dest": "Assets/Sprites/Namecards/straight-flush-wide-v1.png"
     },
     {
       "id": "straight-flush",
@@ -18,7 +18,7 @@
       "id": "royal-straight-flush",
       "variant": "8x3",
       "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a085f3-0568-7833-b957-f98df54b0f53\\exec-22c0bee0-9197-40f2-a05f-a397cbe02d1f.png",
-      "dest": "Assets/Sprites/Namecards/royal-straight-flush-8x3-v1.png"
+      "dest": "Assets/Sprites/Namecards/royal-straight-flush-wide-v1.png"
     },
     {
       "id": "royal-straight-flush",

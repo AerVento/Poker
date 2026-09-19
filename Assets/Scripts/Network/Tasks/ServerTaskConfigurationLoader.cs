@@ -1,16 +1,16 @@
 using System;
 using System.IO;
 using System.Linq;
+using Framework.Configs;
 using Game.Network.Accounts;
 using Game.Tasks;
-using UnityEngine;
 
 namespace Game.Network.Tasks
 {
     public static class ServerTaskConfigurationLoader
     {
         public static readonly string[] FileNames = { "TaskDefinitions.json", "FixedTasks.json", "RandomTasks.json" };
-        public static string DefaultDirectory => Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Config", "DailyTasks"));
+        public static string DefaultDirectory => ConfigManager.GetDirectory("DailyTasks");
         public static string ConfigurationDirectory
         {
             get
@@ -31,7 +31,8 @@ namespace Game.Network.Tasks
             var directory = ConfigurationDirectory;
             try
             {
-                var texts = FileNames.Select(name => File.ReadAllText(Path.Combine(directory, name))).ToArray();
+                var texts = FileNames.Select(name =>
+                    ConfigManager.ReadAllTextAtPath(Path.Combine(directory, name))).ToArray();
                 return TaskCatalog.Load(texts[0], texts[1], texts[2], id => items?.Find(id)?.MaxQuantity);
             }
             catch (Exception error)

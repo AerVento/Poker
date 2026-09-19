@@ -42,6 +42,8 @@ namespace Game
 
         public string RequirementText()
         {
+            if (Comparison == ComparisonType.Equal && Threshold == 0)
+                return "仅总资产为 $0 时可购买";
             var comparison = Comparison switch
             {
                 ComparisonType.Equal => "为",
@@ -52,7 +54,7 @@ namespace Game
                 ComparisonType.GreaterThanOrEqual => "至少为",
                 _ => throw new InvalidOperationException("Unsupported comparison.")
             };
-            return $"仅余额{comparison} ${Threshold:N0} 时可购买";
+            return $"仅可用美金与筹码合计{comparison} ${Threshold:N0} 时可购买";
         }
     }
 }

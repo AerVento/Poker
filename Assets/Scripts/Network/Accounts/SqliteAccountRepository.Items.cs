@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using Game.Events;
 
 namespace Game.Network.Accounts
 {
@@ -46,7 +47,7 @@ PRIMARY KEY(account_id, operation_id));"
                 {
                     Account = account,
                     Items = ReadItemStacks(connection, transaction, accountId),
-                    CanAct = !account.LastRoomId.HasValue && !IsAccountInActiveHand(connection, transaction, accountId)
+                    CanAct = true
                 };
                 transaction.Commit();
                 return snapshot;
@@ -74,16 +75,21 @@ PRIMARY KEY(account_id, operation_id));"
         }
 
         public ItemChangeExecution ChangeItem(string accountId, string operationId, ItemShopAction action,
-            string itemId, uint quantity, uint quotedPrice, string catalogRevision, ItemPurchaseRuntime runtime, bool inRoom = false)
+            string itemId, uint quantity, uint quotedPrice, string catalogRevision, ItemPurchaseRuntime runtime, bool inRoom = false) => ChangeItem(accountId, operationId, action, itemId, quantity, quotedPrice, catalogRevision, runtime, inRoom, false, 0);
+
+        public ItemChangeExecution ChangeItem(string accountId, string operationId, ItemShopAction action,
+            string itemId, uint quantity, uint quotedPrice, string catalogRevision, ItemPurchaseRuntime runtime, bool inRoom,
+            bool authorizeChipConversion, uint authorizedShortfall)
         {
             if (!Guid.TryParseExact(operationId, "N", out _) || !NamecardServerCatalog.IsValidId(itemId) ||
-                quantity != 1 || (action != ItemShopAction.Purchase && action != ItemShopAction.Use) ||
+                quantity == 0 || (action != ItemShopAction.Purchase && action != ItemShopAction.Use) ||
                 string.IsNullOrEmpty(catalogRevision) || catalogRevision.Length > 64 ||
-                (action == ItemShopAction.Use && quotedPrice != 0))
+                (action == ItemShopAction.Use && (quotedPrice != 0 || quantity != 1)))
                 return new ItemChangeExecution(ItemShopResult.InvalidRequest);
             if (runtime == null) return new ItemChangeExecution(ItemShopResult.Unavailable);
             // Preserve schema-6 request fingerprints so old receipts still match exact retries.
             var fingerprint = JsonSerializer.Serialize(new { action, itemId, quantity, quotedPrice, catalogRevision });
+            if (authorizeChipConversion) fingerprint += ":convert:" + authorizedShortfall;
             lock (_syncRoot)
             {
                 using var connection = OpenConnection();
@@ -107,23 +113,40 @@ PRIMARY KEY(account_id, operation_id));"
                 var product = runtime.Find(itemId);
                 var owned = ReadItemStacks(connection, transaction, accountId).FirstOrDefault(p => p.ItemId == itemId)?.Quantity ?? 0;
                 bool outsideRoom = !inRoom && !account.LastRoomId.HasValue && !IsAccountInActiveHand(connection, transaction, accountId);
-                var context = new PurchaseContext(accountId, account.Chips, product, owned);
-                var result = ValidateItemChange(context, action, quotedPrice, catalogRevision, runtime, outsideRoom, out var failedCondition);
+                if (product != null && catalogRevision == runtime.Revision &&
+                    (action != ItemShopAction.Purchase || quotedPrice == product.Price))
+                {
+                    var cost = action == ItemShopAction.Purchase ? (ulong)product.Price * quantity : product.UsePolicy?.Cost ?? 0;
+                    var hypothetical = new PurchaseContext(accountId, (uint)Math.Min(uint.MaxValue, Math.Max((ulong)account.Dollars, cost)), product, owned, account.TotalAssets);
+                    var eligibility = ValidateItemChange(hypothetical, action, quantity, quotedPrice, catalogRevision, runtime, outsideRoom, out _);
+                    if (eligibility == ItemShopResult.Success)
+                    {
+                        var payment = PrepareDollarPayment(connection, transaction, account, cost,
+                            authorizeChipConversion, authorizedShortfall, "item:" + operationId);
+                        if (payment != WalletResult.Success)
+                            return new ItemChangeExecution(payment == WalletResult.ConversionRequired ? ItemShopResult.ConversionRequired :
+                                payment == WalletResult.QuoteChanged ? ItemShopResult.QuoteChanged :
+                                payment == WalletResult.BalanceLimit ? ItemShopResult.BalanceLimit : ItemShopResult.InsufficientChips);
+                    }
+                }
+                var context = new PurchaseContext(accountId, account.Dollars, product, owned, account.TotalAssets);
+                var result = ValidateItemChange(context, action, quantity, quotedPrice, catalogRevision, runtime, outsideRoom, out var failedCondition);
                 var now = DateTime.UtcNow;
-                uint finalBalance = account.Chips;
+                uint finalBalance = account.Dollars;
                 var effects = new List<ItemEffectOutcome>();
                 if (result == ItemShopResult.Success)
                 {
                     // Plan only after all conditions pass. Build and validate all commands before any write.
-                    result = action == ItemShopAction.Purchase ? PlanItemEffects(context, effects, out finalBalance) :
-                        PlanItemUseEffects(new ItemUseContext(accountId, account.Chips, product, owned), effects, out finalBalance);
+                    result = action == ItemShopAction.Purchase ? PlanItemEffects(context, quantity, effects, out finalBalance) :
+                        PlanItemUseEffects(new ItemUseContext(accountId, account.Dollars, product, owned), effects, out finalBalance);
                 }
                 if (result == ItemShopResult.Success)
                 {
-                    using (var update = connection.CreateCommand())
+                    if (finalBalance != account.Dollars)
                     {
+                        using var update = connection.CreateCommand();
                         update.Transaction = transaction;
-                        update.CommandText = @"UPDATE player_accounts SET chips=$chips,version=version+1,updated_at_utc=$now
+                        update.CommandText = @"UPDATE player_accounts SET dollars=$chips,version=version+1,updated_at_utc=$now
 WHERE account_id=$account AND version=$version;";
                         update.Parameters.AddWithValue("$chips", (long)finalBalance);
                         update.Parameters.AddWithValue("$now", FormatDateTime(now));
@@ -138,23 +161,25 @@ WHERE account_id=$account AND version=$version;";
 ON CONFLICT(account_id,item_id) DO UPDATE SET quantity=excluded.quantity;";
                         inventory.Parameters.AddWithValue("$account", accountId);
                         inventory.Parameters.AddWithValue("$item", itemId);
-                        inventory.Parameters.AddWithValue("$quantity", (long)(action == ItemShopAction.Purchase ? checked(owned + 1) : checked(owned - 1)));
+                        inventory.Parameters.AddWithValue("$quantity", (long)(action == ItemShopAction.Purchase ? checked(owned + quantity) : checked(owned - 1)));
                         inventory.ExecuteNonQuery();
                     }
                     if (action == ItemShopAction.Purchase)
-                        InsertLedger(connection, transaction, Guid.NewGuid().ToString("N"),
+                        InsertDollarLedger(connection, transaction, Guid.NewGuid().ToString("N"),
                             "item:" + accountId + ":" + operationId, accountId,
-                            "ItemPurchase", -(long)product.Price,
-                            account.Chips, account.Chips - product.Price, null, null, now);
+                            "ItemPurchase", -checked((long)((ulong)product.Price * quantity)),
+                            account.Dollars, checked((uint)(account.Dollars - (ulong)product.Price * quantity)), null, null, now);
                     foreach (var effect in effects)
-                        InsertLedger(connection, transaction, Guid.NewGuid().ToString("N"),
+                        InsertDollarLedger(connection, transaction, Guid.NewGuid().ToString("N"),
                             "item-effect:" + accountId + ":" + operationId + ":" + effect.EffectIndex + ":" + effect.CommandIndex,
                             accountId, effect.Kind == PurchaseEffectKind.CreditChips ? "ItemPurchaseReward" : "ItemUsePayment",
                             effect.Kind == PurchaseEffectKind.CreditChips ? (long)effect.Amount : -(long)effect.Amount,
                             effect.BalanceBefore, effect.BalanceAfter, null, null, now);
                 }
-                var outcome = new ItemPurchaseOutcome(1, itemId, result == ItemShopResult.Success && action == ItemShopAction.Purchase ? product.Price : 0,
-                    account.Chips, result == ItemShopResult.Success ? finalBalance : account.Chips, runtime.Revision,
+                if (result != ItemShopResult.Success) return new ItemChangeExecution(result);
+                var outcome = new ItemPurchaseOutcome(2, itemId, result == ItemShopResult.Success && action == ItemShopAction.Purchase
+                        ? checked((uint)((ulong)product.Price * quantity)) : 0,
+                    account.Dollars, result == ItemShopResult.Success ? finalBalance : account.Dollars, runtime.Revision,
                     failedCondition, result == ItemShopResult.Success ? effects : Array.Empty<ItemEffectOutcome>());
                 using (var receipt = connection.CreateCommand())
                 {
@@ -168,6 +193,17 @@ VALUES($account,$operation,$fingerprint,$result,$now,$outcome);";
                     receipt.Parameters.AddWithValue("$now", FormatDateTime(now));
                     receipt.Parameters.AddWithValue("$outcome", JsonSerializer.Serialize(outcome));
                     receipt.ExecuteNonQuery();
+                }
+                if (result == ItemShopResult.Success)
+                {
+                    var writer = new TransactionEventWriter(connection, transaction);
+                    var occurredAt = new DateTimeOffset(now).ToUnixTimeMilliseconds();
+                    if (action == ItemShopAction.Purchase)
+                        ShopEventSource.Purchased(writer, accountId, operationId, occurredAt, "item", itemId, quantity, outcome.ChargedPrice);
+                    else
+                        InventoryEventSource.Used(writer, accountId, operationId, occurredAt, itemId, 1, checked(account.Dollars - finalBalance));
+                    RecordInventoryChanged(connection, transaction, accountId, operationId,
+                        action == ItemShopAction.Purchase ? "purchase" : "use", now);
                 }
                 transaction.Commit();
                 return new ItemChangeExecution(result, outcome, result == ItemShopResult.Success);
@@ -200,9 +236,10 @@ VALUES($account,$operation,$fingerprint,$result,$now,$outcome);";
             return ItemShopResult.Success;
         }
 
-        private static ItemShopResult PlanItemEffects(PurchaseContext context, List<ItemEffectOutcome> results, out uint balance)
+        private static ItemShopResult PlanItemEffects(PurchaseContext context, uint quantity,
+            List<ItemEffectOutcome> results, out uint balance)
         {
-            balance = context.BalanceBefore - context.Product.Price;
+            balance = checked((uint)(context.BalanceBefore - (ulong)context.Product.Price * quantity));
             var policy = context.Product.Policy;
             for (int effectIndex = 0; effectIndex < policy.OnPurchaseEffects.Count; effectIndex++)
             {
@@ -228,16 +265,16 @@ VALUES($account,$operation,$fingerprint,$result,$now,$outcome);";
         }
 
         private static ItemShopResult ValidateItemChange(PurchaseContext context, ItemShopAction action,
-            uint quotedPrice, string revision, ItemPurchaseRuntime runtime, bool outsideRoom, out PurchaseConditionDescriptor failedCondition)
+            uint quantity, uint quotedPrice, string revision, ItemPurchaseRuntime runtime, bool outsideRoom,
+            out PurchaseConditionDescriptor failedCondition)
         {
             failedCondition = null;
-            if (!outsideRoom) return ItemShopResult.OutsideRoomRequired;
             var product = context.Product;
             if (product == null || (action == ItemShopAction.Purchase && !product.Listed)) return ItemShopResult.UnknownItem;
             if (revision != runtime.Revision || (action == ItemShopAction.Purchase && quotedPrice != product.Price))
                 return ItemShopResult.CatalogChanged;
             if (action == ItemShopAction.Purchase)
-                return ItemPurchaseRuntime.CheckPurchase(context, outsideRoom, out failedCondition);
+                return ItemPurchaseRuntime.CheckPurchase(context, outsideRoom, quantity, out failedCondition);
             return ItemPurchaseRuntime.CheckUse(new ItemUseContext(context.AccountId, context.BalanceBefore,
                 product, context.OwnedQuantity), outsideRoom);
         }

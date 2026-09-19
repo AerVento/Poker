@@ -47,6 +47,7 @@ namespace Game.Network
 
     public struct AccountBalanceSync : NetworkMessage
     {
+        public uint Dollars;
         public uint Chips;
     }
 }

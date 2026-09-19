@@ -107,6 +107,11 @@ namespace Game.Network
         /// </summary>
         public float ThinkingTime { get; set; } = 30;
 
+        public const int DefaultInterHandWaitSeconds = 10;
+        public const int MinInterHandWaitSeconds = 1;
+        public const int MaxInterHandWaitSeconds = 60;
+        public int InterHandWaitSeconds { get; set; } = DefaultInterHandWaitSeconds;
+
         /// <summary>
         /// 玩家们是否在等待开始
         /// </summary>

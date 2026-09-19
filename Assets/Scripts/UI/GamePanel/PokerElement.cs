@@ -29,13 +29,11 @@ namespace Game.UI
         private void RefreshAppearance()
         {
             var product = CardFaceAppearance.Current;
-            if (_appearance != product || _visual == null)
+            if (_visual == null)
             {
-                if (_visual != null) { _visual.gameObject.SetActive(false); Destroy(_visual.gameObject); }
-                _appearance = product;
-                if (product != null && product.Prefab != null)
+                if (product != null && CardFaceAppearance.Catalog.ViewPrefab != null)
                 {
-                    _visual = Instantiate(product.Prefab, transform);
+                    _visual = Instantiate(CardFaceAppearance.Catalog.ViewPrefab, transform);
                     var rect = (RectTransform)_visual.transform;
                     rect.anchorMin = Vector2.zero;
                     rect.anchorMax = Vector2.one;
@@ -43,6 +41,9 @@ namespace Game.UI
                     rect.localScale = Vector3.one;
                 }
             }
+            if (_visual != null && (_appearance != product || _visual.Cards == null))
+                _visual.SetCards(product != null ? product.Cards : GetSO());
+            _appearance = product;
             if (_image != null) _image.enabled = _visual == null;
             if (_visual != null) _visual.Display(_poker, _isShowing);
             else if (_image != null) _image.sprite = _isShowing ? GetSO().GetSprite(_poker) : GetSO().Back;

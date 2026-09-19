@@ -15,7 +15,7 @@ namespace Game.Network.Accounts
         IDailyRewardRepository,
         ILeaderboardRepository
     {
-        public const int SchemaVersion = 11;
+        public const int SchemaVersion = 13;
 
         private static readonly object RuntimeInitializationLock = new object();
         private static bool _runtimeInitialized;
@@ -94,6 +94,12 @@ namespace Game.Network.Accounts
                     if (version < 11)
                         CreateCardFaceSchema(connection, transaction);
 
+                    if (version < 12)
+                        CreatePlayerEventSchema(connection, transaction);
+
+                    if (version < 13)
+                        CreateWalletSchema(connection, transaction);
+
                     SetSchemaVersion(connection, transaction, SchemaVersion);
 
                     transaction.Commit();
@@ -103,7 +109,7 @@ namespace Game.Network.Accounts
             }
         }
 
-        public LeaderboardSnapshot ReadLeaderboard(string accountId)
+        public LeaderboardSnapshot ReadLeaderboard(string accountId, LeaderboardKind kind = LeaderboardKind.All)
         {
             if (string.IsNullOrEmpty(accountId))
                 throw new ArgumentException("An authenticated account is required.", nameof(accountId));
@@ -112,13 +118,19 @@ namespace Game.Network.Accounts
                 using (var connection = OpenConnection())
                 using (var transaction = connection.BeginTransaction(deferred: true))
                 {
+                    if (kind == LeaderboardKind.Service)
+                    {
+                        var onlyService = ReadServiceLeaderboard(connection, transaction, accountId);
+                        transaction.Commit();
+                        return new LeaderboardSnapshot { ServiceTopPlayers = onlyService.TopPlayers, ServiceSelf = onlyService.Self };
+                    }
                     var top = new List<LeaderboardEntry>(10);
                     using (var command = connection.CreateCommand())
                     {
                         command.Transaction = transaction;
                         command.CommandText = @"
-SELECT account_id, user_name, chips, equipped_namecard, " + ServiceYearsSql("player_accounts.account_id") + @" FROM player_accounts
-ORDER BY chips DESC, created_at_utc ASC, account_id COLLATE BINARY ASC LIMIT 10;";
+SELECT account_id, user_name, (chips + dollars) AS assets, equipped_namecard, " + ServiceYearsSql("player_accounts.account_id") + @" FROM player_accounts
+ORDER BY assets DESC, created_at_utc ASC, account_id COLLATE BINARY ASC LIMIT 10;";
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -126,7 +138,7 @@ ORDER BY chips DESC, created_at_utc ASC, account_id COLLATE BINARY ASC LIMIT 10;
                                 {
                                     Rank = top.Count + 1, UserName = reader.GetString(1),
                                     NamecardId = reader.GetString(3), ServiceYears = checked((ulong)reader.GetInt64(4)),
-                                    Chips = checked((uint)reader.GetInt64(2)), IsSelf = reader.GetString(0) == accountId,
+                                    Chips = checked((ulong)reader.GetInt64(2)), IsSelf = reader.GetString(0) == accountId,
                                 });
                         }
                     }
@@ -135,11 +147,11 @@ ORDER BY chips DESC, created_at_utc ASC, account_id COLLATE BINARY ASC LIMIT 10;
                     {
                         command.Transaction = transaction;
                         command.CommandText = @"
-SELECT me.user_name, me.chips, 1 + (
+SELECT me.user_name, (me.chips + me.dollars), 1 + (
     SELECT COUNT(*) FROM player_accounts AS other
-    WHERE other.chips > me.chips
-       OR (other.chips = me.chips AND other.created_at_utc < me.created_at_utc)
-       OR (other.chips = me.chips AND other.created_at_utc = me.created_at_utc
+    WHERE (other.chips + other.dollars) > (me.chips + me.dollars)
+       OR ((other.chips + other.dollars) = (me.chips + me.dollars) AND other.created_at_utc < me.created_at_utc)
+       OR ((other.chips + other.dollars) = (me.chips + me.dollars) AND other.created_at_utc = me.created_at_utc
            AND other.account_id COLLATE BINARY < me.account_id COLLATE BINARY)), me.equipped_namecard, " + ServiceYearsSql("me.account_id") + @"
 FROM player_accounts AS me WHERE me.account_id = $accountId;";
                         command.Parameters.AddWithValue("$accountId", accountId);
@@ -149,13 +161,13 @@ FROM player_accounts AS me WHERE me.account_id = $accountId;";
                                 throw new InvalidOperationException("The authenticated account no longer exists.");
                             self = new LeaderboardEntry
                             {
-                                UserName = reader.GetString(0), Chips = checked((uint)reader.GetInt64(1)),
+                                UserName = reader.GetString(0), Chips = checked((ulong)reader.GetInt64(1)),
                                 Rank = reader.GetInt64(2), IsSelf = true, NamecardId = reader.GetString(3), ServiceYears = checked((ulong)reader.GetInt64(4)),
                             };
                         }
                     }
-                    // Both tabs share one consistent read transaction, so tab switches need no extra request.
-                    var service = ReadServiceLeaderboard(connection, transaction, accountId);
+                    var service = kind == LeaderboardKind.All
+                        ? ReadServiceLeaderboard(connection, transaction, accountId) : default;
                     transaction.Commit();
                     return new LeaderboardSnapshot
                     {
@@ -224,10 +236,10 @@ FROM player_accounts AS me WHERE me.account_id = $accountId;";
                             command.CommandText = @"
 INSERT INTO player_accounts (
     account_id, user_name, password_algorithm, password_hash, password_salt,
-    password_iterations, chips, last_room_id, version, created_at_utc, updated_at_utc)
+    password_iterations, chips, dollars, last_room_id, version, created_at_utc, updated_at_utc)
 VALUES (
     $accountId, $userName, $passwordAlgorithm, $passwordHash, $passwordSalt,
-    $passwordIterations, $chips, $lastRoomId, $version, $createdAtUtc, $updatedAtUtc);";
+    $passwordIterations, $chips, $dollars, $lastRoomId, $version, $createdAtUtc, $updatedAtUtc);";
                             AddAccountParameters(command, account);
                             command.ExecuteNonQuery();
                         }
@@ -245,6 +257,10 @@ VALUES (
                             null,
                             null,
                             account.CreatedAtUtc);
+
+                        InsertDollarLedger(connection, transaction, Guid.NewGuid().ToString("N"),
+                            "register-dollars:" + account.AccountId, account.AccountId, "RegistrationGrant",
+                            account.Dollars, 0, account.Dollars, null, null, account.CreatedAtUtc);
 
                         transaction.Commit();
                         return CreateAccountResult.Created;
@@ -459,8 +475,7 @@ WHERE token_hash = $tokenHash AND revoked_at_utc IS NULL;";
         public ChipMutationResult ClaimDailyReward(string accountId, string claimKey, uint amount,
             uint? maximumBalanceInclusive, out PlayerAccount account)
         {
-            return ApplyChipMutationCore(accountId, claimKey, "DailyTaskReward", amount, null, null,
-                maximumBalanceInclusive, true, out account);
+            return ApplyDollarMutation(accountId, claimKey, "DailyTaskReward", amount, maximumBalanceInclusive, out account);
         }
 
         public ChipMutationResult ApplyChipMutation(
@@ -739,12 +754,10 @@ FROM poker_hand_participants WHERE hand_id = $handId;";
                             return HandSettlementResult.InvalidDistribution;
                         contributions = checked(contributions + entry.Contribution);
                         credits = checked(credits + entry.Award + entry.Refund);
-                        var taskRewards = ReadInHandTaskRewards(connection, transaction, handId, entry.AccountId);
-                        if ((ulong)final + taskRewards > uint.MaxValue) return HandSettlementResult.InvalidDistribution;
                         balances.Add(entry.AccountId, new HandSettlementBalance
                         {
                             AccountId = entry.AccountId, StartingChips = participant.Starting, Chips = (uint)final,
-                            AccountChips = checked((uint)final + taskRewards),
+                            AccountChips = FindById(connection, transaction, entry.AccountId)?.Chips,
                         });
                     }
                     if (contributions != credits)
@@ -765,10 +778,12 @@ FROM poker_hand_participants WHERE hand_id = $handId;";
                     {
                         var account = FindById(connection, transaction, entry.AccountId);
                         var balance = balances[entry.AccountId];
-                        var taskRewards = ReadInHandTaskRewards(connection, transaction, handId, entry.AccountId);
-                        if (account == null || (ulong)account.Chips != (ulong)balance.StartingChips + taskRewards)
+                        if (account == null) return HandSettlementResult.InvalidDistribution;
+                        var finalAccount = (long)account.Chips - entry.Contribution + entry.Award + entry.Refund;
+                        if (finalAccount < 0 || finalAccount > uint.MaxValue)
                             return HandSettlementResult.InvalidDistribution;
-                        var accountAfter = balance.AccountChips.Value;
+                        var accountAfter = (uint)finalAccount;
+                        balance.AccountChips = accountAfter;
                         if (accountAfter != account.Chips)
                         {
                             UpdateAccountBalance(connection, transaction, account, accountAfter, now);
@@ -1155,6 +1170,7 @@ WHERE session_id = $sessionId AND revoked_at_utc IS NULL;";
             command.Parameters.AddWithValue("$passwordSalt", account.PasswordSalt);
             command.Parameters.AddWithValue("$passwordIterations", account.PasswordIterations);
             command.Parameters.AddWithValue("$chips", (long)account.Chips);
+            command.Parameters.AddWithValue("$dollars", (long)account.Dollars);
             command.Parameters.AddWithValue("$lastRoomId", account.LastRoomId.HasValue ? (object)account.LastRoomId.Value : DBNull.Value);
             command.Parameters.AddWithValue("$version", account.Version);
             command.Parameters.AddWithValue("$createdAtUtc", FormatDateTime(account.CreatedAtUtc));
@@ -1169,7 +1185,7 @@ WHERE session_id = $sessionId AND revoked_at_utc IS NULL;";
             using (var command = connection.CreateCommand())
             {
                 command.Transaction = transaction;
-                command.CommandText = "SELECT 1 FROM chip_ledger WHERE request_id = $requestId LIMIT 1;";
+                command.CommandText = "SELECT 1 FROM chip_ledger WHERE request_id = $requestId UNION ALL SELECT 1 FROM dollar_ledger WHERE request_id = $requestId LIMIT 1;";
                 command.Parameters.AddWithValue("$requestId", requestId);
                 return command.ExecuteScalar() != null;
             }
@@ -1247,6 +1263,7 @@ VALUES (
                 UpdatedAtUtc = ParseDateTime(reader.GetString(10)),
                 EquippedNamecardId = reader.GetString(11),
                 EquippedCardFaceId = reader.GetString(12),
+                Dollars = checked((uint)reader.GetInt64(13)),
             };
         }
 
@@ -1477,7 +1494,7 @@ WHERE hand_id = $handId AND contributed_chips > 0;";
 
         private const string AccountSelect = @"
 SELECT account_id, user_name, password_algorithm, password_hash, password_salt,
-       password_iterations, chips, last_room_id, version, created_at_utc, updated_at_utc, equipped_namecard, equipped_card_face
+       password_iterations, chips, last_room_id, version, created_at_utc, updated_at_utc, equipped_namecard, equipped_card_face, dollars
 FROM player_accounts";
     }
 }

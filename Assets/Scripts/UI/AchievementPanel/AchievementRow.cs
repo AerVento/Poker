@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Game.Achievements;
 using Game.Network;
 using TMPro;
 using UnityEngine;
@@ -96,24 +97,26 @@ namespace Game.UI
 
         public void Bind(AchievementView view, bool canClaim, bool busy, Action<string> claim)
         {
-            _icon.sprite = LoadIcon(view.IconPath);
+            var hidden = view.Hidden && view.CompletedAt == 0;
+            _icon.sprite = LoadIcon(hidden ? HiddenAchievementPresentation.IconPath : view.IconPath);
             _icon.color = view.CompletedAt > 0 ? Color.white : new Color(0.65f, 0.67f, 0.70f);
-            _name.text = view.Name;
-            _description.text = view.Description;
+            _name.text = hidden ? HiddenAchievementPresentation.Name : view.Name;
+            _description.text = hidden ? HiddenAchievementPresentation.Description : view.Description;
             _description.enableWordWrapping = true;
             _description.richText = false;
             _expanded = false;
             _bound = true;
             RefreshDescriptionLayout();
             _category.text = view.Category;
-            _progress.text = view.CompletedAt > 0 ? "已达成" : $"{view.Progress:N0} / {view.Target:N0}";
-            _progressFill.fillAmount = view.Target > 0 ? Mathf.Clamp01((float)view.Progress / view.Target) : 0;
+            _progress.text = hidden ? "?? / ??" : view.CompletedAt > 0 ? "已达成" : $"{view.Progress:N0} / {view.Target:N0}";
+            _progressFill.fillAmount = hidden ? 0 : view.Target > 0 ? Mathf.Clamp01((float)view.Progress / view.Target) : 0;
             _accent.color = view.CompletedAt > 0 ? new Color(0.87f, 0.70f, 0.39f) : new Color(0.23f, 0.34f, 0.31f);
             var rewards = new System.Collections.Generic.List<string>();
-            if (view.RewardChips > 0) rewards.Add($"${view.RewardChips:N0} 筹码");
-            if (view.RewardItems != null) rewards.AddRange(view.RewardItems.Select(i => ItemName(i.ItemId) + " ×" + i.Count));
-            _reward.text = string.Join("\n", rewards);
-            _claimLabel.text = view.ClaimedAt > 0 ? "已领取" : view.CompletedAt == 0 ? "未达成" : !canClaim ? "大厅领取" : "领取奖励";
+            if (!hidden && view.RewardDollars > 0) rewards.Add($"${view.RewardDollars:N0} 美金");
+            if (!hidden && view.RewardItems != null) rewards.AddRange(view.RewardItems.Select(i => ItemName(i.ItemId) + " ×" + i.Count));
+            _reward.text = hidden ? "??" : string.Join("\n", rewards);
+            _claimLabel.text = view.ClaimedAt > 0 ? "已领取" : hidden ? "未解锁" :
+                view.CompletedAt == 0 ? "未达成" : !canClaim ? "暂不可领" : "领取奖励";
             _claim.interactable = !busy && canClaim && view.CompletedAt > 0 && view.ClaimedAt == 0;
             _claim.onClick.RemoveAllListeners();
             _claim.onClick.AddListener(() => claim(view.Id));
@@ -125,10 +128,10 @@ namespace Game.UI
         {
             if (NamecardItemId.TryToNamecardId(id, out var namecardId))
             {
-                var namecard = Resources.Load<Game.SO.NamecardCatalogSO>("SO/Shop/NamecardCatalog")?.GetProduct(namecardId);
+                var namecard = Resources.Load<Game.SO.NamecardCatalogSO>(Game.SO.NamecardCatalogSO.ResourcePath)?.GetProduct(namecardId);
                 return namecard != null ? namecard.DisplayName + "名片" : id;
             }
-            var item = Resources.LoadAll<Game.SO.ItemDefinitionSO>("SO/Items").FirstOrDefault(i => i.Id == id);
+            var item = Resources.LoadAll<Game.SO.ItemDefinitionSO>(Game.SO.ItemDefinitionSO.ResourceFolder).FirstOrDefault(i => i.Id == id);
             return item != null ? item.DisplayName : id;
         }
     }

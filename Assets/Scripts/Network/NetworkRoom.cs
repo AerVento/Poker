@@ -61,6 +61,7 @@ namespace Game.Network
 
         private void ClearClientRoomNavigation()
         {
+            ClearClientResults();
             _activeClientRoomId = null;
             _roomEntryPending = false;
             _requestedRoomId = null;
@@ -70,7 +71,7 @@ namespace Game.Network
         {
             var ui = UIManager.Instance;
             ui.ResetPanels<TitlePanel>();
-            ui.PushPanel<RoomListPanel>();
+            ui.PushPanel<LobbyPanel>();
         }
 
         public bool RequestCreateRoom()
@@ -127,6 +128,7 @@ namespace Game.Network
             _gameManager.OnGameInfoChanged += OnGameInfoChanged;
             _gameManager.OnGameStageEnded += OnGameStageEnd;
             _gameManager.OnRoomRoundEnded += OnRoomRoundEnd;
+            _gameManager.OnRoundResultRevealed += OnRoundResultRevealed;
             _gameManager.OnRoomGameOver += OnGameOver;
         }
 
@@ -146,8 +148,23 @@ namespace Game.Network
 
         public bool StartConfiguredClientConnection()
         {
-            if (NetworkClient.active || NetworkServer.active)
+            if (NetworkClient.active)
                 return false;
+            if (NetworkServer.active)
+            {
+#if UNITY_EDITOR
+                // Logging out of the Editor host stops its local client, not its server.
+                // Reconnect through the already configured loopback transport without
+                // restarting the server or disturbing other test clients.
+                if (_clientConfiguration?.ServerHost == "127.0.0.1" &&
+                    !NetworkConfigurationLoader.IsServerProcess)
+                {
+                    StartClient();
+                    return true;
+                }
+#endif
+                return false;
+            }
             if (GameController.Available && GameController.Instance.HasNetworkInitializationStarted &&
                 !GameController.Instance.IsClientNetworkReady)
                 return false;
@@ -239,10 +256,14 @@ namespace Game.Network
             _serverLifecycleVersion++;
             if (authenticator is AccountAuthenticator accountAuthenticator)
                 _gameManager.SetAccountRepository(accountAuthenticator.AccountRepository);
+            RegisterResultServerHandlers();
+            RegisterWalletServerHandlers();
             RegisterLeaderboardServerHandler();
             RegisterShopServerHandlers();
             RegisterCardFaceShopServerHandlers();
             RegisterItemServerHandlers();
+            RegisterGiftServerHandlers();
+            RegisterCollectionServerHandlers();
             InitializeItemGrants();
             RegisterDailyTaskServerHandlers();
             RegisterAchievementServerHandlers();
@@ -266,6 +287,7 @@ namespace Game.Network
             _leaderboardRequests.Clear();
             _shopRequests.Clear();
             _itemRequests.Clear();
+            ClearGiftServer();
             _itemRuntime = null;
             ClearItemGrants();
             ClearAchievementServer();
@@ -284,6 +306,7 @@ namespace Game.Network
             if (fresh != null)
             {
                 account.Chips = fresh.Chips;
+                account.Dollars = fresh.Dollars;
                 account.Version = fresh.Version;
                 account.EquippedCardFaceId = fresh.EquippedCardFaceId;
             }
@@ -333,13 +356,19 @@ namespace Game.Network
 
         public override void OnServerDisconnect(NetworkConnectionToClient conn)
         {
+            _walletRequests.Remove(conn);
             _dailyTaskRequestSequences.Remove(conn);
-            _leaderboardRequests.Remove(conn);
+            foreach (LeaderboardKind kind in Enum.GetValues(typeof(LeaderboardKind)))
+                _leaderboardRequests.Remove((conn, kind));
+            _collectionRequests.Remove(conn);
             _shopRequests.Remove(conn);
             _cardFaceShopRequests.Remove(conn);
             _itemRequests.Remove(conn);
+            _giftUseRequests.Remove(conn);
+            _giftInventoryRequests.Remove(conn);
             _achievementRequests.Remove(conn);
             _achievementSent.Remove(conn);
+            _achievementDirtySent.Remove(conn);
 
             if (!_serverStorageFailed && _playerManager.RemoveConnection(conn, out var name))
             {
@@ -381,7 +410,6 @@ namespace Game.Network
             NetworkClient.RegisterHandler<ServerShutdownNotice>(ServerShutdownNoticeHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<PlayerLeaveRoomResponse>(PlayerLeaveRoomResponseHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<GameInfoSync>(GameInfoSyncHandler, requireAuthentication: false);
-            NetworkClient.RegisterHandler<GameResultNotification>(GameResultNotificationHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<PlayerJoinRoomResponse>(PlayerJoinRoomResponseHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<TableParticipationResponse>(TableParticipationResponseHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<PlayerOperationResponse>(PlayerOperationResponseHandler, requireAuthentication: false);
@@ -391,14 +419,18 @@ namespace Game.Network
             NetworkClient.RegisterHandler<RoundResultNotification>(RoundResultNotificationHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<InterHandCountdownSync>(InterHandCountdownSyncHandler, requireAuthentication: false);
             NetworkClient.RegisterHandler<AccountBalanceSync>(AccountBalanceSyncHandler, requireAuthentication: false);
+            RegisterResultClientHandlers();
+            RegisterWalletClientHandlers();
             RegisterDailyTaskClientHandlers();
             RegisterLeaderboardClientHandler();
             RegisterShopClientHandlers();
             RegisterCardFaceShopClientHandlers();
             RegisterItemClientHandlers();
+            RegisterGiftClientHandlers();
+            RegisterCollectionClientHandlers();
             RegisterAchievementClientHandlers();
             
-            if (!_silentConnectionAttempt)
+            if (!_silentConnectionAttempt && !NetworkClient.isConnected)
                 ShowConnectingMessage();
             MonitorClientConnection(++_clientConnectionAttemptVersion, _clientConnectTimeoutSeconds).Forget();
         }
@@ -426,7 +458,7 @@ namespace Game.Network
 
         private void ShowConnectingMessage()
         {
-            if (_connectingMsgbox != null)
+            if (_connectingMsgbox != null || NetworkClient.isConnected)
                 return;
 
             MsgBox.Create("ConnectingServer", setting =>
@@ -475,6 +507,21 @@ namespace Game.Network
             msgbox.ShowCloseButton = false;
         }
 
+        // Mirror invokes OnClientConnect only after account authentication.
+        // The connection dialog must end earlier, when transport is ready for login.
+        internal void HandleClientTransportConnected()
+        {
+            if (!NetworkClient.isConnected)
+                return;
+            _silentConnectionAttempt = false;
+            _clientConnectionAttemptVersion++;
+            if (_connectingMsgbox != null)
+            {
+                _connectingMsgbox.Hide();
+                _connectingMsgbox = null;
+            }
+        }
+
         public override void OnClientConnect()
         {
             // base.OnClientConnect();
@@ -499,6 +546,7 @@ namespace Game.Network
             var destination = LoginPanel.Instance != null && !response.HasLastRoom
                 ? LoginPanel.Instance.DestinationAfterLogin : LoginDestination.Lobby;
             ClearClientRoomNavigation();
+            BeginAchievementClientSession();
             if (destination != LoginDestination.Lobby)
             {
                 UIManager.Instance.ResetPanels<TitlePanel>();
@@ -611,6 +659,8 @@ namespace Game.Network
 
         public override void OnClientDisconnect()
         {
+            ClearClientCaches();
+            ClearGiftClient();
             ClearAchievementClient();
             CardFaceAppearance.Equip(null);
             // base.OnClientDisconnect();
@@ -726,15 +776,15 @@ namespace Game.Network
             if (!UIManager.Instance.ContainsPanel<GamePanel>())
                 UIManager.Instance.ResetPanels<GamePanel>();
             if (message.Info.Round < GameStage.RoundOver)
-                UIManager.Instance.PopPanel<RoundResultMsgBox>();
+            {
+                // A recalled result stays open while the current hand receives ordinary updates.
+                if (GamePanel.Instance.Info.HandId != message.Info.HandId)
+                    UIManager.Instance.PopPanel<RoundResultMsgBox>();
+                LastRoundReady = default;
+                OnRoundReadyChanged?.Invoke(default);
+            }
             GamePanel.Instance.ApplySync(message);
 
-            if (message.Info.Round != GameStage.RoundOver &&
-                message.ParticipationStatus == TableParticipationStatus.InsufficientChips &&
-                _lastParticipationStatus != TableParticipationStatus.InsufficientChips)
-            {
-                ShowInsufficientChipsPrompt(message);
-            }
             if (message.Info.IsSpectator && !_spectatorIntroShown)
             {
                 _spectatorIntroShown = true;
@@ -751,7 +801,7 @@ namespace Game.Network
         public static void ConfigureSpectatorIntro(MsgBox box)
         {
             box.Title = "你正在旁观";
-            box.Message = "当前不会为你发牌。可点击“下一手参战”申请入座，也可继续旁观或离开。\n名额只统计参战玩家，满桌时需等待空位。";
+            box.Message = "您正在观战，可申请下一手参战。";
             box.Type = MsgboxType.Confirm;
             box.ConfirmButtonText = "知道了";
         }
@@ -760,9 +810,8 @@ namespace Game.Network
         {
             box.Title = reason == RoomTransitionReason.InsufficientPlayers ? "参战人数不足" : "本桌对局已结束";
             box.Message = reason == RoomTransitionReason.InsufficientPlayers
-                ? spectator ? "下一手参战人数不足两人，本桌已停止对局。\n你已返回房间列表。"
-                    : "下一手参战人数不足两人，暂时无法继续。\n你已返回房间等待，可等待其他玩家加入。"
-                : spectator ? "本桌已停止对局，你已返回房间列表。" : "本桌已停止对局，你已返回房间等待。";
+                ? "下一手参战人数不足两人，已返回房间等待。"
+                : "本桌已停止对局，已返回房间等待。";
             box.Type = MsgboxType.Confirm;
             box.ConfirmButtonText = "知道了";
         }
@@ -774,7 +823,6 @@ namespace Game.Network
             foreach (var identifier in new[] { "SpectatorIntro", "InsufficientChips", "LeaveRoom", "TableParticipationError", "RoomTransition" })
                 UIManager.Instance.DestroyPanel(identifier);
             UIManager.Instance.PopPanel<RoundResultMsgBox>();
-            UIManager.Instance.DestroyPanel(nameof(GameResultMsgBox));
             MsgBox.Create("RoomTransition", box => ConfigureRoomTransition(box, reason, spectator));
         }
 
@@ -791,24 +839,12 @@ namespace Game.Network
             if (!GameController.Available)
                 return;
 
-            GameController.Instance.State.SetChips(message.Chips);
-            ShopPanel.Instance?.ReceiveAccountBalance(message.Chips);
+            if (GameController.Instance.State.Chips != message.Chips) InvalidateCollection();
+            GameController.Instance.State.SetWallet(message.Dollars, message.Chips);
+            ShopPanel.Instance?.ReceiveAccountBalance(message.Dollars);
             RoomListPanel.Instance?.RefreshAccountStatus();
             GamePanel.Instance?.SetAccountChips(message.Chips);
-        }
-
-        private void ShowInsufficientChipsPrompt(GameInfoSync message)
-        {
-            MsgBox.Create("InsufficientChips", msgbox =>
-            {
-                msgbox.Type = MsgboxType.ConfirmAndCancel;
-                msgbox.ShowCloseButton = false;
-                msgbox.Title = "筹码不足";
-                msgbox.Message = $"当前余额为 ${ChipAmountFormatter.Format(message.AccountChips)}，少于本桌大盲 ${ChipAmountFormatter.Format(message.BigBlind)}。你可以继续旁观，或离开房间。";
-                msgbox.ConfirmButtonText = "继续旁观";
-                msgbox.CancelButtonText = "离开房间";
-                msgbox.OnCancel += () => LeaveRoomAfterHand(message.Info.RoomInfo.Id);
-            });
+            GamePanel.Instance?.SetAccountDollars(message.Dollars);
         }
 
         private static void LeaveRoomAfterHand(int roomId)
@@ -885,15 +921,6 @@ namespace Game.Network
             });
         }
 
-        private void GameResultNotificationHandler(GameResultNotification message)
-        {
-            if (!HasAuthenticatedClient || !_activeClientRoomId.HasValue ||
-                !UIManager.Instance.ContainsPanel<GamePanel>())
-                return;
-            UIManager.Instance.PushPanel<GameResultMsgBox>(UIManager.Layer.Top);
-            GameResultMsgBox.Instance.Info = message.GameResult;
-        }
-
         private void PlayerChangeReadyMessageHandler(NetworkConnectionToClient conn, PlayerChangeReadyMessage message)
         {
             if (!TryGetAuthenticatedPlayer(conn, out var playerName))
@@ -955,10 +982,9 @@ namespace Game.Network
                 result = -1;
             else if (account == null)
                 result = -5;
-            else if (targetRoom.IsWaiting && account.Chips < checked((uint)targetRoom.SmallBlindChips * 2U))
-                result = -6;
             else
-                result = _roomManager.Join(request.RoomId, playerName);
+                result = _roomManager.Join(request.RoomId, playerName,
+                    account.Chips < checked((uint)targetRoom.SmallBlindChips * 2U));
             var response = new PlayerJoinRoomResponse()
             {
                 SuccessCode = result,
@@ -1230,6 +1256,7 @@ namespace Game.Network
             }
             BroadcastRoomInfo(room);
             BroadcastGameInfo(roomId);
+            BroadcastRoundReady(roomId);
         }
 
         private uint? GetAccountChips(string name)
@@ -1292,24 +1319,6 @@ namespace Game.Network
                     _ => "牌局状态已变化，请根据最新界面重新操作。",
                 };
             });
-        }
-
-        private async UniTask ReturnSpectatorToLobby(int roomId, string name, int serverVersion, RoomTransitionReason reason)
-        {
-            while (NetworkServer.active && serverVersion == _serverLifecycleVersion &&
-                _roomManager.FindRoom(roomId)?.Spectators.Contains(name) == true)
-            {
-                var status = _departures.Request(roomId, name);
-                if (status == RoomLeaveStatus.Left)
-                {
-                    _playerManager.GetConnection(name)?.Send(new PlayerLeaveRoomResponse
-                    {
-                        RoomId = roomId, Status = status, TransitionReason = reason,
-                    });
-                    return;
-                }
-                await UniTask.Delay(2000, ignoreTimeScale: true);
-            }
         }
 
         private void PlayerOperationRequestHandler(NetworkConnectionToClient conn, PlayerOperationRequest request)
@@ -1520,6 +1529,8 @@ namespace Game.Network
             }
             else
             {
+                MoveInsufficientPlayersToSpectating(message.RoomId);
+                BroadcastRoomInfo(room);
                 response.SuccessCode = _roomManager.StartGame(message.RoomId);
             }
 
@@ -1656,6 +1667,8 @@ namespace Game.Network
                 return;
             }
             if (message.SmallBlindChips <= 0 ||
+                message.InterHandWaitSeconds < RoomInfo.MinInterHandWaitSeconds ||
+                message.InterHandWaitSeconds > RoomInfo.MaxInterHandWaitSeconds ||
                 message.ThinkingTime <= 0 ||
                 float.IsNaN(message.ThinkingTime) || float.IsInfinity(message.ThinkingTime) ||
                 message.MaxPlayer < 2 ||
@@ -1671,6 +1684,7 @@ namespace Game.Network
 
             room.SmallBlindChips = message.SmallBlindChips;
             room.ThinkingTime = message.ThinkingTime;
+            room.InterHandWaitSeconds = message.InterHandWaitSeconds;
 
             RoomInfoSync sync = new RoomInfoSync();
             sync.RoomInfo = PopulateNamecards(room);
@@ -1705,6 +1719,8 @@ namespace Game.Network
             {
                 UIManager.Instance.ResetPanels<RoomPanel>();
                 _lastParticipationStatus = null;
+                LastRoundReady = default;
+                OnRoundReadyChanged?.Invoke(default);
             }
             if (RoomPanel.Instance != null)
                 RoomPanel.Instance.RoomInfo = PopulateNamecards(room);
@@ -1728,13 +1744,19 @@ namespace Game.Network
 
         private void RoundResultNotificationHandler(RoundResultNotification message)
         {
-            if (!HasAuthenticatedClient || _activeClientRoomId != message.RoomId ||
-                !UIManager.Instance.ContainsPanel<GamePanel>())
-                return;
-            UIManager.Instance.PushPanel<RoundResultMsgBox>(UIManager.Layer.System);
-            RoundResultMsgBox.Instance.Info = message.RoundResult;
-            GameAudioManager.EnsureClient()?.ShowResult(message.RoomId, GamePanel.Instance.Info.HandId,
-                GameController.Instance.State.UserName, RoundResultMsgBox.Instance.Info);
+            if (!HasAuthenticatedClient || _activeClientRoomId != message.RoomId) return;
+            var result = message.RoundResult;
+            if (result == null || result.RoomId != message.RoomId || string.IsNullOrEmpty(result.HandId)) return;
+            bool isNew = LastRoundResult?.HandId != result.HandId;
+            LastRoundResult = result;
+            if (isNew && UIManager.Instance.ContainsPanel<GamePanel>())
+            {
+                UIManager.Instance.PushPanel<RoundResultMsgBox>(UIManager.Layer.System);
+                RoundResultMsgBox.Instance.SetResult(result, true);
+                GameAudioManager.EnsureClient()?.ShowResult(message.RoomId, result.HandId,
+                    GameController.Instance.State.UserName, result);
+            }
+            OnRoundResultChanged?.Invoke(result, isNew);
         }
 
         #endregion
@@ -1758,12 +1780,16 @@ namespace Game.Network
             var gameInfo = _gameManager.GetGameInfo(roomId);
             if (gameInfo == null)
                 return;
+            var expectedHandId = gameInfo.HandId;
+            var expectedStage = gameInfo.Stage;
+            var expectedTurnId = gameInfo.TurnId;
             gameInfo.OperatingPlayer = -1;
             OnGameInfoChanged(roomId);
             // 等待一段时间
             await UniTask.WaitForSeconds(2);
             if (NetworkServer.active && !_serverStorageFailed && serverVersion == _serverLifecycleVersion &&
                 ReferenceEquals(_gameManager.GetGameInfo(roomId), gameInfo) &&
+                gameInfo.HandId == expectedHandId && gameInfo.Stage == expectedStage && gameInfo.TurnId == expectedTurnId &&
                 gameInfo.Stage != GameStage.RoundOver && gameInfo.Stage != GameStage.GameOver &&
                 _gameManager.NextStage(roomId) == -7)
             {
@@ -1780,6 +1806,7 @@ namespace Game.Network
             var room = _roomManager.FindRoom(roomId);
             if (room == null)
                 return;
+            BroadcastRoundReady(roomId);
             foreach (var name in room.MemberNames)
             {
                 var conn = _playerManager.GetConnection(name);
@@ -1800,6 +1827,7 @@ namespace Game.Network
             }
 
             room = _roomManager.FindRoom(roomId);
+            MoveInsufficientPlayersToSpectating(roomId);
             if (_gameManager.SynchronizeRoomSeats(roomId) != 0)
             {
                 ReturnRoomToLobby(roomId);
@@ -1809,7 +1837,11 @@ namespace Game.Network
             BroadcastGameInfo(roomId);
             var settledGame = gameInfo;
             var settledHandId = gameInfo.HandId;
-            for (int secondsRemaining = 10; secondsRemaining > 0; secondsRemaining--)
+            int waitSeconds = Mathf.Clamp(room.InterHandWaitSeconds,
+                RoomInfo.MinInterHandWaitSeconds, RoomInfo.MaxInterHandWaitSeconds);
+            double deadline = Time.realtimeSinceStartupAsDouble + waitSeconds;
+            int lastSeconds = -1;
+            while (true)
             {
                 room = _roomManager.FindRoom(roomId);
                 gameInfo = _gameManager.GetGameInfo(roomId);
@@ -1817,9 +1849,17 @@ namespace Game.Network
                     room == null || !ReferenceEquals(gameInfo, settledGame) ||
                     gameInfo.HandId != settledHandId || room.IsWaiting || gameInfo.Stage != GameStage.RoundOver)
                     return;
-
-                BroadcastInterHandCountdown(roomId, true, secondsRemaining);
-                await UniTask.Delay(1000, ignoreTimeScale: true);
+                int secondsRemaining = Math.Max(0, (int)Math.Ceiling(deadline - Time.realtimeSinceStartupAsDouble));
+                if (secondsRemaining == 0 || (_gameManager.AreRoundParticipantsReady(roomId, settledHandId, _playerManager.IsConnected) &&
+                    _participation.CountNextHandPlayers(roomId) >= 2))
+                    break;
+                if (secondsRemaining != lastSeconds)
+                {
+                    BroadcastInterHandCountdown(roomId, true, secondsRemaining);
+                    BroadcastRoundReady(roomId);
+                    lastSeconds = secondsRemaining;
+                }
+                await UniTask.Yield();
             }
 
             room = _roomManager.FindRoom(roomId);
@@ -1835,6 +1875,7 @@ namespace Game.Network
                 _gameManager.CancelGame(roomId, "RoomEmpty");
                 return;
             }
+            MoveInsufficientPlayersToSpectating(roomId);
             _gameManager.PrepareNextHandSeats(roomId);
             _roomManager.ReleaseWatchingSeats(roomId);
             if (_participation.CountNextHandPlayers(roomId) < 2)
@@ -1948,7 +1989,7 @@ namespace Game.Network
             {
                 Info = new ClientGameInfo(gameInfo, playerIndex),
                 AccountChips = accountChips,
-                CanClaimDailyTaskRewards = GameManager.IsTaskRewardPhase(gameInfo, playerIndex),
+                CanClaimDailyTaskRewards = true,
                 BigBlind = bigBlind,
                 ParticipationStatus = participationStatus,
                 CanLeaveImmediately = !_gameManager.RequiresDeferredLeave(gameInfo.RoomInfo.Id, playerName),
@@ -1991,7 +2032,7 @@ namespace Game.Network
                 {
                     if (_playerManager.TryGetSession(conn, out var session) && session.Account.AccountId == account.AccountId)
                         session.Account = account.Copy();
-                    conn.Send(new AccountBalanceSync { Chips = account.Chips });
+                    conn.Send(new AccountBalanceSync { Chips = account.Chips, Dollars = account.Dollars });
                 }
             }
             catch (Exception exception)
@@ -2017,12 +2058,10 @@ namespace Game.Network
                 return;
             _roomManager.ReturnToWaiting(roomId);
             _gameManager.CancelGame(roomId, "ReturnedToLobby");
-            foreach (var name in room.Spectators.ToArray())
-                ReturnSpectatorToLobby(roomId, name, _serverLifecycleVersion, reason).Forget();
             if (_roomManager.FindRoom(roomId) != null)
             {
                 var message = new RoomInfoSync { RoomInfo = PopulateNamecards(room), TransitionReason = reason };
-                foreach (var name in room.Players)
+                foreach (var name in room.MemberNames)
                     _playerManager.GetConnection(name)?.Send(message);
             }
         }

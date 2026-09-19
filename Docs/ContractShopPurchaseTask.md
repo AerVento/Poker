@@ -20,11 +20,11 @@
 
 | 对象 | 已有内容 | 本任务需要补齐 |
 | --- | --- | --- |
-| `Assets/Resources/SO/Items/DevilContract.asset` | ID `devil-contract`，名称、图标、说明完整 | 当前 `_kind: 0`，需改为不可消耗 |
-| `Assets/Resources/SO/Items/ArchdevilContract.asset` | ID `archdevil-contract`，名称、图标、说明完整 | 当前 `_kind: 0`，需改为不可消耗 |
-| `Assets/Resources/SO/Items/SatanContract.asset` | ID `satan-contract`，名称、图标、说明完整 | 当前 `_kind: 0`，需改为不可消耗 |
+| `Assets/Resources/SO/Shop/Items/Products/DevilContract.asset` | ID `devil-contract`，名称、图标、说明完整 | 当前 `_kind: 0`，需改为不可消耗 |
+| `Assets/Resources/SO/Shop/Items/Products/ArchdevilContract.asset` | ID `archdevil-contract`，名称、图标、说明完整 | 当前 `_kind: 0`，需改为不可消耗 |
+| `Assets/Resources/SO/Shop/Items/Products/SatanContract.asset` | ID `satan-contract`，名称、图标、说明完整 | 当前 `_kind: 0`，需改为不可消耗 |
 | `Assets/Prefabs/UI/Panels/ShopPanel/ShopPanel.prefab` | `ItemsView._definitions` 已引用上述三个资产 | 复用已有引用和布局 |
-| `Assets/Resources/SO/Shop/ItemServerCatalog.json` | 当前为 `[]` | 添加三个正式报价 |
+| `Configs/Shop/Items.json` | 当前为 `[]` | 必要时添加运营覆盖；默认报价由 SO 管理 |
 | `SqliteAccountRepository.Items.cs` | 购买、入库、扣款、账本、幂等回执在同一事务内 | 支持购买条件与正向赠款效果 |
 | `ItemShopMessages.cs` / `ItemInventory.cs` | 报价只有 ID、价格、上架状态等基础信息 | 提供奖励、购买条件与拒绝原因的展示数据 |
 | `ShopPanel.ItemsOnline.cs` | 已完成请求、重试、权威快照回填 | 展示赠款结果、及时刷新三个商品的可购状态 |
@@ -230,7 +230,7 @@ registry.Register("satan-contract", new ItemPurchasePolicy(
 
 ### 7.1 正式目录
 
-任务实现完成后，`ItemServerCatalog.json` 的目标配置为：
+任务实现完成时，物品目录的默认报价为：
 
 ```json
 [
@@ -268,7 +268,7 @@ UI 验收行为：
 
 | 顺序 | 工作包 | 主要位置 | 完成条件 |
 | --- | --- | --- | --- |
-| 1 | 修正资产分类，明确三种报价 | 三份契约 `.asset`、`ItemServerCatalog.json` | ID/GUID 不变，客户端/服务端均不可消耗、免费、上限 1 |
+| 1 | 修正资产分类，明确三种报价 | 三份契约 `.asset`、物品目录 | ID/GUID 不变，客户端/服务端均不可消耗、免费、上限 1 |
 | 2 | 增加只读上下文、独立条件/效果接口、命令执行器和 ID 注册表 | `Assets/Scripts/Network/Accounts/` | 条件与效果互不依赖，余额条件支持六种参数化比较，支持任一集合为空，注册错误能被检测 |
 | 3 | 统一运行配置和报价版本 | `ItemShop.cs`、服务端初始化 | 独立条件和有序效果均参与 revision，组件参数不在多处重复维护 |
 | 4 | 改造事务和回执，增加 schema 8 迁移 | `SqliteAccountRepository.Items.cs`、`SqliteAccountRepository.cs`、`GuardedAccountRepository.cs` | 扣款、奖励、库存、账本、回执原子提交；旧回执可重放 |

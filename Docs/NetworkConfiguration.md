@@ -4,7 +4,7 @@
 
 ## 客户端
 
-源码默认文件：`Assets/StreamingAssets/client-network.json`。仓库提供可直接连接本机测试服务器的配置：
+源码默认文件：`Configs/Network/client-network.json`。仓库提供可直接连接本机测试服务器的配置：
 
 ```json
 {
@@ -22,9 +22,9 @@
 | `useSsl` | 必须明确填写布尔值。`true` 使用 WSS，`false` 使用 WS。HTTPS WebGL 页面必须使用 WSS。 |
 | `connectTimeoutSeconds` | 建立连接的最长等待时间，整数 1～300 秒。启动后台连接、手动登录及重连均适用；不控制牌局操作倒计时或认证响应时间。 |
 
-Windows 默认读取 `Poker_Data/StreamingAssets/client-network.json`。可以用 `-pokerClientConfig "绝对或相对文件路径"` 指定本机文件；显式相对路径以启动进程的工作目录为基准。
+Windows 默认读取可执行文件旁的 `Configs/Network/client-network.json`。可以用 `-pokerClientConfig "绝对或相对文件路径"` 指定本机文件；显式相对路径以启动进程的工作目录为基准。
 
-WebGL 自动读取网站游戏目录下的 `StreamingAssets/client-network.json`，由 `Application.streamingAssetsPath` 确定位置，支持游戏部署在网站子目录。玩家正常启动时无需操作配置；读取结束后才允许登录。下载单次超时 10 秒，网络或 HTTP 失败会自动再试一次，间隔 0.5 秒；这段启动下载时间不能从尚未读取的 JSON 中获取。读取或校验最终失败时，显示“暂时无法连接服务”，提供“重试”和“稍后”；稍后再点击开始游戏也会重试。
+WebGL 构建会把同一源文件复制到网站游戏目录下的 `Configs/Network/client-network.json`，并相对于当前页面 URL 读取，因此支持部署在网站子目录。玩家正常启动时无需操作配置；读取结束后才允许登录。下载单次超时 10 秒，网络或 HTTP 失败会自动再试一次，间隔 0.5 秒；这段启动下载时间不能从尚未读取的 JSON 中获取。读取或校验最终失败时，显示“暂时无法连接服务”，提供“重试”和“稍后”；稍后再点击开始游戏也会重试。
 
 配置为公开文件，不得填写任何账户密码、会话令牌、证书私钥或服务端凭据。直接修改线上 JSON 后，新打开或刷新的页面使用新配置；已经运行的页面保留原配置，当前牌局不会被切换服务器。
 
@@ -33,7 +33,7 @@ WebGL 自动读取网站游戏目录下的 `StreamingAssets/client-network.json`
 配置请求附带每次不同的查询参数，避免与 Unity 构建缓存绑定。Web 服务器还应对这个文件返回 `Cache-Control: no-store`，CDN 或 Service Worker 如有额外缓存规则，也应排除它。以游戏部署在 `/poker/` 的 Nginx 为例，在现有站点中加入：
 
 ```nginx
-location = /poker/StreamingAssets/client-network.json {
+location = /poker/Configs/Network/client-network.json {
     add_header Cache-Control "no-store" always;
     try_files $uri =404;
 }
@@ -41,11 +41,11 @@ location = /poker/StreamingAssets/client-network.json {
 
 沿用该站点现有的 `root`。此文件应返回 JSON，不能被单页站点的 fallback 规则改写成 `index.html`。配置与游戏页面同源部署，读取时无需额外的跨域配置。
 
-上传前校验 JSON，先写临时文件再在同一文件系统中替换正式文件，避免读到半份内容。发布新版游戏时保留线上 `StreamingAssets/client-network.json`，不要用构建中的本地测试配置覆盖它。Unity 构建输出自身仍使用源码中的默认客户端 JSON。
+上传前校验 JSON，先写临时文件再在同一文件系统中替换正式文件，避免读到半份内容。发布新版游戏时保留线上 `Configs/Network/client-network.json`，不要用构建中的本地测试配置覆盖它。Unity 构建输出自身使用仓库 `Configs/Network/` 中的默认客户端 JSON。
 
 ## 服务端
 
-源码默认文件：`Configs/server-network.json`，在 `Assets` 之外，不会打进 WebGL 资源。
+源码默认文件：`Configs/Network/server-network.json`，在 `Assets` 之外，不会打进 WebGL 资源。
 
 ```json
 {
@@ -67,11 +67,13 @@ location = /poker/StreamingAssets/client-network.json {
 
 `path` 与 `password` 是现有 Mirror 证书加载器的字段名。加载器直接读取这份服务端 JSON，无需第三份证书配置。启动时检查文件存在、密码可解密、包含私钥且处于证书有效期；浏览器信任链与域名匹配仍应由部署使用的证书满足。日志不会打印配置原文或证书密码。
 
-服务端默认读取可执行文件旁的 `Configs/server-network.json`，不依赖进程工作目录。Editor 对应项目根目录。Windows/Linux 构建完成后自动复制默认服务端配置；输出目录已经存在该文件时保留原文件，避免覆盖本机部署参数。实际生产配置、证书及密码应放在服务器私有目录，通过启动参数指定，不随网页发布或提交到仓库。
+服务端默认读取可执行文件旁的 `Configs/Network/server-network.json`，不依赖进程工作目录。Editor 对应项目根目录。Windows/Linux 构建完成后自动复制默认服务端配置；输出目录已经存在该文件时保留原文件，避免覆盖本机部署参数。实际生产配置、证书及密码应放在服务器私有目录，通过启动参数指定，不随网页发布或提交到仓库。
 
 Linux Standalone / Dedicated Server 默认启动服务端；Windows 默认启动客户端，增加 `-pokerServer` 可以运行临时服务端。两者均支持 `-pokerServerConfig "文件路径"`。不要通过 Mirror 的旧调试 HUD 启动联网：该 HUD 在运行时关闭，防止绕过配置；Mirror 的 headless 自动启动也统一交给 GameController。
 
 ### 本地测试
+
+在 Unity Editor 中打开 `Game.unity` 并进入 Play Mode，会自动启动 Mirror Host：服务端和本地客户端共用同一个 Editor 进程。启动读取 `Configs/Network/server-network.json` 与 `Configs/Network/client-network.json`；随后只在内存中保留服务端端口、连接上限及客户端超时，并强制客户端地址为 `127.0.0.1`、服务端 SSL 与客户端 WSS 为关闭状态。配置文件不会被改写，退出 Play Mode 后覆盖随即消失。SimpleWebTransport 的服务端仍按其默认监听方式使用配置端口。
 
 保持两份默认 JSON 不变，构建 Windows Player 后运行：
 

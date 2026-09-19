@@ -6,7 +6,7 @@ namespace Game.UI.Gifts
     /// <summary>Local presentation only. Call Play after the server accepts a gift use.</summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(RectTransform))]
-    public sealed class RottenEggGiftEffect : MonoBehaviour
+    public sealed class RottenEggGiftEffect : GiftEffect
     {
         [SerializeField] private Sprite _eggSprite;
         [SerializeField] private Sprite _splatSprite;
@@ -17,6 +17,7 @@ namespace Game.UI.Gifts
         [Min(0.01f), SerializeField] private float _fadeDuration = 0.65f;
         [Header("Size in canvas units")]
         [Min(1f), SerializeField] private float _eggSize = 180f;
+        [Range(0.1f, 2f), SerializeField] private float _effectScale = 0.5f;
         [Min(0f), SerializeField] private float _arcHeight = 200f;
         [Min(0f), SerializeField] private float _slideDistance = 52f;
         private RectTransform _root;
@@ -37,14 +38,15 @@ namespace Game.UI.Gifts
         private readonly RectTransform[] _flecks = new RectTransform[10];
         private readonly RectTransform[] _trail = new RectTransform[7];
         public bool IsPlaying { get; private set; }
-        public float Duration => _appearDuration + _flightDuration + _slideDuration + _fadeDuration;
+        public override float Duration => _appearDuration + _flightDuration + _slideDuration + _fadeDuration;
         public float Elapsed => _elapsed;
         public string Phase => !IsPlaying ? "就绪" : _elapsed < _appearDuration ? "弹出" :
             _elapsed < _appearDuration + _flightDuration ? "抛物线飞行" :
             _elapsed < _appearDuration + _flightDuration + _slideDuration ? "破裂 · 滑落" : "渐隐";
         public Sprite EggSprite => _eggSprite;
+        public float VisualScale => _effectScale;
 
-        public void Play(RectTransform target)
+        public override void Play(RectTransform target)
         {
             Stop();
             if (target == null || !target.gameObject.activeInHierarchy || !isActiveAndEnabled)
@@ -194,11 +196,15 @@ namespace Game.UI.Gifts
             _group = _visual.gameObject.AddComponent<CanvasGroup>();
             _group.blocksRaycasts = false;
             _group.interactable = false;
-            _halo = Accent("Pop glow", _visual, new Vector2(230f, 230f), RottenEggAccent.Shape.Disc, new Color(0.75f, 1f, 0.4f));
+            var scale = Mathf.Max(0.01f, _effectScale);
+            _halo = Accent("Pop glow", _visual, new Vector2(230f, 230f) * scale,
+                RottenEggAccent.Shape.Disc, new Color(0.75f, 1f, 0.4f));
             for (int i = 0; i < _trail.Length; i++)
-                _trail[i] = Accent("Trail " + i, _visual, new Vector2(25f, 25f), RottenEggAccent.Shape.Disc, new Color(0.78f, 0.93f, 0.40f));
-            _egg = Picture("Intact egg", _visual, _eggSprite, new Vector2(_eggSize, _eggSize));
+                _trail[i] = Accent("Trail " + i, _visual, new Vector2(25f, 25f) * scale,
+                    RottenEggAccent.Shape.Disc, new Color(0.78f, 0.93f, 0.40f));
+            _egg = Picture("Intact egg", _visual, _eggSprite, new Vector2(_eggSize, _eggSize) * scale);
             _impact = Node("Impact", _visual, Vector2.zero);
+            _impact.localScale = Vector3.one * scale;
             _impactGroup = _impact.gameObject.AddComponent<CanvasGroup>();
             _ring = Accent("Impact ring", _impact, new Vector2(230f, 180f), RottenEggAccent.Shape.Ring, new Color(0.88f, 1f, 0.55f));
             for (int i = 0; i < _drops.Length; i++)

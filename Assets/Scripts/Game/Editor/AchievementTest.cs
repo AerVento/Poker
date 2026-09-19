@@ -68,6 +68,48 @@ namespace Game.Tests
                 showdown, 1000, new[] { new AchievementStreet(stage, 200, Array.Empty<Poker>(), players) }, Array.Empty<AchievementAction>(), pots);
         }
 
+        private static AchievementPlayer PlayerWithHole(string id, bool folded, params Poker[] hole)
+            => new AchievementPlayer(id, id, 0, folded, false, false, 10000, 10000, 0, 0, hole,
+                null, Array.Empty<int>(), 0, 0);
+
+        private static AchievementContext ComboDrawContext(string hand, Poker[] hole, Poker[] flop, Poker turn, Poker river)
+        {
+            var player = PlayerWithHole("Alice", false, hole);
+            var players = new[] { player };
+            var turnCommunity = flop.Concat(new[] { turn }).ToArray();
+            var riverCommunity = turnCommunity.Concat(new[] { river }).ToArray();
+            return new AchievementContext(hand + ":achievement:round-over", hand, 1, GameStage.River, GameStage.RoundOver,
+                0, 0, 1, 50, true, 1000, new[] {
+                    new AchievementStreet(GameStage.Flop, 0, flop, players),
+                    new AchievementStreet(GameStage.Turn, 0, turnCommunity, players),
+                    new AchievementStreet(GameStage.River, 0, riverCommunity, players),
+                    new AchievementStreet(GameStage.RoundOver, 0, riverCommunity, players) },
+                Array.Empty<AchievementAction>(), Array.Empty<AchievementPot>());
+        }
+
+        private static AchievementContext BluffContext(bool currentStreetHasStrongerFold)
+        {
+            var community = new[] { Card(PokerSuit.Club, PokerRank.Two), Card(PokerSuit.Heart, PokerRank.Seven),
+                Card(PokerSuit.Spade, PokerRank.Nine) };
+            var players = new[] {
+                PlayerWithHole("Alice", false, Card(PokerSuit.Heart, PokerRank.Two), Card(PokerSuit.Diamond, PokerRank.Three)),
+                PlayerWithHole("Bob", true, Card(PokerSuit.Heart, PokerRank.Four), Card(PokerSuit.Diamond, PokerRank.Five)),
+                PlayerWithHole("Carol", true, currentStreetHasStrongerFold ? Card(PokerSuit.Heart, PokerRank.Nine) : Card(PokerSuit.Club, PokerRank.Six),
+                    currentStreetHasStrongerFold ? Card(PokerSuit.Diamond, PokerRank.Nine) : Card(PokerSuit.Diamond, PokerRank.Eight)),
+                PlayerWithHole("Daniel", true, currentStreetHasStrongerFold ? Card(PokerSuit.Heart, PokerRank.Four) : Card(PokerSuit.Heart, PokerRank.Nine),
+                    currentStreetHasStrongerFold ? Card(PokerSuit.Diamond, PokerRank.Five) : Card(PokerSuit.Diamond, PokerRank.Nine)) };
+            return new AchievementContext("bluff:achievement:round-over", "bluff", 1, GameStage.Flop, GameStage.RoundOver,
+                0, 0, 1, 50, false, 1000, new[] {
+                    new AchievementStreet(GameStage.Preflop, 0, Array.Empty<Poker>(), players),
+                    new AchievementStreet(GameStage.Flop, 0, community, players),
+                    new AchievementStreet(GameStage.RoundOver, 0, community, players) },
+                new[] {
+                    new AchievementAction("Daniel", GameStage.Preflop, 1, PlayerOperationType.Fold, 0, 10000, false),
+                    new AchievementAction("Bob", GameStage.Flop, 2, PlayerOperationType.Fold, 0, 10000, false),
+                    new AchievementAction("Carol", GameStage.Flop, 3, PlayerOperationType.Fold, 0, 10000, false) },
+                new[] { new AchievementPot(100, players.Select(player => player.AccountId).ToArray(), new[] { "Alice" }) });
+        }
+
         private void Publish(AchievementContext context)
         {
             _repository.PublishAchievementEvent(context);
@@ -126,6 +168,45 @@ namespace Game.Tests
             Publish(Context(players: new[] { Player("Alice", 12, rank: quads ? PokerHandRank.Four_of_a_Kind : PokerHandRank.Full_House),
                 Player("Bob", tie ? 12 : 11, folded) }));
             Assert.AreEqual(0, State().CompletedAt);
+        }
+
+        [Test]
+        public void MissedComboDrawMustExistAtFlopOrTurnRatherThanFirstAppearingOnRiver()
+        {
+            var hole = new[] { Card(PokerSuit.Heart, PokerRank.Two), Card(PokerSuit.Heart, PokerRank.Nine) };
+            var achievement = new MissedComboDrawAchievement();
+
+            var onFlop = new AchievementProgress();
+            achievement.Evaluate(ComboDrawContext("combo-flop", hole, new[] {
+                Card(PokerSuit.Heart, PokerRank.Three), Card(PokerSuit.Heart, PokerRank.Four), Card(PokerSuit.Club, PokerRank.Five) },
+                Card(PokerSuit.Club, PokerRank.King), Card(PokerSuit.Diamond, PokerRank.Queen)), "Alice", onFlop);
+            Assert.AreEqual(1, onFlop.Count);
+
+            var onTurn = new AchievementProgress();
+            achievement.Evaluate(ComboDrawContext("combo-turn", hole, new[] {
+                Card(PokerSuit.Heart, PokerRank.Three), Card(PokerSuit.Club, PokerRank.Four), Card(PokerSuit.Diamond, PokerRank.Queen) },
+                Card(PokerSuit.Heart, PokerRank.Five), Card(PokerSuit.Club, PokerRank.King)), "Alice", onTurn);
+            Assert.AreEqual(1, onTurn.Count);
+
+            var riverOnly = new AchievementProgress();
+            achievement.Evaluate(ComboDrawContext("combo-river", hole, new[] {
+                Card(PokerSuit.Heart, PokerRank.Three), Card(PokerSuit.Club, PokerRank.Four), Card(PokerSuit.Diamond, PokerRank.Queen) },
+                Card(PokerSuit.Club, PokerRank.King), Card(PokerSuit.Heart, PokerRank.Five)), "Alice", riverOnly);
+            Assert.AreEqual(0, riverOnly.Count);
+        }
+
+        [Test]
+        public void WinByBluffOnlyComparesPlayersWhoFoldedDuringTheFinalStreet()
+        {
+            var achievement = new WinByBluffAchievement();
+
+            var onlyPreflopOpponentIsStronger = new AchievementProgress();
+            achievement.Evaluate(BluffContext(false), "Alice", onlyPreflopOpponentIsStronger);
+            Assert.AreEqual(0, onlyPreflopOpponentIsStronger.Count);
+
+            var finalStreetOpponentIsStronger = new AchievementProgress();
+            achievement.Evaluate(BluffContext(true), "Alice", finalStreetOpponentIsStronger);
+            Assert.AreEqual(1, finalStreetOpponentIsStronger.Count);
         }
 
         [Test]

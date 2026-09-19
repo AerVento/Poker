@@ -1,0 +1,30 @@
+var catalog = Game.Network.CardFaceCatalogLoader.Parse(System.IO.File.ReadAllText("Assets/Resources/SO/Shop/CardFaceServerCatalog.json"));
+var external = Game.Network.CardFaceCatalogLoader.Parse(System.IO.File.ReadAllText("Configs/CardFaceServerCatalog.json"));
+if (catalog.Revision != external.Revision) throw new System.Exception("Default and local catalogs differ.");
+System.IO.Directory.CreateDirectory("Logs");
+var database = System.IO.Path.GetFullPath("Logs/JewelCourtCommerce-" + System.Guid.NewGuid().ToString("N") + ".db");
+var repository = new Game.Network.Accounts.SqliteAccountRepository(database);
+var service = new Game.Network.Accounts.AccountService(repository, new Game.Network.Accounts.PasswordHasher(iterations: 1000), initialChips: 100000);
+service.Initialize();
+var results = new System.Collections.Generic.List<object>();
+foreach (var id in new [] { "jewel-court", "cat-court" })
+{
+    var offer = System.Linq.Enumerable.First(catalog.Products, p => p.Id == id);
+    if (!offer.Listed || offer.Price != 50000) throw new System.Exception("Incorrect listing: " + id);
+    var account = service.Register(id == "jewel-court" ? "JewelBuyer" : "CatBuyer", "FixturePassword123").Account;
+    if (account == null) throw new System.Exception("Could not create isolated test account.");
+    var op = System.Guid.NewGuid().ToString("N");
+    var result = repository.ChangeCardFace(account.AccountId, op, Game.Network.Accounts.ShopAction.Purchase, id, catalog.Revision, catalog);
+    if (result != Game.Network.Accounts.ShopResult.Success || repository.FindById(account.AccountId).Chips != 50000) throw new System.Exception("Purchase did not deduct exactly 50000: " + id);
+    if (repository.ChangeCardFace(account.AccountId, op, Game.Network.Accounts.ShopAction.Purchase, id, catalog.Revision, catalog) != result || repository.FindById(account.AccountId).Chips != 50000) throw new System.Exception("Retry charged twice: " + id);
+    if (repository.ChangeCardFace(account.AccountId, System.Guid.NewGuid().ToString("N"), Game.Network.Accounts.ShopAction.Purchase, id, catalog.Revision, catalog) != Game.Network.Accounts.ShopResult.AlreadyOwned) throw new System.Exception("Duplicate purchase not rejected.");
+    if (repository.ChangeCardFace(account.AccountId, System.Guid.NewGuid().ToString("N"), Game.Network.Accounts.ShopAction.Equip, id, catalog.Revision, catalog) != Game.Network.Accounts.ShopResult.Success) throw new System.Exception("Equip failed.");
+    var reopened = new Game.Network.Accounts.SqliteAccountRepository(database);
+    if (reopened.FindById(account.AccountId).EquippedCardFaceId != id) throw new System.Exception("Equipment not persisted.");
+    results.Add(new { id=id, listed=offer.Listed, price=offer.Price, remainingChips=reopened.FindById(account.AccountId).Chips });
+}
+var poor = new Game.Network.Accounts.AccountService(repository, new Game.Network.Accounts.PasswordHasher(iterations:1000), initialChips:10000).Register("LowBalanceBuyer", "FixturePassword123").Account;
+foreach(var id in new [] { "jewel-court", "cat-court" })
+    if (repository.ChangeCardFace(poor.AccountId, System.Guid.NewGuid().ToString("N"), Game.Network.Accounts.ShopAction.Purchase, id, catalog.Revision, catalog) != Game.Network.Accounts.ShopResult.InsufficientChips) throw new System.Exception("Low balance accepted.");
+if (repository.FindById(poor.AccountId).Chips != 10000 || !repository.ReconcileChips().IsConsistent) throw new System.Exception("Ledger or low-balance account changed.");
+return new { passed=true, results=results, checks="Price, exact debit, idempotency, duplicate purchase, equip persistence, insufficient balance, ledger", isolatedDatabase=database };

@@ -131,13 +131,13 @@ namespace Game.Network.Accounts
                 Period = period,
                 ServerUnixSeconds = now.ToUnixTimeSeconds(),
                 NextResetUnixSeconds = new DateTimeOffset(day.Date.AddDays(1), ResetOffset).ToUnixTimeSeconds(),
-                Balance = state.Account.Chips,
+                Balance = state.Account.Dollars,
                 Tasks = new[]
                 {
-                    CreateState(DailyTaskId.DailySupply, "每日补给", "每日领取一份筹码补给，开启今日牌局。",
+                    CreateState(DailyTaskId.DailySupply, "每日补给", "每日领取一份美金补给。",
                         SupplyReward, state, state.SupplyClaimed, false),
-                    CreateState(DailyTaskId.Comeback, "东山再起", $"余额不高于 ${ComebackThreshold:N0} 时，可领取应急筹码。",
-                        ComebackReward, state, state.ComebackClaimed, state.Account.Chips > ComebackThreshold),
+                    CreateState(DailyTaskId.Comeback, "东山再起", $"总资产不高于 ${ComebackThreshold:N0} 时，可领取应急美金。",
+                        ComebackReward, state, state.ComebackClaimed, state.Account.TotalAssets > ComebackThreshold),
                 },
             };
         }
@@ -187,10 +187,9 @@ namespace Game.Network.Accounts
                 Name = name,
                 Description = description,
                 Reward = reward,
-                Availability = account.HasActiveHand ? DailyTaskAvailability.ActiveHand :
-                    claimed ? DailyTaskAvailability.Claimed :
+                Availability = claimed ? DailyTaskAvailability.Claimed :
                     balanceTooHigh ? DailyTaskAvailability.BalanceTooHigh :
-                    (ulong)account.Account.Chips + reward > uint.MaxValue ? DailyTaskAvailability.BalanceLimit :
+                    (ulong)account.Account.Dollars + reward > uint.MaxValue ? DailyTaskAvailability.BalanceLimit :
                     DailyTaskAvailability.Claimable,
             };
         }

@@ -10,7 +10,7 @@ namespace Game.UI
         private static CardFaceCatalogSO _catalog;
         public static event Action Changed;
         public static CardFaceCatalogSO Catalog => _catalog != null ? _catalog :
-            _catalog = Resources.Load<CardFaceCatalogSO>("SO/CardFaces/CardFaceCatalog");
+            _catalog = Resources.Load<CardFaceCatalogSO>(CardFaceCatalogSO.ResourcePath);
         public static CardFaceProductSO Current => Catalog == null ? null : Catalog.Find(_equippedId) ?? Catalog.Default;
         public static string EquippedId => _equippedId;
 

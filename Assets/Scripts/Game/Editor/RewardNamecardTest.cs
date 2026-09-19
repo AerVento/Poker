@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text.Json;
 using Game.Achievements;
 using Game.Network;
 using Game.Network.Accounts;
@@ -34,8 +33,7 @@ namespace Game.Tests
             accounts.Initialize();
             accounts.Register("RewardAlice", "password123");
             accounts.Register("RewardBob", "password123");
-            _catalog = new NamecardServerCatalog { Products = JsonSerializer.Deserialize<NamecardOffer[]>(
-                Resources.Load<TextAsset>("SO/Shop/NamecardServerCatalog").text) };
+            _catalog = NamecardCatalogSO.LoadDefault().CreateServerCatalog();
             var registry = new ItemIdentityRegistry(_catalog, new ItemServerCatalog());
             _service = new AchievementService(_repository, new AchievementCatalog(new Achievement[] {
                 new ShowdownStraightFlushAchievement(), new RoyalStraightFlushAchievement() }),
@@ -158,7 +156,7 @@ namespace Game.Tests
         [TestCase("royal-straight-flush")]
         public void CatalogHasBothArtworkVariantsAndCannotExportPurchasableRewards(string id)
         {
-            var product = Resources.Load<NamecardCatalogSO>("SO/Shop/NamecardCatalog").GetProduct(id);
+            var product = Resources.Load<NamecardCatalogSO>(NamecardCatalogSO.ResourcePath).GetProduct(id);
             Assert.IsTrue(product.IsListed);
             Assert.IsTrue(product.IsReward);
             Assert.IsFalse(product.CanPurchase);

@@ -303,7 +303,8 @@ namespace Game.Network.Diagnostics
             var userNameRunId = _runId.Length <= 8 ? _runId : _runId.Substring(0, 8);
             _userName = $"Smoke{userNameRunId}_{_clientIndex}";
             var configurationPath = NetworkConfigurationLoader.GetClientPath();
-            _networkRoom.ConfigureClient(NetworkConfiguration.ParseClient(File.ReadAllText(configurationPath)));
+            _networkRoom.ConfigureClient(NetworkConfiguration.ParseClient(
+                Framework.Configs.ConfigManager.ReadAllTextAtPath(configurationPath)));
             _authenticator.AuthenticationResponseReceived += OnAuthenticationResponse;
             if (_testTasks)
             {
@@ -624,6 +625,17 @@ namespace Game.Network.Diagnostics
             if (_testContracts) CheckInfernalRoom(room);
             _roomId = room.Id;
             _joined = room.ContainsMember(_userName);
+            if (_reviewScenario == "wait-setting" && !_startSent && room.IsWaiting && _clientIndex == 0 && room.InterHandWaitSeconds != 3)
+            {
+                if (!_roomSettingsSent)
+                {
+                    _roomSettingsSent = true;
+                    var waitInput = Field<TMPro.TMP_InputField>(UI.RoomPanel.Instance, "_interHandWait");
+                    waitInput.text = "3";
+                    waitInput.onEndEdit.Invoke("3");
+                }
+                return;
+            }
             if (_testResultReview && _roundsCompleted > 0 && room.IsWaiting)
             {
                 if (Time.realtimeSinceStartup - _lastResultTime < 9.5f ||
@@ -661,6 +673,7 @@ namespace Game.Network.Diagnostics
                     NetworkClient.Send(new RoomInfoChange
                     {
                         RoomId = room.Id, MaxPlayer = 2, SmallBlindChips = _reviewScenario == "review-bust" ? 4000 : 1, ThinkingTime = 120,
+                        InterHandWaitSeconds = room.InterHandWaitSeconds,
                     });
                 }
                 return;
@@ -1170,6 +1183,19 @@ namespace Game.Network.Diagnostics
 
         private void OnCountdown(InterHandCountdownSync message)
         {
+            if (_reviewScenario == "wait-setting" && message.IsActive)
+            {
+                if (message.SecondsRemaining > 3 || message.SecondsRemaining < 1)
+                    Fail("Countdown did not use the owner's configured 3-second wait.");
+                if (message.SecondsRemaining == 3)
+                    WriteResult("room-wait-" + _clientIndex + ".checked", "Owner's actual room input synchronized a 3-second server countdown.");
+            }
+            if (_reviewScenario == "wait-setting" && !message.IsActive && _lastResultTime > 0)
+            {
+                var elapsed = Time.realtimeSinceStartup - _lastResultTime;
+                if (elapsed < 2.8f || elapsed > 6f) Fail("Configured result review lasted " + elapsed + " seconds.");
+                else WriteResult("room-wait-elapsed-" + _clientIndex + ".checked", elapsed.ToString());
+            }
             if (message.IsActive && message.SecondsRemaining <= 10)
                 _sawCountdown = true;
         }
@@ -1333,7 +1359,11 @@ namespace Game.Network.Diagnostics
                         return;
                     }
                     _spectatorPhase = 1;
-                    Click(UI.GamePanel.Instance, "_keepSpectatingButton");
+                    NetworkClient.Send(new TableParticipationRequest
+                    {
+                        RoomId = _roomId, HandId = info.HandId, Revision = message.ParticipationRevision,
+                        Action = TableParticipationAction.KeepSpectating,
+                    });
                 }
                 else if (_spectatorPhase == 1 && message.ParticipationRevision > 0)
                 {

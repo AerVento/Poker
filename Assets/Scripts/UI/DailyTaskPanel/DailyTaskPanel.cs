@@ -15,6 +15,7 @@ namespace Game.UI
         [SerializeField] private Button _back;
         [SerializeField] private Button _refresh;
         [SerializeField] private TextMeshProUGUI _balance;
+        [SerializeField] private Image _dollarIcon;
         [SerializeField] private TextMeshProUGUI _resetTime;
         [SerializeField] private TextMeshProUGUI _feedback;
         [SerializeField] private DailyTaskCard[] _cards;
@@ -49,7 +50,8 @@ namespace Game.UI
                 card.DeleteClicked += ConfirmDelete;
             }
             _feedback.text = string.Empty;
-            _balance.text = "账户余额  ·  —";
+            _balance.text = "美金余额  ·  —";
+            if (_dollarIcon != null) _dollarIcon.gameObject.SetActive(false);
             _resetTime.text = "每日 00:00 刷新 · UTC+8";
             _lastClaimAllowed = CanClaimNow;
             _permissionRefreshPending = false;
@@ -195,9 +197,10 @@ namespace Game.UI
             _hasSnapshot = true;
             _resetAt = Time.realtimeSinceStartupAsDouble +
                 System.Math.Max(1, _snapshot.NextResetUnixSeconds - _snapshot.ServerUnixSeconds);
-            _balance.text = $"账户余额  ·  ${_snapshot.Balance:N0}";
+            _balance.text = $"美金余额  ·  ${_snapshot.Balance:N0}";
+            if (_dollarIcon != null) _dollarIcon.gameObject.SetActive(true);
             _resetTime.text = "每日 00:00 刷新 · UTC+8";
-            GameController.Instance.State.SetChips(_snapshot.Balance);
+            GameController.Instance.State.SetDollars(_snapshot.Balance);
             DisplayCards();
         }
 
@@ -317,14 +320,14 @@ namespace Game.UI
             DailyTaskResult.RefreshUnavailable => "任务已领取过奖励、已使用刷新或已到期，请刷新状态。",
             DailyTaskResult.NoAlternative => "暂时没有其他可分配任务，原任务和刷新次数已保留。",
             DailyTaskResult.FixedTask => "固定任务不能删除。",
-            DailyTaskResult.BalanceTooHigh => "当前余额尚未满足任务的领取条件。",
+            DailyTaskResult.BalanceTooHigh => "当前总资产尚未满足任务的领取条件。",
             DailyTaskResult.NotComplete => "本轮目标尚未完成。",
             DailyTaskResult.Expired => "任务已到期，未完成的轮次不再开放。",
             DailyTaskResult.ItemLimit => "奖励道具已达持有上限，暂时无法领取。",
             DailyTaskResult.ActiveHand => "当前无法领取奖励。",
             DailyTaskResult.OutsideRoomRequired => "当前无法领取奖励。",
             DailyTaskResult.PeriodChanged => "已进入新的一天，任务状态正在刷新，请重新领取。",
-            DailyTaskResult.BalanceLimit => "账户余额已达上限，无法领取奖励。",
+            DailyTaskResult.BalanceLimit => "美金余额已达上限，无法领取奖励。",
             _ => "暂时无法读取任务，请刷新后重试。",
         };
     }

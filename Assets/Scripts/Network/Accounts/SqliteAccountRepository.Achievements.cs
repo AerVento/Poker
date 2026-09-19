@@ -4,12 +4,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using Game.Achievements;
+using Game.Events;
 using Game.Tasks;
 using Microsoft.Data.Sqlite;
 
 namespace Game.Network.Accounts
 {
-    public sealed partial class SqliteAccountRepository : IAchievementRepository
+    public sealed partial class SqliteAccountRepository : IAchievementRepository, IPlayerEventRepository
     {
         private static void CreateAchievementSchema(SqliteConnection connection, SqliteTransaction transaction)
         {
@@ -30,6 +31,7 @@ CREATE INDEX IF NOT EXISTS ix_achievement_pending ON achievement_event_receipts(
                 using var connection = OpenConnection();
                 using var transaction = connection.BeginTransaction();
                 CreateAchievementSchema(connection, transaction);
+                CreatePlayerEventSchema(connection, transaction);
                 transaction.Commit();
             }
         }
@@ -52,24 +54,7 @@ CREATE INDEX IF NOT EXISTS ix_achievement_pending ON achievement_event_receipts(
                 context.Players.Count < 2 || context.Players.Any(p => string.IsNullOrWhiteSpace(p.AccountId)) ||
                 context.Players.Select(p => p.AccountId).Distinct().Count() != context.Players.Count)
                 throw new InvalidOperationException("Invalid achievement event identity or participants.");
-            var payload = JsonSerializer.Serialize(context);
-            using var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandText = "INSERT OR IGNORE INTO achievement_events(event_id,hand_id,payload) VALUES($event,$hand,$payload);";
-            command.Parameters.AddWithValue("$event", context.EventId);
-            command.Parameters.AddWithValue("$hand", context.HandId);
-            command.Parameters.AddWithValue("$payload", payload);
-            command.ExecuteNonQuery();
-            command.CommandText = "SELECT payload FROM achievement_events WHERE event_id=$event;";
-            if ((string)command.ExecuteScalar() != payload)
-                throw new InvalidOperationException("Achievement event ID reused with different context.");
-            command.CommandText = "INSERT OR IGNORE INTO achievement_event_receipts(event_id,account_id) VALUES($event,$account);";
-            var accountParameter = command.Parameters.Add("$account", SqliteType.Text);
-            foreach (var player in context.Players)
-            {
-                accountParameter.Value = player.AccountId;
-                command.ExecuteNonQuery();
-            }
+            InsertPlayerEvent(connection, transaction, new HandStageRecordedEvent(context));
         }
 
         public PendingAchievementEvent[] ReadPendingAchievementEvents(int limit)
@@ -78,13 +63,18 @@ CREATE INDEX IF NOT EXISTS ix_achievement_pending ON achievement_event_receipts(
             {
                 using var connection = OpenConnection();
                 using var command = connection.CreateCommand();
-                command.CommandText = @"SELECT r.account_id,e.payload FROM achievement_events e
+                command.CommandText = @"SELECT r.account_id,e.payload,e.source_id,e.event_type,e.event_version,e.event_id FROM achievement_events e
 JOIN achievement_event_receipts r ON r.event_id=e.event_id WHERE r.consumed=0 ORDER BY e.sequence,r.account_id LIMIT $limit;";
                 command.Parameters.AddWithValue("$limit", Math.Max(1, Math.Min(1000, limit)));
                 using var reader = command.ExecuteReader();
                 var pending = new List<PendingAchievementEvent>();
-                while (reader.Read()) pending.Add(new PendingAchievementEvent { AccountId = reader.GetString(0),
-                    Context = JsonSerializer.Deserialize<AchievementContext>(reader.GetString(1)) });
+                while (reader.Read())
+                {
+                    var playerEvent = EventRegistry.Read(reader.GetString(2), reader.GetString(3), reader.GetInt32(4), reader.GetString(1));
+                    if (playerEvent.EventId != reader.GetString(5))
+                        throw new InvalidOperationException("Player event payload identity mismatch.");
+                    pending.Add(new PendingAchievementEvent { AccountId = reader.GetString(0), Event = playerEvent });
+                }
                 return pending.ToArray();
             }
         }
@@ -136,7 +126,7 @@ ON CONFLICT(account_id) DO UPDATE SET document=excluded.document;";
         {
             private readonly SqliteConnection _connection;
             private readonly SqliteTransaction _transaction;
-            public override bool CanClaim => !Account.LastRoomId.HasValue && !IsAccountInActiveHand(_connection, _transaction, Account.AccountId);
+            public override bool CanClaim => true;
 
             public SqliteAchievementTransaction(SqliteConnection connection, SqliteTransaction transaction,
                 PlayerAccount account, AchievementDocument document, bool consumed)
@@ -147,13 +137,13 @@ ON CONFLICT(account_id) DO UPDATE SET document=excluded.document;";
             public override AchievementResult Grant(Reward reward, IReadOnlyDictionary<string, uint> limits, string claimKey)
             {
                 if (!CanClaim) return AchievementResult.OutsideRoomRequired;
-                if ((ulong)Account.Chips + reward.Chip > uint.MaxValue) return AchievementResult.BalanceLimit;
+                if ((ulong)Account.Dollars + reward.Chip > uint.MaxValue) return AchievementResult.BalanceLimit;
                 var owned = ReadItemStacks(_connection, _transaction, Account.AccountId).ToDictionary(i => i.ItemId, i => i.Quantity);
                 foreach (var item in reward.Items)
                 {
                     if (NamecardItemId.TryToNamecardId(item.ItemId, out _))
                     {
-                        // Permanent cosmetics are idempotent. Existing ownership must not block the chip reward.
+                        // Permanent cosmetics are idempotent. Existing ownership must not block the dollar reward.
                         if (!limits.TryGetValue(item.ItemId, out var namecardLimit) || namecardLimit != 1 || item.Quantity != 1)
                             return AchievementResult.ItemLimit;
                         continue;
@@ -162,12 +152,13 @@ ON CONFLICT(account_id) DO UPDATE SET document=excluded.document;";
                     if (!limits.TryGetValue(item.ItemId, out var maximum) || (ulong)count + item.Quantity > maximum)
                         return AchievementResult.ItemLimit;
                 }
-                var before = Account.Chips;
+                // Reward.Chip is retained in old JSON snapshots; redemptions now always credit dollars.
+                var before = Account.Dollars;
                 var after = checked(before + reward.Chip);
                 using (var update = _connection.CreateCommand())
                 {
                     update.Transaction = _transaction;
-                    update.CommandText = @"UPDATE player_accounts SET chips=$chips,version=version+1,updated_at_utc=$now
+                    update.CommandText = @"UPDATE player_accounts SET dollars=$chips,version=version+1,updated_at_utc=$now
 WHERE account_id=$account AND version=$version;";
                     update.Parameters.AddWithValue("$chips", (long)after);
                     update.Parameters.AddWithValue("$now", FormatDateTime(DateTime.UtcNow));
@@ -182,7 +173,7 @@ WHERE account_id=$account AND version=$version;";
                     update.Parameters.AddWithValue("$account", Account.AccountId);
                     if (NamecardItemId.TryToNamecardId(item.ItemId, out var namecardId))
                     {
-                        // Use the shop's ownership table in the same transaction as chips and claim state.
+                        // Use the shop's ownership table in the same transaction as dollars and claim state.
                         update.CommandText = @"INSERT INTO account_namecards(account_id,product_id,purchased_at_utc)
 VALUES($account,$product,$now) ON CONFLICT(account_id,product_id) DO NOTHING;";
                         update.Parameters.AddWithValue("$product", namecardId);
@@ -197,9 +188,11 @@ ON CONFLICT(account_id,item_id) DO UPDATE SET quantity=quantity+excluded.quantit
                     }
                     update.ExecuteNonQuery();
                 }
-                InsertLedger(_connection, _transaction, Guid.NewGuid().ToString("N"), claimKey, Account.AccountId,
+                if (reward.Items.Any(item => !NamecardItemId.TryToNamecardId(item.ItemId, out _)))
+                    RecordInventoryChanged(_connection, _transaction, Account.AccountId, claimKey, "achievement-reward", DateTime.UtcNow);
+                InsertDollarLedger(_connection, _transaction, Guid.NewGuid().ToString("N"), claimKey, Account.AccountId,
                     "AchievementReward", reward.Chip, before, after, null, null, DateTime.UtcNow);
-                Account.Chips = after;
+                Account.Dollars = after;
                 Account.Version++;
                 Changed = true;
                 return AchievementResult.Success;

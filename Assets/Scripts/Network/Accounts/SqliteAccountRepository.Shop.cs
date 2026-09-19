@@ -3,6 +3,7 @@ using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Game.Events;
 
 namespace Game.Network.Accounts
 {
@@ -69,13 +70,17 @@ PRIMARY KEY (account_id, operation_id));"
         }
 
         public ShopResult ChangeNamecard(string accountId, string operationId, ShopAction action,
-            string productId, string catalogRevision, NamecardServerCatalog catalog)
+            string productId, string catalogRevision, NamecardServerCatalog catalog) => ChangeNamecard(accountId, operationId, action, productId, catalogRevision, catalog, false, 0);
+
+        public ShopResult ChangeNamecard(string accountId, string operationId, ShopAction action,
+            string productId, string catalogRevision, NamecardServerCatalog catalog, bool authorizeChipConversion, uint authorizedShortfall)
         {
             if (!Guid.TryParseExact(operationId, "N", out _) ||
                 !NamecardServerCatalog.IsValidId(productId) ||
                 (action != ShopAction.Purchase && action != ShopAction.Equip))
                 return ShopResult.InvalidRequest;
             var fingerprint = action + ":" + productId + ":" + catalogRevision;
+            if (authorizeChipConversion) fingerprint += ":convert:" + authorizedShortfall;
             lock (_syncRoot)
             {
                 using var connection = OpenConnection();
@@ -93,7 +98,7 @@ PRIMARY KEY (account_id, operation_id));"
                 var account = FindById(connection, transaction, accountId);
                 if (account == null)
                     return ShopResult.Unavailable;
-                if (account.LastRoomId.HasValue || IsAccountInActiveHand(connection, transaction, accountId))
+                if (action == ShopAction.Equip && (account.LastRoomId.HasValue || IsAccountInActiveHand(connection, transaction, accountId)))
                     return ShopResult.OutsideRoomRequired;
 
                 var product = catalog.Products.FirstOrDefault(p => p.Id == productId);
@@ -105,19 +110,27 @@ PRIMARY KEY (account_id, operation_id));"
                     result = ShopResult.CatalogChanged;
                 else if (action == ShopAction.Purchase && owned)
                     result = ShopResult.AlreadyOwned;
-                else if (action == ShopAction.Purchase && account.Chips < product.Price)
-                    result = ShopResult.InsufficientChips;
                 else if (action == ShopAction.Equip && !owned)
                     result = ShopResult.NotOwned;
+
+                if (result == ShopResult.Success && action == ShopAction.Purchase)
+                {
+                    var payment = PrepareDollarPayment(connection, transaction, account, product.Price,
+                        authorizeChipConversion, authorizedShortfall, "shop:" + operationId);
+                    if (payment != WalletResult.Success)
+                        return payment == WalletResult.ConversionRequired ? ShopResult.ConversionRequired :
+                            payment == WalletResult.QuoteChanged ? ShopResult.QuoteChanged :
+                            payment == WalletResult.BalanceLimit ? ShopResult.BalanceLimit : ShopResult.InsufficientChips;
+                }
 
                 if (result == ShopResult.Success)
                 {
                     var now = DateTime.UtcNow;
-                    var chips = action == ShopAction.Purchase ? account.Chips - product.Price : account.Chips;
+                    var chips = action == ShopAction.Purchase ? account.Dollars - product.Price : account.Dollars;
                     using (var update = connection.CreateCommand())
                     {
                         update.Transaction = transaction;
-                        update.CommandText = @"UPDATE player_accounts SET chips=$chips,
+                        update.CommandText = @"UPDATE player_accounts SET dollars=$chips,
 equipped_namecard=$equipped, version=version+1, updated_at_utc=$now
 WHERE account_id=$account AND version=$version;";
                         update.Parameters.AddWithValue("$chips", (long)chips);
@@ -138,10 +151,17 @@ WHERE account_id=$account AND version=$version;";
                         inventory.Parameters.AddWithValue("$product", productId);
                         inventory.Parameters.AddWithValue("$now", FormatDateTime(now));
                         inventory.ExecuteNonQuery();
-                        InsertLedger(connection, transaction, Guid.NewGuid().ToString("N"),
+                        InsertDollarLedger(connection, transaction, Guid.NewGuid().ToString("N"),
                             "shop:" + accountId + ":" + operationId, accountId, "ShopPurchase",
-                            -(long)product.Price, account.Chips, chips, null, null, now);
+                            -(long)product.Price, account.Dollars, chips, null, null, now);
                     }
+                    var writer = new TransactionEventWriter(connection, transaction);
+                    var occurredAt = new DateTimeOffset(now).ToUnixTimeMilliseconds();
+                    if (action == ShopAction.Purchase)
+                        ShopEventSource.Purchased(writer, accountId, operationId, occurredAt, "namecard", productId, 1, product.Price);
+                    else
+                        CollectionEventSource.Equipped(writer, accountId, operationId, occurredAt, "namecard",
+                            account.EquippedNamecardId, productId, productId, account.EquippedCardFaceId);
                 }
 
                 using (var receipt = connection.CreateCommand())

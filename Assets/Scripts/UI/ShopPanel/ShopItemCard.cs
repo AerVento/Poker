@@ -31,7 +31,7 @@ namespace Game.UI
             _onAction = null;
         }
 
-        public void Present(NamecardProductSO product, string playerName, uint balance,
+        public void Present(NamecardProductSO product, string playerName, uint dollars, bool canAfford,
             bool hasAccount, bool owned, bool equipped, bool canAct, Action<NamecardProductSO> onAction, uint? quotedPrice = null)
         {
             var price = quotedPrice ?? product.Price;
@@ -46,13 +46,21 @@ namespace Game.UI
             _price.text = product.IsDefault ? "免费默认款" : owned ? "永久拥有" : product.IsReward ? "奖励名片" : $"${price:N0}";
             _status.text = equipped ? "当前装备" : product.IsDefault ? "默认拥有" : owned ? "已收藏" : "永久名片";
             _playerName.text = string.IsNullOrEmpty(playerName) ? "Poker Player" : playerName;
-            _playerChips.text = hasAccount ? "$" + ChipAmountFormatter.Format(balance) : "POKER";
+            _playerChips.text = hasAccount ? "$" + ChipAmountFormatter.Format(dollars) : "POKER";
             _canSelect = owned || product.CanPurchase;
             _actionLabel.text = equipped ? "已装备" : owned ? "装备" :
                 !product.CanPurchase ? "不可购买" :
-                hasAccount && balance < price ? "余额不足" : "购买";
-            _action.interactable = _canSelect && canAct && hasAccount && !equipped && (owned || balance >= price);
+                hasAccount && !canAfford ? "美金不足" : "购买";
+            _action.interactable = _canSelect && canAct && hasAccount && !equipped && (owned || canAfford);
             _border.color = equipped ? new Color(0.76f, 0.65f, 0.40f, 0.85f) : new Color(0.26f, 0.42f, 0.37f, 0.52f);
+        }
+
+        public void Present(NamecardProductSO product, string playerName, uint dollars,
+            bool hasAccount, bool owned, bool equipped, bool canAct, Action<NamecardProductSO> onAction,
+            uint? quotedPrice = null)
+        {
+            Present(product, playerName, dollars, dollars >= (quotedPrice ?? product.Price), hasAccount,
+                owned, equipped, canAct, onAction, quotedPrice);
         }
 
         private void Act()

@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Game.UI.GamePanelElement
 {
@@ -27,6 +28,12 @@ namespace Game.UI.GamePanelElement
 
         [SerializeField]
         private TextMeshProUGUI _chipEarnedText;
+
+        [SerializeField]
+        private Button _revealButton;
+
+        [SerializeField]
+        private TextMeshProUGUI _revealHint;
 
         private bool _isFold;
         private bool _isDisconnected;
@@ -94,6 +101,22 @@ namespace Game.UI.GamePanelElement
         {
             var sorted = hand.OrderByDescending(card => card.Rank);
             _patternText.text = pattern + "\n[" + string.Join(", ", sorted.Select(card => card.ToString())) + "]";
+        }
+
+        public void SetRevealAvailable(bool available, System.Action<string> reveal)
+        {
+            if (_revealButton != null)
+            {
+                _revealButton.onClick.RemoveAllListeners();
+                _revealButton.interactable = available;
+                if (available)
+                    _revealButton.onClick.AddListener(() => reveal?.Invoke(PlayerName));
+            }
+            if (_revealHint != null)
+            {
+                _revealHint.gameObject.SetActive(available);
+                _revealHint.text = available ? "点击亮牌" : string.Empty;
+            }
         }
 
 

@@ -20,17 +20,14 @@ namespace Game.Network
         private void RegisterItemServerHandlers()
         {
             _itemRequests.Clear();
-            var asset = Resources.Load<TextAsset>("SO/Shop/ItemServerCatalog");
-            if (asset == null) throw new InvalidOperationException("Missing item server catalog.");
-            _itemRuntime = ContractPurchaseRegistration.CreateRuntime(new ItemServerCatalog
-            {
-                Products = JsonSerializer.Deserialize<ServerItemDefinition[]>(asset.text)
-            });
+            _itemRuntime = ContractPurchaseRegistration.CreateRuntime(ItemCatalogLoader.LoadServer());
             RegisterServerHandler<ItemShopRequest>((conn, request) =>
             {
                 var response = ProcessItemRequest(conn, request);
-                if (response.HasSnapshot) conn.Send(new AccountBalanceSync { Chips = response.Chips });
+                if (response.HasSnapshot) conn.Send(new AccountBalanceSync { Chips = response.Chips, Dollars = response.Dollars });
                 conn.Send(response);
+                if (request.Action != ItemShopAction.Read && response.HasSnapshot)
+                    conn.Send(ReadCollection(conn));
             }, requireAuthentication: true);
         }
 
@@ -64,10 +61,24 @@ namespace Game.Network
             var repository = (authenticator as AccountAuthenticator)?.AccountRepository as IItemRepository;
             if (repository == null || _itemRuntime == null) return response;
             bool inRoom = _roomManager.WhichRoom(session.Account.UserName, out _) || session.Account.LastRoomId.HasValue;
+            UpdateWalletHandAccess(session.Account);
             var execution = request.Action == ItemShopAction.Read ? new ItemChangeExecution(ItemShopResult.Success) :
                 new ItemShopService(repository, _itemRuntime, ItemPurchaseEvents).ChangeItem(response.AccountId, request.OperationId,
-                    request.Action, request.ItemId, request.Quantity, request.QuotedPrice, request.CatalogRevision, inRoom);
+                    request.Action, request.ItemId, request.Quantity, request.QuotedPrice, request.CatalogRevision, inRoom, request.AuthorizeChipConversion, request.AuthorizedShortfall);
             response.Result = execution.Result;
+            if (execution.IsNewlyApplied && request.AuthorizeChipConversion)
+            {
+                var updated = WalletRepository?.ReadWallet(response.AccountId)?.Account;
+                if (updated != null) SynchronizeWalletBalance(updated);
+            }
+            if (response.Result == ItemShopResult.ConversionRequired)
+            {
+                var current = WalletRepository?.ReadWallet(response.AccountId)?.Account;
+                var product = _itemRuntime.Find(request.ItemId);
+                var cost = request.Action == ItemShopAction.Purchase ? (ulong)(product?.Price ?? 0) * request.Quantity : product?.UsePolicy?.Cost ?? 0;
+                if (current != null && cost > current.Dollars && cost - current.Dollars <= uint.MaxValue)
+                    response.RequiredConversion = (uint)(cost - current.Dollars);
+            }
             response.IsNewlyApplied = execution.IsNewlyApplied;
             response.HasOutcome = execution.Outcome != null;
             if (execution.Outcome != null)
@@ -81,26 +92,42 @@ namespace Game.Network
                     Amount = e.Amount, BalanceBefore = e.BalanceBefore, BalanceAfter = e.BalanceAfter
                 }).ToArray();
             }
+            return PopulateItems(response, repository, session, inRoom);
+        }
+
+        private ItemShopResponse PopulateItems(ItemShopResponse response, IItemRepository repository, PlayerSession session, bool inRoom)
+        {
             var snapshot = repository.ReadItems(response.AccountId);
             if (snapshot == null) return response;
             session.Account = snapshot.Account.Copy();
             response.HasSnapshot = true;
             response.Chips = snapshot.Account.Chips;
+            response.Dollars = snapshot.Account.Dollars;
+            var wallet = ReadCurrentWallet(snapshot.Account);
+            response.AvailableChips = wallet?.AvailableChips ?? 0;
+            response.CanExchange = wallet?.CanExchange ?? false;
             response.Items = snapshot.Items.Select(p => new ItemStackMessage { ItemId = p.ItemId, Quantity = p.Quantity }).ToArray();
-            response.CanAct = snapshot.CanAct && !inRoom;
+            response.CanAct = snapshot.CanAct;
             response.CatalogRevision = _itemRuntime.Revision;
             response.Offers = _itemRuntime.Products.Select(p =>
             {
                 var owned = snapshot.Items.FirstOrDefault(stack => stack.ItemId == p.Id)?.Quantity ?? 0;
-                var reason = ItemPurchaseRuntime.CheckPurchase(new PurchaseContext(response.AccountId, response.Chips, p, owned),
+                var buyingBalance = response.Dollars;
+                if (response.CanExchange && p.Price > buyingBalance && p.Price - buyingBalance <= response.AvailableChips)
+                    buyingBalance = p.Price;
+                var useBalance = response.Dollars;
+                var useCost = p.UsePolicy?.Cost ?? 0;
+                if (response.CanExchange && useCost > useBalance && useCost - useBalance <= response.AvailableChips)
+                    useBalance = useCost;
+                var reason = ItemPurchaseRuntime.CheckPurchase(new PurchaseContext(response.AccountId, buyingBalance, p, owned, snapshot.Account.TotalAssets),
                     response.CanAct, out _);
                 return new ItemOfferMessage
                 {
                     ItemId = p.Id, Price = p.Price, Listed = p.Listed, MaxQuantity = p.MaxQuantity,
                     RewardChips = p.Policy.RewardChips, PurchaseConditions = p.Policy.ConditionDescriptors.Select(ProjectCondition).ToArray(),
                     CanPurchase = reason == ItemShopResult.Success, BlockReason = reason,
-                    CanUse = ItemPurchaseRuntime.CheckUse(new ItemUseContext(response.AccountId, response.Chips, p, owned),
-                        response.CanAct) == ItemShopResult.Success,
+                    CanUse = ItemPurchaseRuntime.CheckUse(new ItemUseContext(response.AccountId, useBalance, p, owned),
+                        !inRoom) == ItemShopResult.Success,
                     UseCost = p.UsePolicy?.Cost ?? 0
                 };
             }).ToArray();
@@ -113,6 +140,7 @@ namespace Game.Network
         public ulong RequestItems(ItemShopRequest request)
         {
             if (!CanOpenShop) return 0;
+            if (request.Action != ItemShopAction.Read) InvalidateCollection();
             request.RequestId = ++_nextItemRequest;
             NetworkClient.Send(request);
             return request.RequestId;

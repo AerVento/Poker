@@ -25,6 +25,9 @@ namespace Game.Network
             ConnectTimeoutSeconds = timeout;
         }
 
+        public ClientNetworkConfiguration ForEditorLocalHost(ushort serverPort)
+            => new ClientNetworkConfiguration("127.0.0.1", serverPort, false, ConnectTimeoutSeconds);
+
         public void ValidatePageUrl(string pageUrl)
         {
             if (!UseSsl && Uri.TryCreate(pageUrl, UriKind.Absolute, out var page) && page.Scheme == "https")
@@ -62,6 +65,9 @@ namespace Game.Network
             CertificatePassword = password;
             MaxConnections = maxConnections;
         }
+
+        public ServerNetworkConfiguration ForEditorLocalHost()
+            => new ServerNetworkConfiguration(ListenPort, false, string.Empty, string.Empty, MaxConnections);
 
         public void ValidateCertificate()
         {

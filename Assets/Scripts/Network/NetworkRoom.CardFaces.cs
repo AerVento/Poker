@@ -23,8 +23,10 @@ namespace Game.Network
             {
                 var response = ProcessCardFaceShopRequest(conn, request);
                 if (response.HasSnapshot)
-                    conn.Send(new AccountBalanceSync { Chips = response.Chips });
+                    conn.Send(new AccountBalanceSync { Chips = response.Chips, Dollars = response.Dollars });
                 conn.Send(response);
+                if (request.Action != ShopAction.Read && response.HasSnapshot)
+                    conn.Send(ReadCollection(conn));
             }, requireAuthentication: true);
         }
 
@@ -52,7 +54,7 @@ namespace Game.Network
                 return response;
             }
             _cardFaceShopRequests[conn] = (request.RequestId, now + 0.2d);
-            if (_roomManager.WhichRoom(session.Account.UserName, out _) || session.Account.LastRoomId.HasValue)
+            if (request.Action == ShopAction.Equip && (_roomManager.WhichRoom(session.Account.UserName, out _) || session.Account.LastRoomId.HasValue))
             {
                 response.Result = ShopResult.OutsideRoomRequired;
                 return response;
@@ -60,18 +62,44 @@ namespace Game.Network
             var repository = (authenticator as AccountAuthenticator)?.AccountRepository as ICardFaceRepository;
             if (repository == null || _cardFaceShopCatalog == null)
                 return response;
+            UpdateWalletHandAccess(session.Account);
             response.Result = request.Action == ShopAction.Read ? ShopResult.Success :
-                repository.ChangeCardFace(response.AccountId, request.OperationId, request.Action,
-                    request.ProductId, request.CatalogRevision, _cardFaceShopCatalog);
+                repository is IWalletPaymentRepository payments
+                    ? payments.ChangeCardFace(response.AccountId, request.OperationId, request.Action,
+                        request.ProductId, request.CatalogRevision, _cardFaceShopCatalog, request.AuthorizeChipConversion, request.AuthorizedShortfall)
+                    : repository.ChangeCardFace(response.AccountId, request.OperationId, request.Action,
+                        request.ProductId, request.CatalogRevision, _cardFaceShopCatalog);
+            if (response.Result == ShopResult.ConversionRequired)
+            {
+                var current = WalletRepository?.ReadWallet(response.AccountId)?.Account;
+                var product = _cardFaceShopCatalog.Products.FirstOrDefault(p => p.Id == request.ProductId);
+                if (current != null && product != null && product.Price > current.Dollars)
+                    response.RequiredConversion = product.Price - current.Dollars;
+            }
+            if (response.Result == ShopResult.Success && request.AuthorizeChipConversion)
+            {
+                var current = WalletRepository?.ReadWallet(response.AccountId)?.Account;
+                if (current != null) SynchronizeWalletBalance(current);
+            }
+            return PopulateCardFaces(response, repository, session);
+        }
+
+        private CardFaceShopResponse PopulateCardFaces(CardFaceShopResponse response, ICardFaceRepository repository, PlayerSession session)
+        {
             var snapshot = repository.ReadCardFaces(response.AccountId);
             if (snapshot == null)
                 return response;
             session.Account = snapshot.Account.Copy();
             response.HasSnapshot = true;
             response.Chips = snapshot.Account.Chips;
+            response.Dollars = snapshot.Account.Dollars;
+            var wallet = ReadCurrentWallet(snapshot.Account);
+            response.AvailableChips = wallet?.AvailableChips ?? 0;
+            response.CanExchange = wallet?.CanExchange ?? false;
             response.OwnedIds = snapshot.OwnedIds;
             response.EquippedId = snapshot.Account.EquippedCardFaceId;
-            response.CanAct = snapshot.CanAct;
+            response.CanAct = true;
+            response.CanEquip = snapshot.CanAct;
             response.CatalogRevision = _cardFaceShopCatalog.Revision;
             response.Offers = _cardFaceShopCatalog.Products.Select(p =>
                 new CardFaceOfferMessage { Id = p.Id, Price = p.Price, Listed = p.Listed }).ToArray();
@@ -79,15 +107,17 @@ namespace Game.Network
         }
 
         public ulong RequestCardFaceShop(ShopAction action = ShopAction.Read, string productId = null,
-            string revision = null, string operationId = null)
+            string revision = null, string operationId = null, bool authorizeChipConversion = false, uint authorizedShortfall = 0)
         {
             if (!CanOpenShop)
                 return 0;
+            if (action != ShopAction.Read) InvalidateCollection();
             var requestId = ++_nextCardFaceShopRequest;
             NetworkClient.Send(new CardFaceShopRequest
             {
                 RequestId = requestId, Action = action, ProductId = productId,
-                CatalogRevision = revision, OperationId = operationId
+                CatalogRevision = revision, OperationId = operationId,
+                AuthorizeChipConversion = authorizeChipConversion, AuthorizedShortfall = authorizedShortfall
             });
             return requestId;
         }

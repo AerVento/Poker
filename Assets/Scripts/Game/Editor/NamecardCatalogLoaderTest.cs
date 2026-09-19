@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Game.Network;
 using Game.Network.Accounts;
@@ -9,71 +10,53 @@ namespace Game.Tests
 {
     public sealed class NamecardCatalogLoaderTest
     {
-        private const string DefaultJson = "[{\"Id\":\"default\",\"Price\":0,\"Listed\":true}," +
-            "{\"Id\":\"galaxy\",\"Price\":9000,\"Listed\":true}]";
-        private string _directory;
-        private string _path;
-
-        [SetUp]
-        public void SetUp()
+        private static NamecardServerCatalog Defaults() => new NamecardServerCatalog
         {
-            _directory = Path.Combine(Path.GetTempPath(), "PokerCatalog-" + Guid.NewGuid().ToString("N"));
-            _path = Path.Combine(_directory, "Configs", NamecardCatalogLoader.FileName);
-        }
-
-        [TearDown]
-        public void TearDown()
-        {
-            SqliteConnection.ClearAllPools();
-            if (Directory.Exists(_directory))
-                Directory.Delete(_directory, true);
-        }
+            Products = new[]
+            {
+                new NamecardOffer { Id = "default", Price = 0, Listed = true },
+                new NamecardOffer { Id = "galaxy", Price = 9000, Listed = true }
+            }
+        };
 
         [Test]
-        public void FirstLoadCreatesFileAndNextLoadPreservesOperatorEdits()
+        public void PartialOverridePreservesUnspecifiedProductsAndFields()
         {
-            var original = NamecardCatalogLoader.LoadOrCreate(_path, () => DefaultJson);
-            Assert.AreEqual(DefaultJson, File.ReadAllText(_path));
-            var edited = DefaultJson.Replace("9000", "6000").Replace("6000,\"Listed\":true", "6000,\"Listed\":false");
-            File.WriteAllText(_path, edited);
-            var loaded = NamecardCatalogLoader.LoadOrCreate(_path, () => throw new Exception("Must not read embedded defaults."));
+            var original = Defaults();
+            var loaded = NamecardCatalogLoader.ApplyOverrides(original, "[{\"Id\":\"galaxy\",\"Price\":6000}]");
+
+            Assert.AreEqual(2, loaded.Products.Length);
+            Assert.AreEqual(0u, loaded.Products[0].Price);
             Assert.AreEqual(6000u, loaded.Products[1].Price);
-            Assert.IsFalse(loaded.Products[1].Listed);
+            Assert.IsTrue(loaded.Products[1].Listed);
+            Assert.AreEqual(9000u, original.Products[1].Price);
             Assert.AreNotEqual(original.Revision, loaded.Revision);
-            Assert.AreEqual(edited, File.ReadAllText(_path));
         }
 
         [Test]
-        public void InvalidExternalFileFailsWithPathAndIsNotReplaced()
+        public void UnknownIdIsIgnoredWithWarning()
         {
-            NamecardCatalogLoader.LoadOrCreate(_path, () => DefaultJson);
-            File.WriteAllText(_path, "broken json");
-            var error = Assert.Throws<InvalidDataException>(() =>
-                NamecardCatalogLoader.LoadOrCreate(_path, () => throw new Exception("Must not fall back.")));
-            StringAssert.Contains(_path, error.Message);
-            Assert.AreEqual("broken json", File.ReadAllText(_path));
-        }
+            var warnings = new List<string>();
+            var loaded = NamecardCatalogLoader.ApplyOverrides(Defaults(),
+                "[{\"Id\":\"future-namecard\",\"Price\":1}]", warnings.Add);
 
-        [Test]
-        public void InvalidDefaultsDoNotCreateAnExternalFile()
-        {
-            Assert.Throws<InvalidDataException>(() => NamecardCatalogLoader.LoadOrCreate(_path, () => "[]"));
-            Assert.IsFalse(File.Exists(_path));
+            Assert.AreEqual(2, loaded.Products.Length);
+            Assert.AreEqual(9000u, loaded.Products[1].Price);
+            Assert.AreEqual(1, warnings.Count);
+            StringAssert.Contains("future-namecard", warnings[0]);
         }
 
         [TestCase("")]
         [TestCase("null")]
         [TestCase("{}")]
-        [TestCase("[]")]
         [TestCase("[null]")]
-        [TestCase("[{\"Id\":\"default\",\"Listed\":true}]")]
-        [TestCase("[{\"Id\":\"default\",\"Price\":0}]")]
-        [TestCase("[{\"Id\":\"default\",\"Price\":0,\"Listed\":\"true\"}]")]
-        [TestCase("[{\"Id\":\"default\",\"Price\":0,\"Listed\":true,\"Price\":1}]")]
-        [TestCase("[{\"Id\":\"default\",\"Price\":0,\"Listed\":true,\"price\":0}]")]
-        public void RejectsMalformedOrIncompleteCatalog(string json)
+        [TestCase("[{}]")]
+        [TestCase("[{\"Id\":1}]")]
+        [TestCase("[{\"Id\":\"galaxy\",\"Price\":1,\"Price\":2}]")]
+        [TestCase("[{\"Id\":\"galaxy\",\"price\":1}]")]
+        public void RejectsMalformedOverrides(string json)
         {
-            Assert.Throws<InvalidDataException>(() => NamecardCatalogLoader.Parse(json));
+            Assert.Throws<InvalidDataException>(() => NamecardCatalogLoader.ApplyOverrides(Defaults(), json));
         }
 
         [TestCase("-1")]
@@ -82,46 +65,56 @@ namespace Game.Tests
         [TestCase("\"6000\"")]
         public void RejectsInvalidPrices(string price)
         {
-            Assert.Throws<InvalidDataException>(() => NamecardCatalogLoader.Parse(DefaultJson.Replace("9000", price)));
+            Assert.Throws<InvalidDataException>(() => NamecardCatalogLoader.ApplyOverrides(Defaults(),
+                "[{\"Id\":\"galaxy\",\"Price\":" + price + "}]"));
         }
 
         [Test]
-        public void EnforcesDefaultAndUniqueStableIds()
+        public void EnforcesDefaultProductAndUniqueOverrideIds()
         {
-            Assert.Throws<InvalidDataException>(() => NamecardCatalogLoader.Parse(DefaultJson.Replace("\"Price\":0", "\"Price\":1")));
-            Assert.Throws<InvalidDataException>(() => NamecardCatalogLoader.Parse(DefaultJson.Replace("true", "false")));
-            Assert.Throws<InvalidDataException>(() => NamecardCatalogLoader.Parse(DefaultJson.Replace("galaxy", "default")));
-            Assert.Throws<InvalidDataException>(() => NamecardCatalogLoader.Parse(DefaultJson.Replace("galaxy", "Invalid ID")));
-            Assert.AreEqual(2, NamecardCatalogLoader.Parse("\uFEFF" + DefaultJson).Products.Length);
+            Assert.Throws<InvalidOperationException>(() => NamecardCatalogLoader.ApplyOverrides(
+                new NamecardServerCatalog { Products = new[] { new NamecardOffer { Id = "default", Price = 1 } } }, "[]"));
+            Assert.Throws<InvalidDataException>(() => NamecardCatalogLoader.ApplyOverrides(Defaults(),
+                "[{\"Id\":\"galaxy\",\"Price\":1},{\"Id\":\"galaxy\",\"Listed\":false}]"));
+            Assert.AreEqual(2, NamecardCatalogLoader.ApplyOverrides(Defaults(), "\uFEFF[]").Products.Length);
         }
 
         [Test]
-        public void ReloadedFileControlsPurchasePriceDelistingAndOwnedEquipment()
+        public void OverridesControlPurchasePriceDelistingAndOwnedEquipment()
         {
-            var original = NamecardCatalogLoader.LoadOrCreate(_path, () => DefaultJson);
-            var repository = new SqliteAccountRepository(Path.Combine(_directory, "accounts.db"));
-            var service = new AccountService(repository, new PasswordHasher(iterations: 1000));
-            service.Initialize();
-            var owner = service.Register("CatalogOwner", "password123").Account;
-            var buyer = service.Register("CatalogBuyer", "password123").Account;
-            File.WriteAllText(_path, DefaultJson.Replace("9000", "6000"));
-            var discounted = NamecardCatalogLoader.LoadOrCreate(_path, () => DefaultJson);
-            Assert.AreEqual(ShopResult.CatalogChanged, repository.ChangeNamecard(owner.AccountId,
-                Guid.NewGuid().ToString("N"), ShopAction.Purchase, "galaxy", original.Revision, discounted));
-            Assert.AreEqual(10000u, repository.FindById(owner.AccountId).Chips);
-            Assert.AreEqual(ShopResult.Success, repository.ChangeNamecard(owner.AccountId,
-                Guid.NewGuid().ToString("N"), ShopAction.Purchase, "galaxy", discounted.Revision, discounted));
-            Assert.AreEqual(4000u, repository.FindById(owner.AccountId).Chips);
+            var directory = Path.Combine(Path.GetTempPath(), "PokerCatalog-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            var path = Path.Combine(directory, "accounts.db");
+            try
+            {
+                var original = Defaults();
+                var repository = new SqliteAccountRepository(path);
+                var service = new AccountService(repository, new PasswordHasher(iterations: 1000));
+                service.Initialize();
+                var owner = service.Register("CatalogOwner", "password123").Account;
+                var buyer = service.Register("CatalogBuyer", "password123").Account;
+                var discounted = NamecardCatalogLoader.ApplyOverrides(original,
+                    "[{\"Id\":\"galaxy\",\"Price\":6000}]");
+                Assert.AreEqual(ShopResult.CatalogChanged, repository.ChangeNamecard(owner.AccountId,
+                    Guid.NewGuid().ToString("N"), ShopAction.Purchase, "galaxy", original.Revision, discounted));
+                Assert.AreEqual(ShopResult.Success, repository.ChangeNamecard(owner.AccountId,
+                    Guid.NewGuid().ToString("N"), ShopAction.Purchase, "galaxy", discounted.Revision, discounted));
+                Assert.AreEqual(4000u, repository.FindById(owner.AccountId).Chips);
 
-            File.WriteAllText(_path, DefaultJson.Replace("9000,\"Listed\":true", "6000,\"Listed\":false"));
-            var delisted = NamecardCatalogLoader.LoadOrCreate(_path, () => DefaultJson);
-            Assert.AreEqual(ShopResult.UnknownProduct, repository.ChangeNamecard(buyer.AccountId,
-                Guid.NewGuid().ToString("N"), ShopAction.Purchase, "galaxy", delisted.Revision, delisted));
-            Assert.AreEqual(10000u, repository.FindById(buyer.AccountId).Chips);
-            Assert.AreEqual(ShopResult.Success, repository.ChangeNamecard(owner.AccountId,
-                Guid.NewGuid().ToString("N"), ShopAction.Equip, "galaxy", delisted.Revision, delisted));
-            Assert.AreEqual("galaxy", repository.FindById(owner.AccountId).EquippedNamecardId);
-            Assert.IsTrue(repository.ReconcileChips().IsConsistent);
+                var delisted = NamecardCatalogLoader.ApplyOverrides(discounted,
+                    "[{\"Id\":\"galaxy\",\"Listed\":false}]");
+                Assert.AreEqual(ShopResult.UnknownProduct, repository.ChangeNamecard(buyer.AccountId,
+                    Guid.NewGuid().ToString("N"), ShopAction.Purchase, "galaxy", delisted.Revision, delisted));
+                Assert.AreEqual(ShopResult.Success, repository.ChangeNamecard(owner.AccountId,
+                    Guid.NewGuid().ToString("N"), ShopAction.Equip, "galaxy", delisted.Revision, delisted));
+                Assert.AreEqual("galaxy", repository.FindById(owner.AccountId).EquippedNamecardId);
+                Assert.IsTrue(repository.ReconcileChips().IsConsistent);
+            }
+            finally
+            {
+                SqliteConnection.ClearAllPools();
+                if (Directory.Exists(directory)) Directory.Delete(directory, true);
+            }
         }
     }
 }

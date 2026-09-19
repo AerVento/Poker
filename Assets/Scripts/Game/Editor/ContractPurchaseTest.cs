@@ -28,10 +28,7 @@ namespace Game.Tests
             var service = new AccountService(_repository, new PasswordHasher(iterations: 1000));
             service.Initialize();
             _account = service.Register("ContractUser", "password123").Account;
-            _runtime = ContractPurchaseRegistration.CreateRuntime(new ItemServerCatalog
-            {
-                Products = JsonSerializer.Deserialize<ServerItemDefinition[]>(Resources.Load<TextAsset>("SO/Shop/ItemServerCatalog").text)
-            });
+            _runtime = ContractPurchaseRegistration.CreateRuntime(Game.SO.ItemShopCatalogSO.LoadDefault().CreateServerCatalog());
         }
 
         [TearDown]
@@ -220,7 +217,7 @@ namespace Game.Tests
         [Test]
         public void OtherUnownedContractsBecomeEligibleAtLaterZeroBalance()
         {
-            foreach (var product in _runtime.Products)
+            foreach (var product in _runtime.Products.Where(product => product.Id.EndsWith("-contract", StringComparison.Ordinal)))
             {
                 Balance(0);
                 Assert.AreEqual(ItemShopResult.Success, Buy(product.Id).Result);
@@ -236,7 +233,7 @@ namespace Game.Tests
         public void EveryPositiveBalanceRejectsAllThreeContracts(uint balance)
         {
             Balance(balance);
-            foreach (var product in _runtime.Products)
+            foreach (var product in _runtime.Products.Where(product => product.Id.EndsWith("-contract", StringComparison.Ordinal)))
                 Assert.AreEqual(ItemShopResult.BalanceConditionNotMet, Buy(product.Id).Result);
             Assert.AreEqual(balance, _repository.FindById(_account.AccountId).Chips);
             Assert.IsEmpty(_repository.ReadItems(_account.AccountId).Items);

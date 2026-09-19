@@ -26,7 +26,7 @@ bool validNamecardId = NamecardItemId.TryToNamecardId("namecard-galaxy", out str
 
 名片身份为 `Kind=NonConsumable`、`MaxQuantity=1`、`IsEquippable=true`、`ShowInInventory=false`，`NamecardId` 指向原 ID。普通物品保持原 ID，并保留其数量上限。普通物品不能占用 `namecard-` 前缀，冲突时启动失败。
 
-身份注册表只用于类型识别和所有权分派，不作为普通商城报价或背包快照。名片价格和上下架仍由外部 `NamecardServerCatalog.json` 控制，修改后重启生效，详见 [AddingNamecards.md](AddingNamecards.md)。
+身份注册表只用于类型识别和所有权分派，不作为普通商城报价或背包快照。名片默认价格和上下架来自 SO，可由 `Configs/Shop/Namecards.json` 局部覆盖，修改后重启生效，详见 [AddingNamecards.md](AddingNamecards.md)。
 
 ## 发放 API
 

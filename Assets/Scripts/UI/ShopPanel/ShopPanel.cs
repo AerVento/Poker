@@ -20,6 +20,7 @@ namespace Game.UI
         [SerializeField] private Button _next;
         [SerializeField] private TextMeshProUGUI _ownedLabel;
         [SerializeField] private TextMeshProUGUI _balance;
+        [SerializeField] private Image _dollarIcon;
         [SerializeField] private TextMeshProUGUI _pageLabel;
         [SerializeField] private TextMeshProUGUI _countLabel;
         [SerializeField] private TextMeshProUGUI _feedback;
@@ -28,9 +29,12 @@ namespace Game.UI
         private readonly HashSet<string> _owned = new HashSet<string>(StringComparer.Ordinal);
         private string _equippedId;
         private string _playerName;
-        private uint _chips;
+        private uint _dollars;
+        private uint _availableChips;
+        private bool _canExchange;
         private bool _hasAccount;
         private bool _canAct;
+        private bool _canEquip;
         private int _page;
         private int _revision;
         private MsgBox _confirmation;
@@ -66,7 +70,10 @@ namespace Game.UI
             _canAct = false;
             _equippedId = null;
             _playerName = null;
-            _chips = 0;
+            _dollars = 0;
+            _availableChips = 0;
+            _canExchange = false;
+            _canEquip = false;
             PurchaseRequested = null;
             EquipRequested = null;
         }
@@ -92,19 +99,23 @@ namespace Game.UI
         }
 
         // A presentation snapshot only. This panel never mutates account chips or ownership.
-        public void SetAccountView(string playerName, uint chips, IEnumerable<string> ownedIds,
-            string equippedId, bool canAct)
+        public void SetAccountView(string playerName, uint dollars, IEnumerable<string> ownedIds,
+            string equippedId, bool canAct, uint availableChips = 0, bool canExchange = false,
+            bool canEquip = true)
         {
             CloseConfirmation();
             _playerName = playerName;
-            _chips = chips;
+            _dollars = dollars;
+            _availableChips = availableChips;
+            _canExchange = canExchange;
             _owned.Clear();
             if (ownedIds != null)
                 _owned.UnionWith(ownedIds);
             _equippedId = equippedId;
             _hasAccount = true;
             _canAct = canAct;
-            _itemsView.SetBalance(chips);
+            _canEquip = canEquip;
+            _itemsView.SetWallet(dollars, availableChips, canExchange, false);
             RefreshCatalog();
         }
 
@@ -124,7 +135,8 @@ namespace Game.UI
         {
             if (_cards == null || _balance == null)
                 return;
-            _balance.text = _hasAccount ? $"${_chips:N0}" : "—";
+            _balance.text = _hasAccount ? $"${_dollars:N0}" : "—";
+            if (_dollarIcon != null) _dollarIcon.gameObject.SetActive(_hasAccount);
             _pageLabel.text = $"{_page + 1:00}  /  {PageCount:00}";
             int first = _page * PageSize;
             _countLabel.text = _products.Count == 0 ? "暂无上架名片" :
@@ -144,28 +156,34 @@ namespace Game.UI
                 bool equipped = product.IsDefault ? string.IsNullOrEmpty(_equippedId) || product.Id == _equippedId :
                     product.Id == _equippedId;
                 bool hasHandler = owned ? EquipRequested != null : PurchaseRequested != null;
-                _cards[i].Present(product, _playerName, _chips, _hasAccount, owned,
-                    equipped, _canAct && hasHandler && HasOffer(product), SelectProduct, PriceOf(product));
+                var actionAllowed = owned ? _canEquip : _canAct;
+                _cards[i].Present(product, _playerName, _dollars, CanCover(PriceOf(product)), _hasAccount, owned,
+                    equipped, actionAllowed && hasHandler && HasOffer(product), SelectProduct, PriceOf(product));
             }
+        }
+
+        private bool CanCover(uint amount)
+        {
+            return amount <= (ulong)_dollars + (_canExchange ? _availableChips : 0UL);
         }
 
         private void SelectProduct(NamecardProductSO product)
         {
-            if (product == null || ActiveTab != ShopTab.Namecards || !_hasAccount || !_canAct || !_products.Contains(product))
+            if (product == null || ActiveTab != ShopTab.Namecards || !_hasAccount || !_products.Contains(product))
                 return;
             if (product.IsDefault)
             {
-                if (!string.IsNullOrEmpty(_equippedId) && _equippedId != product.Id)
+                if (_canEquip && !string.IsNullOrEmpty(_equippedId) && _equippedId != product.Id)
                     EquipRequested?.Invoke(string.Empty);
                 return;
             }
             if (_owned.Contains(product.Id))
             {
-                if (product.Id != _equippedId)
+                if (_canEquip && product.Id != _equippedId)
                     EquipRequested?.Invoke(product.Id);
                 return;
             }
-            if (!product.CanPurchase || _chips < PriceOf(product) || PurchaseRequested == null || !UIManager.Available)
+            if (!_canAct || !product.CanPurchase || !CanCover(PriceOf(product)) || PurchaseRequested == null || !UIManager.Available)
                 return;
             CloseConfirmation();
             var price = PriceOf(product);
@@ -173,7 +191,7 @@ namespace Game.UI
             _confirmation = MsgBox.Create("NamecardPurchase");
             _confirmation.Type = MsgboxType.ConfirmAndCancel;
             _confirmation.Title = "收藏这张名片";
-            _confirmation.Message = $"「{product.DisplayName}」\n价格：${price:N0}\n购买后余额：${_chips - price:N0}";
+            _confirmation.Message = $"「{product.DisplayName}」\n价格：${price:N0}\n当前美金：${_dollars:N0}";
             _confirmation.ConfirmButtonText = "确认购买";
             _confirmation.CancelButtonText = "再看看";
             _confirmation.PreferCancel = true;
@@ -182,7 +200,7 @@ namespace Game.UI
             {
                 _confirmation = null;
                 if (isActiveAndEnabled && _revision == revision && _canAct &&
-                    product != null && PriceOf(product) == price && _chips >= price && !_owned.Contains(product.Id))
+                    product != null && PriceOf(product) == price && CanCover(price) && !_owned.Contains(product.Id))
                     PurchaseRequested?.Invoke(product);
             };
         }
@@ -190,6 +208,7 @@ namespace Game.UI
         private void CloseConfirmation()
         {
             _revision++;
+            _namecardConversionAwaiting = false;
             var confirmation = _confirmation;
             _confirmation = null;
             if (confirmation != null)

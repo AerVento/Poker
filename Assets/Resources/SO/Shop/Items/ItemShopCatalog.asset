@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c21d653f01794107a5b7bf54be8c44a6, type: 3}
+  m_Name: ItemShopCatalog
+  m_EditorClassIdentifier: 
+  _products:
+  - _item: {fileID: 11400000, guid: 54522b9f8c2770f459eef3ec75a1d62d, type: 2}
+    _price: 0
+    _listed: 1
+    _maxQuantity: 4294967295
+  - _item: {fileID: 11400000, guid: a6e29c3678eb99945ab5cb725e540188, type: 2}
+    _price: 0
+    _listed: 1
+    _maxQuantity: 4294967295
+  - _item: {fileID: 11400000, guid: 8add9dbeabe26c04e94ce2f6451371a8, type: 2}
+    _price: 0
+    _listed: 1
+    _maxQuantity: 4294967295
+  - _item: {fileID: 11400000, guid: e1b91af2dcce443ba470043659ef09f3, type: 2}
+    _price: 50
+    _listed: 1
+    _maxQuantity: 4294967295
+  - _item: {fileID: 11400000, guid: da6a552197c2a464f83b58db979dee32, type: 2}
+    _price: 0
+    _listed: 1
+    _maxQuantity: 4294967295

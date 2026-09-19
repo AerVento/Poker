@@ -57,7 +57,7 @@ namespace Game.Tests
                 var originalColor = label.color;
                 var originalMaterial = label.fontSharedMaterial;
                 var originalWidth = originalMaterial.GetFloat(ShaderUtilities.ID_OutlineWidth);
-                var catalog = AssetDatabase.LoadAssetAtPath<NamecardCatalogSO>("Assets/Resources/SO/Shop/NamecardCatalog.asset");
+            var catalog = AssetDatabase.LoadAssetAtPath<NamecardCatalogSO>("Assets/Resources/SO/Shop/Namecards/NamecardCatalog.asset");
                 var artwork = Field<Image>(appearance, "_artwork");
                 foreach (var years in new ulong[] { 100, 500, 1000 })
                 {

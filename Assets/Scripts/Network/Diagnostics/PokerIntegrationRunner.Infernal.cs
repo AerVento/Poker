@@ -41,7 +41,7 @@ namespace Game.Network.Diagnostics
         private void CheckInfernalLabel(NamecardAppearance appearance, TMP_Text label, string equipped, ulong years)
         {
             if (years < 100) return;
-            var product = Resources.Load<SO.NamecardCatalogSO>("SO/Shop/NamecardCatalog")
+            var product = Resources.Load<SO.NamecardCatalogSO>(SO.NamecardCatalogSO.ResourcePath)
                 .GetProduct(InfernalNamecard.Resolve(equipped, years));
             var artwork = Field<Image>(appearance, "_artwork");
             if (!artwork.gameObject.activeSelf || (artwork.sprite != product.Artwork && artwork.sprite != product.Artwork4x3) ||

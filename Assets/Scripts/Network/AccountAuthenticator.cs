@@ -121,6 +121,7 @@ namespace Game.Network
 
         public override void OnClientAuthenticate()
         {
+            _networkRoom.HandleClientTransportConnected();
             SendPendingAuthentication();
         }
 
@@ -381,7 +382,8 @@ namespace Game.Network
                     response.UserName,
                     response.Chips,
                     response.HasLastRoom ? (int?)response.LastRoomId : null,
-                    response.SessionToken);
+                    response.SessionToken,
+                    response.Dollars);
             }
 
             AuthenticationResponseReceived?.Invoke(response);
@@ -433,6 +435,7 @@ namespace Game.Network
             response.AccountId = result.Account.AccountId;
             response.UserName = result.Account.UserName;
             response.Chips = result.Account.Chips;
+            response.Dollars = result.Account.Dollars;
             response.EquippedCardFaceId = result.Account.EquippedCardFaceId;
             response.HasLastRoom = result.Account.LastRoomId.HasValue;
             response.LastRoomId = result.Account.LastRoomId.GetValueOrDefault();

@@ -18,6 +18,7 @@ namespace Game.Tests
         private GameObject _root;
         private ShopPanel _panel;
         private ItemBrowserView _view;
+        private ItemShopCatalogSO _shopCatalog;
         private readonly List<ItemDefinitionSO> _definitions = new List<ItemDefinitionSO>();
         private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
 
@@ -37,7 +38,16 @@ namespace Game.Tests
                 Set(item, "_kind", i == 1 ? ItemKind.NonConsumable : ItemKind.Consumable);
                 _definitions.Add(item);
             }
-            Set(_view, "_definitions", _definitions.ToArray());
+            _shopCatalog = ScriptableObject.CreateInstance<ItemShopCatalogSO>();
+            var entries = new List<ItemShopCatalogSO.Entry>();
+            foreach (var definition in _definitions)
+            {
+                var entry = new ItemShopCatalogSO.Entry();
+                Set(entry, "_item", definition);
+                entries.Add(entry);
+            }
+            Set(_shopCatalog, "_products", entries);
+            Set(_view, "_catalog", _shopCatalog);
             _panel.Open(ShopPageMode.Shop);
         }
 
@@ -45,6 +55,7 @@ namespace Game.Tests
         public void TearDown()
         {
             Object.DestroyImmediate(_root);
+            Object.DestroyImmediate(_shopCatalog);
             foreach (var definition in _definitions) Object.DestroyImmediate(definition);
             _definitions.Clear();
         }

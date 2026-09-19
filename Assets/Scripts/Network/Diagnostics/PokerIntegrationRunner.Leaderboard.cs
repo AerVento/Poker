@@ -51,6 +51,13 @@ namespace Game.Network.Diagnostics
                 yield break;
             }
             Framework.UI.UIManager.Instance.ResetPanels<TitlePanel>();
+            if (_roundsCompleted > 0)
+            {
+                var caches = Field<Dictionary<LeaderboardKind, ClientSnapshotCache<LeaderboardSnapshot>>>(_networkRoom, "_leaderboardCache");
+                foreach (var cache in caches.Values)
+                    typeof(ClientSnapshotCache<LeaderboardSnapshot>).GetField("_expiresAt", System.Reflection.BindingFlags.Instance |
+                        System.Reflection.BindingFlags.NonPublic).SetValue(cache, Time.realtimeSinceStartupAsDouble - 1);
+            }
             Click(TitlePanel.Instance, "_leaderboard");
             if (LeaderboardPanel.Instance.SelectedTab != LeaderboardTab.Wealth)
             {
@@ -84,7 +91,7 @@ namespace Game.Network.Diagnostics
                 {
                     var appearance = Field<NamecardAppearance>(row, "_namecard");
                     var artwork = Field<Image>(appearance, "_artwork");
-                    if (artwork.sprite != Resources.Load<Game.SO.NamecardCatalogSO>("SO/Shop/NamecardCatalog").Products.First(product => product.Id == InfernalNamecard.Resolve("galaxy", (ulong)(int.Parse(Field<TMP_Text>(row, "_name").text.Substring(7)) + 1) * 100UL)).Artwork ||
+                if (artwork.sprite != Resources.Load<Game.SO.NamecardCatalogSO>(Game.SO.NamecardCatalogSO.ResourcePath).Products.First(product => product.Id == InfernalNamecard.Resolve("galaxy", (ulong)(int.Parse(Field<TMP_Text>(row, "_name").text.Substring(7)) + 1) * 100UL)).Artwork ||
                         Field<TMP_Text>(row, "_name").color != (Color)new Color32(255, 24, 24, 255) ||
                         (Color)Field<TMP_Text>(row, "_name").outlineColor != Color.black ||
                         Mathf.Abs(Field<TMP_Text>(row, "_name").outlineWidth - 0.2f) > 0.001f ||
@@ -95,7 +102,9 @@ namespace Game.Network.Diagnostics
                     }
                 }
                 Click(panel, "_serviceTab");
-                yield return null;
+                deadline = Time.realtimeSinceStartup + 12f;
+                while (Field<ulong>(panel, "_requestId") != 0 && Time.realtimeSinceStartup < deadline)
+                    yield return null;
                 var serviceRows = Field<RectTransform>(panel, "_list").GetComponentsInChildren<ServiceLeaderboardRow>();
                 var serviceSelf = Field<ServiceLeaderboardRow>(panel, "_serviceSelf");
                 if (panel.SelectedTab != LeaderboardTab.Service || serviceRows.Length != 10 ||
@@ -116,8 +125,11 @@ namespace Game.Network.Diagnostics
                     Fail("Single-column leaderboard did not scroll to the final row.");
                     yield break;
                 }
+                var reads = Field<ulong>(_networkRoom, "_nextLeaderboardRequest");
                 Click(panel, "_wealthTab");
                 yield return null;
+                if (Field<ulong>(_networkRoom, "_nextLeaderboardRequest") != reads)
+                    Fail("Fresh wealth cache was fetched again when switching back from service.");
                 if (panel.SelectedTab != LeaderboardTab.Wealth || scroll.verticalNormalizedPosition < 0.99f)
                 {
                     Fail("Switching back did not restore the wealth tab at the top.");

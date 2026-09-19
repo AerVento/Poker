@@ -1,5 +1,7 @@
 # 物品商店与背包服务端
 
+当前配置入口与外部 JSON 覆盖方式见 [物品商店配置](ItemShopConfiguration.md)。商品默认值已迁移到统一商店 SO。
+
 ## 2026-09-09 更新
 
 购买条件与购买效果继续分离；新增 ItemUseRegistry / ItemUsePolicy，将使用条件与扣款效果分别注册。契约使用由服务端原子扣余额、扣库存、记账和保存回执。ItemOffer 协议增加 CanUse / UseCost，客户端与服务端须使用同一版本。
@@ -20,27 +22,11 @@
 
 ## 配置正式物品
 
-正式服务端目录是 `Assets/Resources/SO/Shop/ItemServerCatalog.json`，当前包含三种免费永久契约。它们按 ID 分别注册 `BalanceCondition(Equal, 0)` 和 `RewardChipsEffect(1000/10000/100000)`。上架不会自动发放库存。目录随构建打包，在服务端启动时读取和验证；更新后需重新构建并重启服务端。
+统一目录为 `Assets/Resources/SO/Shop/Items/ItemShopCatalog.asset`，维护物品引用、默认价格、上架状态和库存上限。物品定义归档在同目录的 `Products/`。客户端 `ItemBrowserView` 仅关联该 SO，服务端从同一 SO 创建配置。
 
-添加新商品还需要在组合根显式注册条件/效果（普通商品可为空），并更新契约专属校验范围；目录格式示例：
+在 SO Inspector 点击“导出默认配置…”生成 JSON。服务端从 `Configs/Shop/Items.json` 按 ID 覆盖默认值；缺少文件、条目或字段时沿用 SO，未知 ID 忽略并报警告。配置不会反向修改 SO，重新启动服务端后生效。详细格式与规则见 [物品商店配置](ItemShopConfiguration.md)。
 
-```json
-[
-  {
-    "Id": "your-item-id",
-    "Kind": 1,
-    "Price": 300,
-    "Listed": true,
-    "MaxQuantity": 1
-  }
-]
-```
-
-`Kind` 为 `ItemKind` 的数值：0 消耗品、1 不可消耗品。ID 使用小写字母、数字、下划线或连字符，最多 48 个字符；发布后保持不变。不可消耗品 `MaxQuantity` 必须为 1。目录最多 500 项，不能有重复 ID；空目录合法。所有字段均使用上例大小写。
-
-客户端通过 `Create > Poker > Items > Item Definition` 创建 `ItemDefinitionSO`，设置相同 ID、名称、说明、图片和不可消耗类型，并在 `ShopPanel` prefab 的 `ItemsView._definitions` 注册。价格由服务器提供；客户端定义不决定交易规则。缺少客户端定义的商品不会显示在商城，旧库存仍显示 ID 和数量。
-
-将 `Listed` 改为 false 可下架，已购买库存不变。修改 ID 会被视为另一个物品。三种契约沿用原 prefab 引用、ID 与 GUID，仅将资产类别修正为不可消耗。
+普通商品自动注册无附加购买效果的策略；礼物用途由 `GiftCatalogSO` 注册。契约保留现有特殊条件、奖励及还款规则。其他特殊使用效果需要注册对应业务逻辑。下架使用 `Listed = false`，不会删除已购买库存。
 
 ## 消耗品扩展点
 

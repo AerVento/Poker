@@ -32,6 +32,7 @@ namespace Game.Network.Accounts
     public sealed class ItemPurchaseOutcome
     {
         public int FormatVersion { get; }
+        [JsonIgnore] public string Currency => FormatVersion >= 2 ? "USD" : "LegacyBalance";
         public string ItemId { get; }
         public uint ChargedPrice { get; }
         public uint BalanceBefore { get; }
@@ -45,7 +46,7 @@ namespace Game.Network.Accounts
         public ItemPurchaseOutcome(int formatVersion, string itemId, uint chargedPrice, uint balanceBefore,
             uint balanceAfter, string ruleRevision, PurchaseConditionDescriptor failedCondition, IReadOnlyList<ItemEffectOutcome> effects)
         {
-            if (formatVersion != 1) throw new InvalidOperationException("Unsupported item receipt version.");
+            if (formatVersion != 1 && formatVersion != 2) throw new InvalidOperationException("Unsupported item receipt version.");
             FormatVersion = formatVersion;
             ItemId = itemId;
             ChargedPrice = chargedPrice;
@@ -144,9 +145,11 @@ namespace Game.Network.Accounts
         }
 
         public ItemChangeExecution ChangeItem(string accountId, string operationId, ItemShopAction action, string itemId,
-            uint quantity, uint quotedPrice, string revision, bool inRoom = false)
+            uint quantity, uint quotedPrice, string revision, bool inRoom = false, bool authorizeChipConversion = false, uint authorizedShortfall = 0)
         {
-            var result = _repository.ChangeItem(accountId, operationId, action, itemId, quantity, quotedPrice, revision, _runtime, inRoom);
+            var result = _repository is IWalletPaymentRepository payments
+                ? payments.ChangeItem(accountId, operationId, action, itemId, quantity, quotedPrice, revision, _runtime, inRoom, authorizeChipConversion, authorizedShortfall)
+                : _repository.ChangeItem(accountId, operationId, action, itemId, quantity, quotedPrice, revision, _runtime, inRoom);
             if (result.IsNewlyApplied && action == ItemShopAction.Purchase)
                 _events.Publish(new ItemPurchased(accountId, operationId, result.Outcome));
             return result;

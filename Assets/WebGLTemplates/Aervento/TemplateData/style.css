@@ -1,32 +1,16 @@
-html { height: 100%; }
-body { padding: 0; margin: 0; height: 100vh; height: 100dvh; min-height: 320px; display: flex; flex-direction: column; background: #fff; }
-#unity-game-area { flex: 1; min-height: 160px; box-sizing: border-box; padding: 20px; display: grid; place-items: center; }
-#unity-container { position: relative; width: min(100%, {{{ WIDTH }}}px); max-width: 100%; }
-#unity-canvas { display: block; width: 100%; height: auto; aspect-ratio: {{{ WIDTH }}} / {{{ HEIGHT }}}; background: {{{ BACKGROUND_COLOR }}}; }
+html { width: 100%; height: 100%; background: {{{ BACKGROUND_COLOR }}}; }
+body { padding: 0; margin: 0; width: 100%; height: 100vh; height: 100dvh; overflow: hidden; background: {{{ BACKGROUND_COLOR }}}; }
+#unity-game-area { width: 100%; height: 100%; min-height: 0; box-sizing: border-box; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); display: grid; place-items: center; overflow: hidden; }
+#unity-container { position: relative; width: 100%; height: 100%; max-width: 100%; }
+#unity-canvas { display: block; width: 100%; height: 100%; background: {{{ BACKGROUND_COLOR }}}; }
 #unity-canvas:fullscreen { width: 100%; height: 100%; }
-#unity-loading-bar { position: absolute; left: 50%; top: calc((100% - 38px) / 2); transform: translate(-50%, -50%); display: none; }
+#unity-loading-bar { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: none; }
 #unity-logo { width: 154px; height: 130px; background: url('unity-logo-{{{ SPLASH_SCREEN_STYLE.toLowerCase() }}}.png') no-repeat center; }
 #unity-progress-bar-empty { width: 141px; height: 18px; margin-top: 10px; margin-left: 6.5px; background: url('progress-bar-empty-{{{ SPLASH_SCREEN_STYLE.toLowerCase() }}}.png') no-repeat center; }
 #unity-progress-bar-full { width: 0%; height: 18px; background: url('progress-bar-full-{{{ SPLASH_SCREEN_STYLE.toLowerCase() }}}.png') no-repeat left center; }
-#unity-footer { position: relative; height: 38px; display: flex; align-items: center; gap: 10px; }
-#unity-webgl-logo { flex: 0 0 204px; height: 38px; background: url('webgl-logo.png') no-repeat center; }
-#unity-build-title { flex: 1; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 38px; font-family: Arial, sans-serif; font-size: 18px; }
-#unity-fullscreen-button { flex: 0 0 38px; width: 38px; height: 38px; padding: 0; border: 0; cursor: pointer; background: url('fullscreen-button.png') no-repeat center; }
-#unity-fullscreen-button:disabled { opacity: 0.45; cursor: default; }
-#unity-fullscreen-button:focus-visible, #diagnostics-icon:focus-visible { outline: 2px solid #235da4; outline-offset: 2px; }
-#diagnostics-icon { flex: 0 0 38px; width: 38px; height: 38px; padding: 0; border: 0; background: none; cursor: pointer; }
+#diagnostics-icon { position: fixed; right: max(8px, env(safe-area-inset-right, 0px)); bottom: max(8px, env(safe-area-inset-bottom, 0px)); width: 38px; height: 38px; padding: 0; border: 0; background: rgba(0, 0, 0, 0.35); cursor: pointer; }
+#diagnostics-icon:focus-visible { outline: 2px solid #235da4; outline-offset: 2px; }
 #diagnostics-icon img { display: block; width: 38px; height: 38px; }
 #unity-warning { position: absolute; left: 5%; right: 5%; top: 5%; max-height: 80%; overflow: auto; overflow-wrap: anywhere; background: white; display: none; font: 14px/1.5 sans-serif; }
 #unity-warning .unity-error { background: #fde5e5; color: #8b1515; padding: 10px; }
 #unity-warning .unity-notice { background: #fff4cd; color: #614b00; padding: 10px; }
-@media (max-width: 767px) {
-    #unity-game-area { padding: 12px; }
-    #unity-webgl-logo { display: none; }
-}
-body.mobile-landscape { min-height: 0; overflow: hidden; background: {{{ BACKGROUND_COLOR }}}; }
-.mobile-landscape #aervento-navigation, .mobile-landscape #unity-footer { display: none; }
-.mobile-landscape #unity-game-area {
-    min-height: 0;
-    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
-}
-.mobile-landscape #unity-loading-bar { top: 50%; }

@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cbd122b6c61407a499ac5f75cfb3a713, type: 3}
+  m_Name: RottenEgg
+  m_EditorClassIdentifier: 
+  _id: rotten-egg
+  _displayName: "\u81ED\u9E21\u86CB"
+  _description: "\u724C\u5C40\u5185\u4F7F\u7528\u7684\u6D88\u8017\u54C1\u793C\u7269\u3002\u70B9\u51FB\u5176\u4ED6\u73A9\u5BB6\u7684\u540D\u7247\u540E\u5BF9\u5176\u6295\u63B7\uFF0C\u5728\u8BA8\u538C\u7684\u4EBA\u8EAB\u4E0A\u7559\u4E0B\u96BE\u95FB\u7684\u6C14\u5473~"
+  _icon: {fileID: 21300000, guid: 0bf88d9cc657e904cbb39d174e28e89e, type: 3}
+  _kind: 0

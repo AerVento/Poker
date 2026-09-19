@@ -12,7 +12,8 @@ namespace Game.Network.Accounts
     {
         Success, InsufficientChips, NotOwned, UnknownItem, CatalogChanged,
         OutsideRoomRequired, Unavailable, InvalidRequest, RateLimited,
-        AlreadyOwned, QuantityLimit, NotConsumable, EffectUnavailable, BalanceConditionNotMet, BalanceLimit, UseConditionNotMet
+        AlreadyOwned, QuantityLimit, NotConsumable, EffectUnavailable, BalanceConditionNotMet, BalanceLimit, UseConditionNotMet,
+        RoomStartedRequired, UseLocationNotAllowed, ConversionRequired, QuoteChanged
     }
 
     public sealed class ServerItemDefinition

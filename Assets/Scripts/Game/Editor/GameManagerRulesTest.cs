@@ -137,7 +137,7 @@ namespace Game.Tests
             Assert.AreEqual(0, player.Chips);
             Assert.AreEqual(100, player.StageBet);
             Assert.IsTrue(player.IsAllIn);
-            Assert.AreEqual(PlayerOperationType.AllIn, player.LastOperation.Type);
+            Assert.AreEqual(PlayerOperationType.Call, player.LastOperation.Type);
         }
 
         [Test]
@@ -467,6 +467,108 @@ namespace Game.Tests
             Assert.AreEqual(0, result.PlayerResults[0].Hole.Count);
             Assert.AreEqual(2, result.PlayerResults[1].Hole.Count);
             Assert.AreEqual(2, result.PlayerResults[2].Hole.Count);
+        }
+
+        [Test]
+        public void ConsecutiveTimeouts_ShortenOnlyIdlePlayer_AndManualActionRestoresLimit()
+        {
+            var manager = PrepareTimeoutHand(out var info);
+            var roomId = info.RoomInfo.Id;
+            try
+            {
+                ExpireAction(info); // Player 1 checks on the flop.
+                manager.Check(roomId, 0);
+                manager.NextStage(roomId);
+                Assert.AreEqual(1000d, info.Timer.Duration);
+                ExpireAction(info); // Second consecutive timeout, on the turn.
+                Assert.AreEqual(1000d, info.Timer.Duration, "Player 0 keeps the room limit.");
+                manager.Check(roomId, 0);
+                manager.NextStage(roomId);
+                Assert.AreEqual(1, info.OperatingPlayer);
+                Assert.AreEqual(5d, info.Timer.Duration);
+                var message = new GameInfoSync { Info = new ClientGameInfo(info, 0) };
+                Assert.AreEqual(5f, message.Info.ActionTimeLimit, "JSON projection preserves the limit.");
+                Assert.AreNotEqual(0, manager.Bet(roomId, 1, 1));
+                Assert.AreEqual(5d, info.Timer.Duration, "Invalid requests do not restore the limit.");
+                Assert.AreEqual(0, manager.Check(roomId, 1));
+                Assert.AreEqual(0, manager.Bet(roomId, 0, 100));
+                Assert.AreEqual(1, info.OperatingPlayer);
+                Assert.AreEqual(1000d, info.Timer.Duration);
+            }
+            finally { manager.CancelGame(roomId, "TestFinished"); }
+        }
+
+        [Test]
+        public void ConsecutiveTimeouts_PersistIntoNextHand()
+        {
+            var manager = PrepareTimeoutHand(out var info);
+            var roomId = info.RoomInfo.Id;
+            try
+            {
+                for (int street = 0; street < 3; street++)
+                {
+                    ExpireAction(info);
+                    Assert.AreEqual(0, manager.Check(roomId, 0));
+                    Assert.AreEqual(0, manager.NextStage(roomId));
+                }
+                Assert.AreEqual(0, manager.StartNew(roomId));
+                Assert.AreEqual(1, info.OperatingPlayer);
+                Assert.AreEqual(5d, info.Timer.Duration);
+            }
+            finally { manager.CancelGame(roomId, "TestFinished"); }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ConsecutiveTimeouts_ExcludeDisconnects_AndManualActionsBreakStreak(bool disconnected)
+        {
+            var manager = PrepareTimeoutHand(out var info);
+            var roomId = info.RoomInfo.Id;
+            try
+            {
+                if (disconnected)
+                {
+                    manager.SetDisconnected(roomId, info.Players[1].PlayerName);
+                    manager.SetConnected(roomId, info.Players[1].PlayerName);
+                }
+                else
+                {
+                    ExpireAction(info);
+                }
+                manager.Check(roomId, 0);
+                manager.NextStage(roomId);
+                if (disconnected)
+                    ExpireAction(info); // Only one real timeout.
+                else
+                    manager.Check(roomId, 1); // Manual action breaks the streak.
+                manager.Check(roomId, 0);
+                manager.NextStage(roomId);
+                Assert.AreEqual(1000d, info.Timer.Duration);
+                ExpireAction(info);
+                manager.Check(roomId, 0);
+                manager.NextStage(roomId);
+                manager.StartNew(roomId);
+                Assert.AreEqual(disconnected ? 5d : 1000d, info.Timer.Duration);
+            }
+            finally { manager.CancelGame(roomId, "TestFinished"); }
+        }
+
+        private GameManager PrepareTimeoutHand(out ServerGameInfo info)
+        {
+            var manager = CreateManager(2, out info);
+            info.Dealer = 1;
+            Assert.AreEqual(0, manager.StartNew(info.RoomInfo.Id));
+            Assert.AreEqual(0, manager.Call(info.RoomInfo.Id, 0));
+            Assert.AreEqual(0, manager.Check(info.RoomInfo.Id, 1));
+            Assert.AreEqual(0, manager.NextStage(info.RoomInfo.Id));
+            Assert.AreEqual(1, info.OperatingPlayer);
+            return manager;
+        }
+
+        private static void ExpireAction(ServerGameInfo info)
+        {
+            info.Timer.Stop();
+            info.Timer.OnTimeUp.Invoke();
         }
 
         private GameManager CreateManager(

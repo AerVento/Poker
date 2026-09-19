@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -51,6 +52,33 @@ namespace Game.UI.Gifts
             CloseMenu();
             _effect.Play(_selected);
             _nextPlay = Time.unscaledTime + _effect.Duration + 1.1f;
+        }
+
+        public void BurstFive()
+        {
+            CloseMenu();
+            StartCoroutine(PlayBurst(5));
+            _nextPlay = Time.unscaledTime + _effectPrefab.Duration + 2f;
+        }
+
+        private IEnumerator PlayBurst(int quantity)
+        {
+            for (var index = 0; index < quantity; index++)
+            {
+                var effect = Instantiate(_effectPrefab, _canvas);
+                effect.name = "Rotten egg burst " + (index + 1);
+                Stretch((RectTransform)effect.transform);
+                effect.Play(_selected);
+                StartCoroutine(DestroyBurstEffect(effect));
+                yield return new WaitForSecondsRealtime(GiftInteractionController.PlaybackInterval(effect.Duration));
+            }
+        }
+
+        private static IEnumerator DestroyBurstEffect(RottenEggGiftEffect effect)
+        {
+            yield return new WaitForSecondsRealtime(effect.Duration + 0.05f);
+            if (effect != null)
+                Destroy(effect.gameObject);
         }
 
         public void SelectCard(int index)
@@ -125,7 +153,7 @@ namespace Game.UI.Gifts
             _selected = _cards[1];
             Label("中心弹出   →   弧线投掷   →   破裂滑落 2 秒   →   渐隐", _canvas,
                 new Vector2(0, -300), new Vector2(1080, 34), 21, new Color32(154, 177, 166, 255));
-            Button("再扔一次", _canvas, new Vector2(-215, -365), new Vector2(230, 54), Replay, Mint, new Color32(22, 42, 33, 255));
+            Button("连投 × 5", _canvas, new Vector2(-215, -365), new Vector2(230, 54), BurstFive, Mint, new Color32(22, 42, 33, 255));
             _loopLabel = Button(_autoLoop ? "循环播放：开" : "循环播放：关", _canvas, new Vector2(65, -365), new Vector2(230, 54), ToggleLoop,
                 new Color32(40, 60, 59, 255), Cream);
             _status = Label("就绪", _canvas, new Vector2(340, -365), new Vector2(220, 36), 19, Mint);

@@ -10,7 +10,7 @@ Inspector 设置：Texture Type = Sprite (2D and UI)、Sprite Mode = Single、Me
 
 ## 2. 创建商品 SO
 
-在 `Assets/Resources/SO/Shop/Products/` 右键，选择 Create → Poker → Shop → Namecard Product。也可以复制现有普通商品，再修改：
+在 `Assets/Resources/SO/Shop/Namecards/Products/` 右键，选择 Create → Poker → Shop → Namecard Product。也可以复制现有普通商品，再修改：
 
 | 字段 | 用法 |
 | --- | --- |
@@ -26,27 +26,25 @@ Inspector 设置：Texture Type = Sprite (2D and UI)、Sprite Mode = Single、Me
 
 ## 3. 加入目录与预览
 
-打开 `Assets/Resources/SO/Shop/NamecardCatalog.asset`，将商品拖入商品数组。数组顺序就是商城顺序；保持“经典”在第一个位置。无需手工创建页码，第 13 款会自动出现在第 4 页。
+打开 `Assets/Resources/SO/Shop/Namecards/NamecardCatalog.asset`，将商品拖入商品数组。数组顺序就是商城顺序；保持“经典”在第一个位置。无需手工创建页码，第 13 款会自动出现在第 4 页。
 
 先选择商品 SO，分别检查宽版和 4:3 两个预览，用 Inspector 的黄线检查 64 px 边框上限、青线检查 96 px 文字安全区；执行 Poker → Shop → Validate Namecard Artwork 检查尺寸与导入配置。打开 `Assets/Scenes/Game.unity`，执行 Poker → UI → Preview Namecard Shop，检查图片、名称和介绍。此菜单使用临时示例账户，不会扣除正式账户余额。退出 Play Mode 后示例购买状态消失。
 
-## 4. 导出并发布配置
+## 4. 发布与外部覆盖
 
-执行 Poker → Shop → Export Server Catalog。工具会检查重复 ID、默认款、缺失图片等问题，并从 SO 生成 `Assets/Resources/SO/Shop/NamecardServerCatalog.json`。该文件只包含服务器需要的商品 ID、价格和上架状态，没有图片依赖；不要手工改它。
+正常 Unity Build 会校验物品、名片和牌面三套商城 SO。名片的完整默认目录直接来自 `NamecardCatalog.asset`，不再维护一份包内服务器 JSON。
 
-正常 Unity Build 会自动校验并重新导出。这份 Resources JSON 是首次部署的默认目录；服务端实际使用外部 `NamecardServerCatalog.json`，启动时读取一次，后续使用内存快照。
-
-首次启动新版服务端时，如果外部文件不存在，会从内置 JSON 生成。默认路径是服务端可执行文件旁的 `Configs/NamecardServerCatalog.json`；Editor 启动服务端时位于项目的 `Configs/`。如果使用 `-pokerServerConfig /etc/poker/server-network.json`，商城文件也放在 `/etc/poker/NamecardServerCatalog.json`，始终与指定的网络配置文件同目录，不受进程工作目录影响。首次生成时该目录需要可写；文件已存在时只需可读。
+服务端固定读取 `Configs/Shop/Namecards.json`，启动时应用到 SO 默认目录的运行时副本。文件不存在或为 `[]` 时完全使用 SO；覆盖文件不会自动生成，也不会反向修改 SO。配置路径由通用 `ConfigManager` 管理，不跟随 `-pokerServerConfig` 移动。
 
 部署后调整现有名片的价格或上下架：
 
-1. 编辑外部 `NamecardServerCatalog.json`，找到对应 `Id`，修改 `Price` 或 `Listed`。例如 `{"Id":"galaxy","Price":6000,"Listed":false}` 表示价格 6,000、已下架。完整文件仍然是商品对象数组，保留其他商品。
+1. 编辑外部 `Configs/Shop/Namecards.json`，只写需要调整的 ID 和字段。例如 `{"Id":"galaxy","Price":6000,"Listed":false}` 表示价格 6,000、已下架；未列出的商品和字段沿用 SO。
 2. 保存文件并重启服务端。无需重新构建服务端或客户端；当前不支持运行中自动重载。客户端重新连接并打开商城后会接收服务端的新价格与上架状态。
-3. 查看启动日志 `Namecard server catalog loaded:`，确认绝对路径、商品数和 revision。服务端最终按这份目录校验并扣款；旧目录版本的购买请求会被拒绝。
+3. 查看启动日志，确认覆盖文件的绝对路径。服务端最终按合并后的目录校验并扣款；旧目录版本的购买请求会被拒绝。
 
-所有商品必须明确填写大小写准确的 `Id`、`Price` 和 `Listed`，不能有未知或重复字段。`Price` 必须是 0～4,294,967,295 的整数，`Listed` 必须是 JSON 布尔值。首项必须保留 `{"Id":"default","Price":0,"Listed":true}`，商品 ID 必须有效且唯一。JSON 格式、字段或目录校验失败，以及读取或首次写入失败，都会使启动失败并报告文件路径；不会悄悄回退到内置价格，也不会覆盖错误文件。
+每个覆盖项必须有大小写准确的 `Id`，可选 `Price` 和 `Listed`。`Price` 必须是 0～4,294,967,295 的整数，`Listed` 必须是 JSON 布尔值。未知 ID 会被忽略并写入警告；重复 ID、未知字段、JSON 格式或目录校验错误会使启动失败并报告文件路径。
 
-重新启动或更新程序不会覆盖已有外部商城文件，发布时也应保留该文件。内置 SO/JSON 更新不会自动合并到外部文件。新增商品需要发布对应的客户端图片与 SO、更新服务端版本，并在已有外部 JSON 中加入新商品；仅更换现有商品的图片、名称或介绍只需更新客户端。当前不支持远程热更新图片。
+重新启动或更新程序不会覆盖已有外部商城文件。SO 新增商品会自然进入默认目录；如需覆盖新商品报价，再向外部 JSON 添加该 ID。仅更换现有商品的图片、名称或介绍仍需更新客户端。当前不支持远程热更新图片。
 
 ## 5. 上线后的修改规则
 
@@ -70,7 +68,7 @@ Inspector 设置：Texture Type = Sprite (2D and UI)、Sprite Mode = Single、Me
 `NamecardProductSO.Artwork` 保留原来的宽图字段；`Artwork4x3` 是紧凑图。`NamecardCatalogSO.GetProduct(id)` 获取商品，`GetArtwork(id, width / height)` 按目标格子的比例获取更适合的图片，例如：
 
 ```csharp
-var catalog = Resources.Load<NamecardCatalogSO>("SO/Shop/NamecardCatalog");
+var catalog = Resources.Load<NamecardCatalogSO>(NamecardCatalogSO.ResourcePath);
 Sprite wide = catalog.GetArtwork("galaxy", 8f / 3f);
 Sprite compact = catalog.GetArtwork("galaxy", 4f / 3f);
 ```

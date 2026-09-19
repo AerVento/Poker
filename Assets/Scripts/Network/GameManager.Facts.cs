@@ -1,6 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using Game.Facts;
+using Game.Achievements;
+using Game.Events;
+using Game.Network.Accounts;
 
 namespace Game.Network
 {
@@ -45,6 +48,24 @@ namespace Game.Network
                 HandId = info.HandId, Kind = HandFactKind.Settled, Street = (int)info.Stage,
                 Patterns = patterns, WonAnyPot = won
             };
+        }
+
+        private void PublishRevealedHandFacts(int roomId, AchievementContext context, string accountId,
+            IReadOnlyList<Poker> hole, IReadOnlyList<Poker> community, string handId)
+        {
+            var occurredAt = System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            (_accountRepository as IPlayerEventRepository)?.PublishPlayerEvent(
+                TableEventSource.Revealed(handId, accountId, community, hole, occurredAt));
+            (_accountRepository as IHandFactPublisher)?.PublishHandFact(new HandFact
+            {
+                EventId = handId + ":" + accountId + ":revealed",
+                AccountId = accountId,
+                HandId = handId,
+                Kind = HandFactKind.CardsRevealed,
+                Street = (int)(context?.PreviousStage ?? GameStage.Preflop),
+                Patterns = FormablePatternEvaluator.Evaluate(hole.Concat(community)),
+                WonAnyPot = false,
+            });
         }
 
         private void ForgetHandFacts(string handId)

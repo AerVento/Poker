@@ -50,7 +50,6 @@ namespace Game.UI
             _refresh.onClick.AddListener(Refresh);
             _scroll.verticalNormalizedPosition = 1f;
             _refreshAfter = 0;
-            Refresh();
         }
 
         private void OnDisable()
@@ -87,16 +86,28 @@ namespace Game.UI
 
         private void Back() => UIManager.Instance.PopPanel<LeaderboardPanel>();
 
-        private void Refresh()
+        private void Refresh() => LoadSelected(force: true);
+
+        private LeaderboardKind SelectedKind => SelectedTab == LeaderboardTab.Service ? LeaderboardKind.Service : LeaderboardKind.Wealth;
+
+        private void LoadSelected(bool force = false)
         {
-            if (_requestId != 0 || Time.realtimeSinceStartupAsDouble < _refreshAfter)
+            if (force && (_requestId != 0 || Time.realtimeSinceStartupAsDouble < _refreshAfter)) return;
+            var room = NetworkManager.singleton as NetworkRoom;
+            if (!force && room != null && room.CanOpenLeaderboard && room.TryGetLeaderboard(SelectedKind, out var snapshot))
+            {
+                _requestId = 0;
+                _snapshot = snapshot;
+                _hasSnapshot = true;
+                RenderSnapshot();
                 return;
+            }
             _hasSnapshot = false;
             _snapshot = default;
             ClearRows();
             _self.Show(default);
             _serviceSelf.Show(default);
-            _requestId = (NetworkManager.singleton as NetworkRoom)?.RequestLeaderboard() ?? 0;
+            _requestId = (NetworkManager.singleton as NetworkRoom)?.RequestLeaderboard(SelectedKind) ?? 0;
             _deadline = Time.realtimeSinceStartupAsDouble + 10d;
             _refreshAfter = Time.realtimeSinceStartupAsDouble + 2d;
             _feedback.text = _requestId == 0 ? "请登录后查看排行榜。" : "正在加载排行榜…";
@@ -114,7 +125,7 @@ namespace Game.UI
 
         public void Receive(LeaderboardResponse response)
         {
-            if (!isActiveAndEnabled || _requestId == 0 || response.RequestId != _requestId)
+            if (!isActiveAndEnabled || _requestId == 0 || response.RequestId != _requestId || response.Kind != SelectedKind)
                 return;
             _requestId = 0;
             // Start the cooldown after receipt so network latency cannot enable an early retry.
@@ -149,9 +160,9 @@ namespace Game.UI
             _title.color = service ? new Color(1f, 0.78f, 0.36f) : new Color(0.85f, 0.93f, 0.94f);
             _eyebrow.text = service ? "契约档案 · TOP 10" : "财富排行 · TOP 10";
             _subtitle.text = service ? string.Empty : "牌桌风云，尽在此间。";
-            _amountHeading.text = service ? "累计服役" : "账户余额";
-            if (_hasSnapshot) RenderSnapshot();
-            else ClearRows();
+            _amountHeading.text = service ? "累计服役" : "总资产";
+            _requestId = 0;
+            LoadSelected();
             _scroll.StopMovement();
             _scroll.verticalNormalizedPosition = 1f;
         }

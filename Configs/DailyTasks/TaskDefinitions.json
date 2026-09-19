@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 2,
+  "revision": "daily-tasks-v5",
+  "tasks": [
+    {
+      "id": "daily_supply",
+      "name": "\u6BCF\u65E5\u5956\u52B1",
+      "type": "DirectClaim",
+      "params": [
+        {
+          "chip": 1000,
+          "items": []
+        }
+      ],
+      "maxCompletions": 1
+    },
+    {
+      "id": "comeback",
+      "name": "\u4E1C\u5C71\u518D\u8D77",
+      "type": "DirectClaimWhenAtMost",
+      "params": [
+        {
+          "chip": 2000,
+          "items": []
+        },
+        1000
+      ],
+      "maxCompletions": 1
+    },
+    {
+      "id": "set_of_set",
+      "name": "\u5E3D\u5B50\u620F\u6CD5",
+      "type": "WinWithPattern",
+      "params": [
+        {
+          "chip": 5000,
+          "items": []
+        },
+        "ThreeOfAKind",
+        1
+      ],
+      "maxCompletions": 1
+    },
+    {
+      "id": "flush",
+      "name": "\u6E05\u4E00\u8272",
+      "type": "FormPattern",
+      "params": [
+        {
+          "chip": 5000,
+          "items": []
+        },
+        "FullHouse",
+        1
+      ],
+      "maxCompletions": 1
+    },
+    {
+      "id": "win_5hands",
+      "name": "5\u80DC",
+      "type": "WinHands",
+      "params": [
+        {
+          "chip": 3000,
+          "items": []
+        },
+        5
+      ],
+      "maxCompletions": 1
+    },
+    {
+      "id": "complete_10hands",
+      "name": "\u5B8C\u621010\u624B\u5BF9\u5C40",
+      "type": "PlayHands",
+      "params": [
+        {
+          "chip": 3000,
+          "items": []
+        },
+        10
+      ],
+      "maxCompletions": 1
+    },
+    {
+      "id": "surprise",
+      "name": "\u60CA\u559C\uFF01",
+      "type": "DirectClaim",
+      "params": [
+        {
+          "chip": 5000,
+          "items": []
+        }
+      ],
+      "maxCompletions": 1,
+      "description": "\u514D\u8D39\u7684\u7B79\u7801\uFF01"
+    },
+    {
+      "id": "fullhouse",
+      "name": "\u4F60\u8001\u7238\u53D8\u6210\u4E86\u5154\u5B50",
+      "type": "FormPattern",
+      "params": [
+        {
+          "chip": 8000,
+          "items": []
+        },
+        "FullHouse",
+        1
+      ],
+      "maxCompletions": 1
+    },
+    {
+      "id": "twopair_10hands",
+      "name": "\u6D88\u6D88\u4E50",
+      "type": "FormPattern",
+      "params": [
+        {
+          "chip": 5000,
+          "items": []
+        },
+        "TwoPair",
+        10
+      ],
+      "maxCompletions": 1
+    },
+    {
+      "id": "pair",
+      "name": "\u6210\u53CC\u6210\u5BF9",
+      "type": "WinWithPattern",
+      "params": [
+        {
+          "chip": 5000,
+          "items": []
+        },
+        "Pair",
+        10
+      ],
+      "maxCompletions": 1
+    },
+    {
+      "id": "four_of_a_kind",
+      "name": "\u5BF9\u4E0D\u8D77\uFF0C\u7EDD\u5F20\uFF01",
+      "type": "FormPattern",
+      "params": [
+        {
+          "chip": 20000,
+          "items": []
+        },
+        "FourOfAKind",
+        1
+      ],
+      "maxCompletions": 1
+    },
+    {
+      "id": "straight",
+      "name": "\u767E\u5C3A\u7AFF\u5934",
+      "type": "WinWithPattern",
+      "params": [
+        {
+          "chip": 5000,
+          "items": []
+        },
+        "Straight",
+        1
+      ],
+      "maxCompletions": 1
+    },
+    {
+      "id": "straight_flush",
+      "name": "\u4F60\u5C31\u662F\u4F20\u8BF4\uFF01",
+      "type": "FormPattern",
+      "params": [
+        {
+          "chip": 100000,
+          "items": []
+        },
+        "StraightFlush",
+        1
+      ],
+      "maxCompletions": 1
+    },
+    {
+      "id": "server-gift",
+      "name": "\u670D\u52A1\u5668\u7EF4\u4FEE\u8865\u507F",
+      "type": "DirectClaim",
+      "params": [
+        {
+          "chip": 10000,
+          "items": []
+        }
+      ],
+      "maxCompletions": 1
+    }
+  ]
+}

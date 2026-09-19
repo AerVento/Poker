@@ -16,13 +16,13 @@ namespace Game.UI
         private bool _itemRefreshNeeded;
         private bool _itemUncertain;
         private double _itemRefreshAt;
+        private bool _itemConversionAwaiting;
 
         private void BeginItemsOnline()
         {
             _itemsView.BindActions(SendItemAction);
             _itemsView.EligibilityRefreshRequested += QueueItemRefresh;
             _itemsView.SetFeedback("正在读取库存与商品价格…");
-            StartItemRequest(new ItemShopRequest { Action = ItemShopAction.Read });
         }
 
         private void ResetItemsOnline()
@@ -33,6 +33,7 @@ namespace Game.UI
             _itemsView.EligibilityRefreshRequested -= QueueItemRefresh;
             _itemRefreshNeeded = false;
             _itemUncertain = false;
+            _itemConversionAwaiting = false;
         }
 
         private void QueueItemRefresh()
@@ -42,11 +43,11 @@ namespace Game.UI
             _itemRefreshAt = Time.realtimeSinceStartupAsDouble + 0.25d;
         }
 
-        public void ReceiveAccountBalance(uint chips)
+        public void ReceiveAccountBalance(uint dollars)
         {
             if (!_online || !isActiveAndEnabled) return;
-            _chips = chips;
-            _itemsView.SetBalance(chips);
+            _dollars = dollars;
+            _itemsView.SetBalance(dollars);
             Redraw();
         }
 
@@ -83,7 +84,7 @@ namespace Game.UI
                 if (_itemRefreshNeeded && Time.realtimeSinceStartupAsDouble >= _itemRefreshAt)
                 {
                     _itemRefreshNeeded = false;
-                    StartItemRequest(new ItemShopRequest { Action = ItemShopAction.Read });
+                    (NetworkManager.singleton as NetworkRoom)?.LoadCollection(force: true);
                 }
                 return;
             }
@@ -121,29 +122,45 @@ namespace Game.UI
                 return;
             }
             var action = _pendingItem.Action;
-            _pendingItem.RequestId = 0;
+            var failedRequest = _pendingItem;
+            _pendingItem = default;
             _itemRefreshNeeded = false;
             _itemCatalogRevision = response.CatalogRevision;
-            var snapshot = new ItemInventorySnapshot(
-                (response.Items ?? Array.Empty<ItemStackMessage>()).Select(p => new ItemStack(p.ItemId, p.Quantity)),
-                (response.Offers ?? Array.Empty<ItemOfferMessage>()).Select(p => new ItemOffer(p.ItemId, p.Price, p.Listed,
-                    p.RewardChips, (p.PurchaseConditions ?? Array.Empty<PurchaseConditionMessage>()).Select(ReadCondition),
-                    p.CanPurchase, p.BlockReason, p.MaxQuantity, p.CanUse, p.UseCost)),
-                response.Chips, response.CanAct);
+            var snapshot = ReadItemsSnapshot(response);
+            _availableChips = response.AvailableChips;
+            _canExchange = response.CanExchange;
+            _itemsView.SetWallet(response.Dollars, response.AvailableChips, response.CanExchange, false);
+            if (response.Result == ItemShopResult.ConversionRequired && response.RequiredConversion > 0)
+            {
+                _itemConversionAwaiting = true;
+                var accepted = _itemsView.PromptChipConversion(response.OperationId, snapshot,
+                    response.RequiredConversion,
+                    () => RetryItemWithConversion(failedRequest, response.RequiredConversion),
+                    () => _itemConversionAwaiting = false);
+                if (!accepted)
+                {
+                    _itemConversionAwaiting = false;
+                    _itemsView.SetFeedback("支付状态已变化，请重新选择商品。");
+                }
+                return;
+            }
             var message = response.Result switch
             {
                 ItemShopResult.Success => action == ItemShopAction.Purchase
-                    ? response.HasOutcome && response.AppliedRewardChips > 0
-                        ? response.IsNewlyApplied ? $"购买成功，获得 ${response.AppliedRewardChips:N0}。"
-                            : $"已核对原购买结果：赠款 ${response.AppliedRewardChips:N0} 已入账，本次未重复发放。"
+                    ? response.HasOutcome && response.AppliedRewardDollars > 0
+                        ? response.IsNewlyApplied ? $"购买成功，获得 ${response.AppliedRewardDollars:N0} 美金。"
+                            : $"已核对原购买结果：${response.AppliedRewardDollars:N0} 美金已入账，本次未重复发放。"
                         : "购买已确认，库存与余额已更新。"
                     : action == ItemShopAction.Use ? "使用成功。" : string.Empty,
                 ItemShopResult.AlreadyOwned => "你已拥有这件永久物品，无需重复购买。",
-                ItemShopResult.InsufficientChips => "余额不足，账户余额已刷新。",
+                ItemShopResult.InsufficientChips => "美金不足，可用筹码也无法补足。",
                 ItemShopResult.NotOwned => "你尚未拥有这件物品。",
                 ItemShopResult.UnknownItem => "物品已下架或不可操作，商品列表已刷新。",
                 ItemShopResult.CatalogChanged => "商品配置或价格已更新，请重新确认。",
-                ItemShopResult.OutsideRoomRequired => "请先离开房间并完成当前牌局。",
+                ItemShopResult.QuoteChanged => "余额或价格已变化，请重新确认支付。",
+                ItemShopResult.OutsideRoomRequired => "当前场景无法操作这件物品。",
+                ItemShopResult.RoomStartedRequired => "这件物品只能在已开始的牌局中使用。",
+                ItemShopResult.UseLocationNotAllowed => "当前场景不能使用这件物品。",
                 ItemShopResult.QuantityLimit => "持有数量已达到上限。",
                 ItemShopResult.NotConsumable => "这件物品为永久收藏，不可消耗。",
                 ItemShopResult.EffectUnavailable => "此物品暂未开放使用，库存未扣除。",
@@ -159,6 +176,38 @@ namespace Game.UI
                 _itemsView.SetFeedback(message);
             }
             else _itemsView.CompleteAction(response.OperationId, snapshot, message);
+        }
+
+        private void ApplyItems(ItemShopResponse response)
+        {
+            _itemCatalogRevision = response.CatalogRevision;
+            _availableChips = response.AvailableChips;
+            _canExchange = response.CanExchange;
+            _itemsView.SetWallet(response.Dollars, response.AvailableChips, response.CanExchange, false);
+            _itemsView.SetSnapshot(ReadItemsSnapshot(response));
+            _itemsView.ClearLoadingFeedback();
+        }
+
+        private static ItemInventorySnapshot ReadItemsSnapshot(ItemShopResponse response)
+        {
+            return new ItemInventorySnapshot(
+                (response.Items ?? Array.Empty<ItemStackMessage>()).Select(p => new ItemStack(p.ItemId, p.Quantity)),
+                (response.Offers ?? Array.Empty<ItemOfferMessage>()).Select(p => new ItemOffer(p.ItemId, p.Price, p.Listed,
+                    p.RewardDollars, (p.PurchaseConditions ?? Array.Empty<PurchaseConditionMessage>()).Select(ReadCondition),
+                    p.CanPurchase, p.BlockReason, p.MaxQuantity, p.CanUse, p.UseCost)),
+                response.Dollars, response.CanAct);
+        }
+
+        private void RetryItemWithConversion(ItemShopRequest failedRequest, uint shortfall)
+        {
+            _itemConversionAwaiting = false;
+            if (!isActiveAndEnabled || !_online || _pendingItem.RequestId != 0) return;
+            failedRequest.RequestId = 0;
+            failedRequest.OperationId = Guid.NewGuid().ToString("N");
+            failedRequest.AuthorizeChipConversion = true;
+            failedRequest.AuthorizedShortfall = shortfall;
+            _itemsView.BeginAuthorizedAction(failedRequest.OperationId);
+            StartItemRequest(failedRequest);
         }
 
         private static PurchaseConditionDescriptor ReadCondition(PurchaseConditionMessage condition)

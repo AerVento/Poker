@@ -1,5 +1,7 @@
 # 物品商城与收藏面板
 
+物品列表现由 `ItemShopCatalog.asset` 统一维护，`ItemBrowserView` 仅引用该 SO。配置及迁移说明见 [物品商店配置](ItemShopConfiguration.md)。
+
 ## 2026-09-09 更新
 
 商城与仓库导航改为购物车／箱子图标。三种契约为可消耗品，使用时扣款并减少库存；旧的不可消耗契约说明已由此变更替代。特殊购买与使用条件仅保留在物品详细介绍里。
@@ -20,11 +22,11 @@
 
 ## 数据与服务接入
 
-`ItemDefinitionSO` 是可在 Inspector 编辑的物品定义，包含稳定 ID、名称、说明、图标与 `ItemKind`（消耗品 / 不可消耗品）。在 `ShopPanel` prefab 的 `ItemsView._definitions` 注册引用。通过 `Create > Poker > Items > Item Definition` 创建定义。
+`ItemDefinitionSO` 是可在 Inspector 编辑的物品定义，包含稳定 ID、名称、说明、图标与 `ItemKind`（消耗品 / 不可消耗品）。在 `ShopPanel` prefab 的 `ItemsView._catalog` 注册引用。通过 `Create > Poker > Items > Item Definition` 创建定义。
 
 ### 契约物品配置
 
-以下资产位于 `Assets/Resources/SO/Items/`，已按下表顺序注册到共用面板，并关联 `Assets/Sprites/Items/Contracts/` 中对应的透明图标。
+以下资产位于 `Assets/Resources/SO/Shop/Items/Products/`，已按下表顺序注册到共用面板，并关联 `Assets/Sprites/Items/Contracts/` 中对应的透明图标。
 
 | 名称 | 稳定 ID | 配置文件 | 类别 | 设定 |
 | --- | --- | --- | --- | --- |

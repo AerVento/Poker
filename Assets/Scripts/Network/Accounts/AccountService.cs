@@ -28,7 +28,8 @@ namespace Game.Network.Accounts
 
     public sealed class AccountService
     {
-        public const uint DefaultInitialChips = 10000;
+        public const uint DefaultInitialDollars = 10000;
+        public const uint DefaultInitialChips = DefaultInitialDollars;
 
         public static readonly TimeSpan DefaultSessionLifetime = TimeSpan.FromDays(30);
 
@@ -82,7 +83,8 @@ namespace Game.Network.Accounts
                     PasswordHash = passwordData.Hash,
                     PasswordSalt = passwordData.Salt,
                     PasswordIterations = passwordData.Iterations,
-                    Chips = _initialChips,
+                    Dollars = _initialChips,
+                    Chips = 0,
                     Version = 0,
                     CreatedAtUtc = now,
                     UpdatedAtUtc = now,

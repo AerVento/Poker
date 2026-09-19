@@ -32,7 +32,7 @@
 
 - Linux：StandaloneLinux64 / Server，输出 `Linux/PokerServer.x86_64`。
 - WebGL：项目既有 Aervento 模板，输出 `WebGL/`。
-- 保留 `runInBackground: 1` 及现有网络配置。客户端地址通过 `StreamingAssets/client-network.json` 配置；服务端配置位于 `Configs/server-network.json`。
+- 保留 `runInBackground: 1` 及现有网络配置。客户端和服务端配置分别位于 `Configs/Network/client-network.json` 与 `Configs/Network/server-network.json`。
 - 使用 `Tools/Release/package_release.py` 生成版本化 WebGL 资源归档、Linux 发布归档及 SHA-256 清单，排除 DoNotShip 调试输出。
 
 Linux 构建成功：作业 `build-64fcc653cf`，189.97 秒，84.61 MiB，0 错误、2 警告。

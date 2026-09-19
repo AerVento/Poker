@@ -5,7 +5,8 @@ namespace Game.Network.Accounts
 {
     // Expected business rejections are return values. Unexpected repository failures stop the server.
     public sealed partial class GuardedAccountRepository : IHandAccountRepository,
-        IPasswordAccountRepository, ISessionAccountRepository, IDailyRewardRepository, ILeaderboardRepository, INamecardRepository, IItemRepository, IServiceYearsRepository
+        IPasswordAccountRepository, ISessionAccountRepository, IDailyRewardRepository, ILeaderboardRepository,
+        INamecardRepository, IItemRepository, IServiceYearsRepository, IGiftRepository
     {
         private readonly IHandAccountRepository _inner;
         private readonly IPasswordAccountRepository _passwords;
@@ -56,6 +57,12 @@ namespace Game.Network.Accounts
                 itemId, quantity, quotedPrice, catalogRevision, runtime, inRoom));
         }
 
+        public GiftUseExecution ConsumeGiftBatch(string accountId, string operationId,
+            IReadOnlyList<GiftUseCommand> commands, ItemPurchaseRuntime runtime)
+        {
+            return Execute(() => ((IGiftRepository)_inner).ConsumeGiftBatch(accountId, operationId, commands, runtime));
+        }
+
         public NamecardInventory ReadNamecards(string accountId)
         {
             return Execute(() => ((INamecardRepository)_inner).ReadNamecards(accountId));
@@ -73,9 +80,9 @@ namespace Game.Network.Accounts
             return Execute(() => ((IServiceYearsRepository)_inner).ReadServiceYears(accountIds));
         }
 
-        public LeaderboardSnapshot ReadLeaderboard(string accountId)
+        public LeaderboardSnapshot ReadLeaderboard(string accountId, LeaderboardKind kind = LeaderboardKind.All)
         {
-            return Execute(() => ((ILeaderboardRepository)_inner).ReadLeaderboard(accountId));
+            return Execute(() => ((ILeaderboardRepository)_inner).ReadLeaderboard(accountId, kind));
         }
 
         public PlayerAccount FindById(string accountId)

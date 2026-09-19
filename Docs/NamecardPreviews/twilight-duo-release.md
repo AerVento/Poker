@@ -6,22 +6,24 @@
 - 名称：幻夜双影。
 - 介绍：花海映双影，与你共赴蓝紫幻夜。
 - 售价：50,000 账户筹码（用户已确认）；上架；非默认款。
-- 商品 SO：`Assets/Resources/SO/Shop/Products/twilight-duo.asset`。
-- 已追加至 `Assets/Resources/SO/Shop/NamecardCatalog.asset` 末尾，第 13 款，商城第 4 页；原商品顺序保持。
+- 商品 SO：`Assets/Resources/SO/Shop/Namecards/Products/twilight-duo.asset`。
+- 已追加至 `Assets/Resources/SO/Shop/Namecards/NamecardCatalog.asset` 末尾，第 13 款，商城第 4 页；原商品顺序保持。
 - 图片：`Assets/Sprites/Namecards/twilight-duo-wide-v1.png`、`twilight-duo-4x3-v1.png`，原样复制自已确认的美术稿；Unity 创建并保留全部 `.meta`。
 - Unity 导入：Sprite / Single / Full Rect、Max Size 1024、无 Mip Maps、Clamp、NPOT None。实际纹理宽版 1024×384，紧凑版 1024×768。
 
 ## 下个版本发布
 
-已通过现有 `Poker/Shop/Export Server Catalog` 导出内置 `Assets/Resources/SO/Shop/NamecardServerCatalog.json`，共 13 款。本次未操作线上服务端或账户。
+商品已加入 `Assets/Resources/SO/Shop/Namecards/NamecardCatalog.asset`。服务端默认目录由该 SO 生成，本次未操作线上服务端或账户。
 
-发布包含新图片、SO 与目录的客户端，并按既有流程部署配套服务端。已有部署必须在其实际使用的外部 `NamecardServerCatalog.json` 数组末尾追加下面的商品对象（注意前一个对象后的逗号），保留其他商品和线上价格：
+发布包含新图片、SO 与目录的客户端，并按既有流程部署配套服务端。若部署环境需要覆盖默认价格，可在 `Configs/Shop/Namecards.json` 添加下面的局部条目；不需要复制其他商品：
 
 ```json
-{"Id":"twilight-duo","Price":50000,"Listed":true}
+[
+  { "Id": "twilight-duo", "Price": 50000, "Listed": true }
+]
 ```
 
-外部文件默认在服务端旁的 `Configs/`；指定 `-pokerServerConfig` 时，与该网络配置文件同目录。重启服务端读取新目录，检查启动日志商品数和 revision。不要用内置目录整份覆盖已有外部配置。首次部署且无外部文件时，会从新版内置目录生成。
+外部文件固定归档在 `Configs/Shop/Namecards.json`，不跟随网络配置文件的位置。重启服务端后读取；文件不存在或为 `[]` 时完全使用新版 SO 默认值，不自动生成文件。
 
 ## 实际验证
 

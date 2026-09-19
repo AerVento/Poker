@@ -18,7 +18,7 @@ using UnityEngine;
 
 namespace Game
 {
-    public class GameController : MonoSingleton<GameController>
+    public partial class GameController : MonoSingleton<GameController>
     {
         public GameSettings State { get; private set; }
         public bool HasNetworkInitializationStarted { get; private set; }
@@ -56,7 +56,11 @@ namespace Game
             };
 #endif
 
+#if UNITY_EDITOR
+            InitializeEditorLocalHostAsync().Forget();
+#else
             RetryClientNetworkInitialization();
+#endif
         }
 
         public void RetryClientNetworkInitialization()
@@ -138,12 +142,17 @@ namespace Game
 
         private void AdjustScreen()
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // The browser owns the viewport size, including orientation and keyboard changes.
+            return;
+#else
             int width = PlayerPrefs.GetInt("Screen_Width", Screen.width);
             int height = PlayerPrefs.GetInt("Screen_Height", Screen.height);
             bool fullScreen = PlayerPrefs.HasKey("Screen_Fullscreen") ? 
                 PlayerPrefs.GetInt("Screen_Fullscreen") == 1 : 
                 Screen.fullScreen;
             Screen.SetResolution(width, height, fullScreen);
+#endif
         }
         
         private void OnApplicationQuit()

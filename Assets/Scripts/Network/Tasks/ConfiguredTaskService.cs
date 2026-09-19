@@ -171,7 +171,7 @@ namespace Game.Network.Tasks
                 replacement.SlotId = instance.SlotId;
                 replacement.RefreshUsed = true;
                 var rule = Definition(instance).Rule;
-                if (rule.Available(new TaskContext { IsWithinValidity = true, PlayerChip = tx.Account.Chips }, instance.State))
+                if (rule.Available(new TaskContext { IsWithinValidity = true, PlayerChip = tx.Account.TotalAssets }, instance.State))
                 {
                     outcome.Result = GrantRound(tx, instance, rule, true, out var receipt);
                     if (outcome.Result != DailyTaskResult.Success) return outcome;
@@ -247,7 +247,7 @@ namespace Game.Network.Tasks
                 var page = visible.Skip(offset).Take(PageSize).Select(i => Project(i, tx, now)).ToArray();
                 return new DailyTasksSnapshot
                 {
-                    Period = DailyTaskService.GetPeriod(now), Revision = tx.Document.Revision, Balance = tx.Account.Chips,
+                    Period = DailyTaskService.GetPeriod(now), Revision = tx.Document.Revision, Balance = tx.Account.Dollars,
                     ServerUnixSeconds = now.ToUnixTimeSeconds(),
                     NextResetUnixSeconds = new DateTimeOffset(now.ToOffset(DailyTaskService.ResetOffset).Date.AddDays(1),
                         DailyTaskService.ResetOffset).ToUnixTimeSeconds(),
@@ -264,7 +264,7 @@ namespace Game.Network.Tasks
             var state = instance.State;
             var reward = rule.GetReward();
             var valid = !instance.OutDated && instance.ExpiresAt > now.ToUnixTimeMilliseconds();
-            var available = rule.Available(new TaskContext { IsWithinValidity = valid, PlayerChip = tx.Account.Chips }, state);
+            var available = rule.Available(new TaskContext { IsWithinValidity = valid, PlayerChip = tx.Account.TotalAssets }, state);
             var availability = available ? DailyTaskAvailability.Claimable :
                 state.ClaimedCount >= state.MaxCompletions ? DailyTaskAvailability.Claimed :
                 !valid ? DailyTaskAvailability.Expired : rule.IsDirectClaim ? DailyTaskAvailability.BalanceTooHigh : DailyTaskAvailability.InProgress;
@@ -272,7 +272,7 @@ namespace Game.Network.Tasks
             {
                 if (tx.RewardBlockReason == DailyTaskResult.ActiveHand) availability = DailyTaskAvailability.ActiveHand;
                 else if (tx.RewardBlockReason != DailyTaskResult.Success) availability = DailyTaskAvailability.OutsideRoom;
-                else if ((ulong)tx.Account.Chips + reward.Chip > uint.MaxValue) availability = DailyTaskAvailability.BalanceLimit;
+                else if ((ulong)tx.Account.Dollars + reward.Chip > uint.MaxValue) availability = DailyTaskAvailability.BalanceLimit;
             }
             return new DailyTaskState
             {
@@ -312,7 +312,7 @@ namespace Game.Network.Tasks
                 if (ordinal != state.ClaimedCount + 1 || ordinal > state.MaxCompletions) return outcome;
                 var valid = !instance.OutDated && instance.ExpiresAt > now;
                 var rule = Definition(instance).Rule;
-                if (!rule.Available(new TaskContext { IsWithinValidity = valid, PlayerChip = tx.Account.Chips }, state))
+                if (!rule.Available(new TaskContext { IsWithinValidity = valid, PlayerChip = tx.Account.TotalAssets }, state))
                 {
                     outcome.Result = !valid ? DailyTaskResult.Expired : rule.IsDirectClaim ? DailyTaskResult.BalanceTooHigh : DailyTaskResult.NotComplete;
                     return outcome;
@@ -367,7 +367,7 @@ namespace Game.Network.Tasks
                 var valid = !instance.OutDated && instance.ExpiresAt > now;
                 if (!valid && !instance.State.HasPendingReward) { outcome.Result = DailyTaskResult.Expired; return outcome; }
                 var rule = Definition(instance).Rule;
-                if (rule.Available(new TaskContext { IsWithinValidity = valid, PlayerChip = tx.Account.Chips }, instance.State))
+                if (rule.Available(new TaskContext { IsWithinValidity = valid, PlayerChip = tx.Account.TotalAssets }, instance.State))
                 {
                     outcome.Result = GrantRound(tx, instance, rule, valid, out var receipt);
                     if (outcome.Result != DailyTaskResult.Success) return outcome;

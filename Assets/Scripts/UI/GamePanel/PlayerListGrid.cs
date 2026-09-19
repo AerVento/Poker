@@ -27,7 +27,12 @@ namespace Game.UI.GamePanelElement
             int columns = Mathf.Max(1, constraintCount);
             float available = rectTransform.rect.width - padding.horizontal - spacing.x * (columns - 1);
             float width = Mathf.Max(1, available / columns);
-            cellSize = new Vector2(width, width / _cellAspectRatio);
+            float height = width / _cellAspectRatio;
+            var canvas = GetComponentInParent<Canvas>();
+            var canvasRect = canvas == null ? null : canvas.rootCanvas.transform as RectTransform;
+            if (canvasRect != null && canvasRect.rect.height > canvasRect.rect.width)
+                height = Mathf.Max(height, 82f / Mathf.Max(0.01f, canvas.rootCanvas.scaleFactor));
+            cellSize = new Vector2(width, height);
             base.CalculateLayoutInputHorizontal();
         }
     }

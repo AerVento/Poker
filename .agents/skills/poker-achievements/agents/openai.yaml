@@ -1,0 +1,4 @@
+interface:
+  display_name: "Poker 成就制作"
+  short_description: "把成就设计落地为事件判定、简洁文案和统一风格的成就图标"
+  default_prompt: "请使用 $poker-achievements，按项目约定把下面的成就设计加入游戏；先澄清影响判定的疑问，确认后完成实现、文案和必要的新图标。"

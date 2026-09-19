@@ -10,7 +10,7 @@ namespace Game.Network.Accounts
     public enum ShopResult : byte
     {
         Success, AlreadyOwned, InsufficientChips, NotOwned, UnknownProduct,
-        CatalogChanged, OutsideRoomRequired, Unavailable, InvalidRequest, RateLimited
+        CatalogChanged, OutsideRoomRequired, Unavailable, InvalidRequest, RateLimited, ConversionRequired, QuoteChanged, BalanceLimit
     }
 
     [Serializable]

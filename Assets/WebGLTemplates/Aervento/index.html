@@ -1,93 +1,230 @@
-<!DOCTYPE html>
+
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{{{ PRODUCT_NAME }}}</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
-    <link rel="stylesheet" href="TemplateData/style.css?v=mobile-landscape-1">
-    <link rel="stylesheet" href="navigation.css">
-    <script src="navigation.js" defer></script>
 #if SHOW_DIAGNOSTICS
     <link rel="stylesheet" href="<<<TemplateData/diagnostics.css>>>">
     <script src="<<<TemplateData/diagnostics.js>>>"></script>
 #endif
+
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
+
+        body {
+            position: fixed;
+            inset: 0;
+            overscroll-behavior: none;
+        }
+
+        /*
+         * 这个区域只由 visualViewport / innerWidth / innerHeight 决定。
+         * 不从子节点反推尺寸，避免 Canvas -> Parent -> Canvas 的布局反馈环。
+         */
+        #unity-game-area {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: #000;
+        }
+
+        /*
+         * JS 只修改这个容器的 width / height。
+         * 它的尺寸直接由 viewport 和设计宽高比计算得到。
+         */
+        #unity-container {
+            position: relative;
+            flex: 0 0 auto;
+            overflow: hidden;
+            background: #000;
+        }
+
+        /*
+         * Canvas 绝对定位，不参与父节点尺寸计算。
+         * Unity 可以修改 canvas.width / canvas.height 作为 framebuffer 尺寸，
+         * 但不会因此反过来撑大 #unity-container。
+         */
+        #unity-canvas {
+            position: absolute;
+            inset: 0;
+            display: block;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            outline: none;
+            touch-action: none;
+        }
+
+        #unity-loading-bar {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: min(320px, 70%);
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+
+        #unity-logo {
+            display: none;
+        }
+
+        #unity-progress-bar-empty {
+            width: 100%;
+            height: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.65);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        #unity-progress-bar-full {
+            width: 0;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        #unity-warning {
+            position: absolute;
+            left: 12px;
+            right: 12px;
+            top: 12px;
+            z-index: 20;
+            display: none;
+            font-family: sans-serif;
+            font-size: 14px;
+            line-height: 1.4;
+            pointer-events: none;
+        }
+
+        #unity-warning .unity-error,
+        #unity-warning .unity-notice {
+            margin-bottom: 8px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+        }
+
+#if SHOW_DIAGNOSTICS
+        #diagnostics-icon {
+            position: absolute;
+            right: 12px;
+            bottom: 12px;
+            z-index: 30;
+            width: 40px;
+            height: 40px;
+            padding: 4px;
+            border: 0;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        #diagnostics-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+#endif
+    </style>
 </head>
 <body>
-    <header id="aervento-navigation" class="aervento-navigation">
-        <nav class="aervento-navigation__inner" aria-label="网站导航">
-            <button class="aervento-navigation__toggle" type="button" aria-expanded="false" aria-controls="aervento-navigation-links" hidden>
-                <span class="aervento-navigation__toggle-label">菜单</span>
-                <span class="aervento-navigation__icon" aria-hidden="true"></span>
-            </button>
-            <ul id="aervento-navigation-links" class="aervento-navigation__links"></ul>
-        </nav>
-    </header>
     <main id="unity-game-area" aria-label="游戏">
         <div id="unity-container">
             <canvas id="unity-canvas" width="{{{ WIDTH }}}" height="{{{ HEIGHT }}}" tabindex="-1"></canvas>
-            <div id="unity-loading-bar" role="progressbar" aria-label="游戏加载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+
+            <div id="unity-loading-bar"
+                 role="progressbar"
+                 aria-label="游戏加载进度"
+                 aria-valuemin="0"
+                 aria-valuemax="100"
+                 aria-valuenow="0">
                 <div id="unity-logo"></div>
                 <div id="unity-progress-bar-empty">
                     <div id="unity-progress-bar-full"></div>
                 </div>
             </div>
+
             <div id="unity-warning" role="alert"></div>
-            <div id="unity-footer">
-                <div id="unity-webgl-logo"></div>
-                <div id="unity-build-title">{{{ PRODUCT_NAME }}}</div>
+
 #if SHOW_DIAGNOSTICS
-                <button id="diagnostics-icon" type="button" aria-label="内存诊断"><img src="TemplateData/webmemd-icon.png" alt=""></button>
+            <button id="diagnostics-icon" type="button" aria-label="内存诊断">
+                <img src="TemplateData/webmemd-icon.png" alt="">
+            </button>
 #endif
-                <button id="unity-fullscreen-button" type="button" aria-label="全屏游戏" disabled></button>
-            </div>
         </div>
     </main>
+
     <script>
         var gameArea = document.querySelector("#unity-game-area");
         var container = document.querySelector("#unity-container");
         var canvas = document.querySelector("#unity-canvas");
-        var footer = document.querySelector("#unity-footer");
         var loadingBar = document.querySelector("#unity-loading-bar");
         var progressBarFull = document.querySelector("#unity-progress-bar-full");
-        var fullscreenButton = document.querySelector("#unity-fullscreen-button");
         var warningBanner = document.querySelector("#unity-warning");
+
 #if SHOW_DIAGNOSTICS
         var diagnosticsIcon = document.querySelector("#diagnostics-icon");
 #endif
 
-        // Unity may capture document-wide keyboard input. Preserve native page controls
-        // before its listeners run; keys directed at the canvas still go to the game.
+        /*
+         * 设计宽高比只在 Unity 初始化前读取一次。
+         * 后续 Unity 即使调整 canvas.width / canvas.height 作为实际 framebuffer，
+         * 也不会反过来改变页面布局比例。
+         */
+        var designWidth = Math.max(1, Number(canvas.getAttribute("width")) || 1);
+        var designHeight = Math.max(1, Number(canvas.getAttribute("height")) || 1);
+        var gameAspect = designWidth / designHeight;
+
+        // Unity 可能捕获 document 级键盘输入。
+        // 页面控件获得焦点时，阻止事件继续进入 Unity；
+        // 直接发给 Canvas 的按键仍由游戏处理。
         var gameKeysDown = new Set();
+
         function keepPageKeyboardInput(event)
         {
             var key = event.code || event.key;
-            // A key pressed in-game must also be released there if focus moved to the menu.
+
+            // 按键在游戏内按下后，即使焦点移到页面控件，keyup 仍应让 Unity 收到。
             if (event.type === "keyup" && gameKeysDown.delete(key))
             {
                 return;
             }
 
             var target = event.target;
-            var pageControl = target instanceof Element && target.closest("#aervento-navigation, #unity-footer");
-            if (!pageControl && !(target === document.body && event.key === "Tab"))
+            var pageControl = target instanceof Element && target.closest("#diagnostics-icon");
+
+            if (!pageControl)
             {
+                if (event.key === "Tab") event.preventDefault();
+
                 if (event.type === "keydown")
                 {
                     gameKeysDown.add(key);
                 }
+
                 return;
             }
 
-            if (event.type === "keydown" && event.key === "Escape")
-            {
-                var openMenu = document.querySelector(".aervento-navigation__toggle[aria-expanded='true']");
-                if (openMenu)
-                {
-                    openMenu.click();
-                    openMenu.focus();
-                }
-            }
             event.stopImmediatePropagation();
         }
 
@@ -95,55 +232,107 @@
         {
             window.addEventListener(type, keepPageKeyboardInput, true);
         });
-        window.addEventListener("blur", function () { gameKeysDown.clear(); });
 
-        var touchPointer = window.matchMedia("(pointer: coarse)");
-        function isMobileLandscape()
+        window.addEventListener("blur", function ()
         {
-            if (!touchPointer.matches)
+            gameKeysDown.clear();
+        });
+
+        function getViewportRect()
+        {
+            var viewport = window.visualViewport;
+
+            if (viewport)
             {
-                return false;
+                return {
+                    left: viewport.offsetLeft || 0,
+                    top: viewport.offsetTop || 0,
+                    width: Math.max(1, viewport.width),
+                    height: Math.max(1, viewport.height)
+                };
             }
 
-            // Use device orientation: opening a keyboard can make a portrait viewport wider than tall.
-            if (screen.orientation && screen.orientation.type)
-            {
-                return screen.orientation.type.indexOf("landscape") === 0;
-            }
-            if (typeof window.orientation === "number")
-            {
-                return Math.abs(window.orientation) === 90;
-            }
-            return screen.width > screen.height;
+            return {
+                left: 0,
+                top: 0,
+                width: Math.max(1, window.innerWidth),
+                height: Math.max(1, window.innerHeight)
+            };
         }
 
-        // Mobile landscape fills the available height; other layouts keep room for the page controls.
         function fitGame()
         {
-            var mobileLandscape = isMobileLandscape();
-            document.body.classList.toggle("mobile-landscape", mobileLandscape);
-            if (document.fullscreenElement)
+            var viewport = getViewportRect();
+
+            // 页面可视区域完全由浏览器 viewport 决定。
+            gameArea.style.left = Math.round(viewport.left) + "px";
+            gameArea.style.top = Math.round(viewport.top) + "px";
+            gameArea.style.width = Math.round(viewport.width) + "px";
+            gameArea.style.height = Math.round(viewport.height) + "px";
+
+            var viewportAspect = viewport.width / viewport.height;
+            var width;
+            var height;
+
+            /*
+             * 保持游戏设计宽高比：
+             * - viewport 比游戏更宽：FitHeight
+             * - viewport 比游戏更窄：FitWidth
+             *
+             * 这是标准的 Aspect Fit / Contain。
+             */
+            if (viewportAspect >= gameAspect)
             {
-                return;
+                height = viewport.height;
+                width = height * gameAspect;
+            }
+            else
+            {
+                width = viewport.width;
+                height = width / gameAspect;
             }
 
-            var areaStyle = getComputedStyle(gameArea);
-            var availableWidth = gameArea.clientWidth - parseFloat(areaStyle.paddingLeft) - parseFloat(areaStyle.paddingRight);
-            var availableHeight = gameArea.clientHeight - parseFloat(areaStyle.paddingTop) - parseFloat(areaStyle.paddingBottom) - footer.offsetHeight;
-            var maxWidth = mobileLandscape ? availableWidth : Math.min({{{ WIDTH }}}, availableWidth);
-            var width = Math.max(1, Math.min(maxWidth, availableHeight * {{{ WIDTH / HEIGHT }}}));
+            width = Math.max(1, Math.round(width));
+            height = Math.max(1, Math.round(height));
+
             container.style.width = width + "px";
+            container.style.height = height + "px";
+
+            // CSS 显示尺寸固定跟随 container。
+            // 不要把 Unity 修改后的 canvas.width / canvas.height 用回布局计算。
+            canvas.style.width = "100%";
+            canvas.style.height = "100%";
         }
 
-        new ResizeObserver(fitGame).observe(gameArea);
-        window.addEventListener("resize", fitGame);
-        window.addEventListener("orientationchange", fitGame);
+        // 合并同一帧内可能连续发生的 resize / visualViewport resize。
+        var fitScheduled = false;
+
+        function scheduleFitGame()
+        {
+            if (fitScheduled) return;
+
+            fitScheduled = true;
+            requestAnimationFrame(function ()
+            {
+                fitScheduled = false;
+                fitGame();
+            });
+        }
+
+        window.addEventListener("resize", scheduleFitGame);
+        window.addEventListener("orientationchange", scheduleFitGame);
+
+        if (window.visualViewport)
+        {
+            window.visualViewport.addEventListener("resize", scheduleFitGame);
+            window.visualViewport.addEventListener("scroll", scheduleFitGame);
+        }
+
         if (screen.orientation && screen.orientation.addEventListener)
         {
-            screen.orientation.addEventListener("change", fitGame);
+            screen.orientation.addEventListener("change", scheduleFitGame);
         }
-        touchPointer.addEventListener("change", fitGame);
-        document.addEventListener("fullscreenchange", function () { requestAnimationFrame(fitGame); });
+
         fitGame();
 
         function unityShowBanner(message, type)
@@ -166,6 +355,7 @@
 
         var buildUrl = "Build";
         var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
+
         var config = {
             dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
             frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
@@ -191,36 +381,43 @@
 #if BACKGROUND_FILENAME
         canvas.style.background = "url('" + buildUrl + "/{{{ BACKGROUND_FILENAME.replace(/'/g, '%27') }}}') center / cover";
 #endif
+
         loadingBar.style.display = "block";
 
-        // This loader deliberately does not await navigation.json.
         var loader = document.createElement("script");
         loader.src = loaderUrl;
+
         loader.onerror = function ()
         {
             loadingBar.style.display = "none";
             unityShowBanner("游戏加载器下载失败，请刷新页面重试。", "error");
         };
+
         loader.onload = function ()
         {
             createUnityInstance(canvas, config, function (progress)
             {
-                progressBarFull.style.width = 100 * progress + "%";
+                progressBarFull.style.width = (100 * progress) + "%";
                 loadingBar.setAttribute("aria-valuenow", String(Math.round(100 * progress)));
-            }).then(function (unityInstance)
+            })
+            .then(function (unityInstance)
             {
                 loadingBar.style.display = "none";
-                fullscreenButton.disabled = false;
-                fullscreenButton.onclick = function () { unityInstance.SetFullscreen(1); };
+
 #if SHOW_DIAGNOSTICS
-                diagnosticsIcon.onclick = function () { unityDiagnostics.openDiagnosticsDiv(unityInstance.GetMemoryInfo); };
+                diagnosticsIcon.onclick = function ()
+                {
+                    unityDiagnostics.openDiagnosticsDiv(unityInstance.GetMemoryInfo);
+                };
 #endif
-            }).catch(function (message)
+            })
+            .catch(function (message)
             {
                 loadingBar.style.display = "none";
                 unityShowBanner(String(message), "error");
             });
         };
+
         document.body.appendChild(loader);
     </script>
 </body>

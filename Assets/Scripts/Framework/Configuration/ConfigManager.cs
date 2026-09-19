@@ -1,13 +1,11 @@
 using Newtonsoft.Json;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using UnityEngine;
+using System.Text;
 using Framework.Serialization;
-
-
+using UnityEngine;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -42,10 +40,65 @@ namespace Framework.Configs
         };
 
         /// <summary>
-        /// The directory where saves the configuration.
+        /// The project/build-relative root used by every default configuration path.
         /// </summary>
-        public const string CONFIG_SAVE_PATH = "Configs/";
+        public const string CONFIG_SAVE_PATH = "Configs";
 
+        public static string RootDirectory => Path.GetFullPath(
+            Path.Combine(Application.dataPath, "..", CONFIG_SAVE_PATH));
+
+        public static string GetDirectory(params string[] segments)
+        {
+            var path = RootDirectory;
+            foreach (var segment in segments ?? Array.Empty<string>())
+                path = ResolveChild(path, segment);
+            return path;
+        }
+
+        public static string GetPath(params string[] segments) => GetDirectory(segments);
+
+        public static bool FileExists(params string[] segments) => File.Exists(GetPath(segments));
+
+        public static string ReadAllText(params string[] segments) => File.ReadAllText(GetPath(segments));
+
+        public static string ReadAllTextAtPath(string path) => File.ReadAllText(Path.GetFullPath(path));
+
+        public static void WriteAllText(string text, params string[] segments)
+        {
+            var path = GetPath(segments);
+            var directory = Path.GetDirectoryName(path);
+            if (!Directory.Exists(directory))
+                Directory.CreateDirectory(directory);
+            File.WriteAllText(path, text);
+        }
+
+        public static void WriteAllTextAtPath(string path, string text)
+        {
+            path = Path.GetFullPath(path);
+            var directory = Path.GetDirectoryName(path);
+            if (!Directory.Exists(directory))
+                Directory.CreateDirectory(directory);
+            File.WriteAllText(path, text);
+        }
+
+        public static void WriteAllTextAtPath(string path, string text, Encoding encoding)
+        {
+            path = Path.GetFullPath(path);
+            var directory = Path.GetDirectoryName(path);
+            if (!Directory.Exists(directory))
+                Directory.CreateDirectory(directory);
+            File.WriteAllText(path, text, encoding);
+        }
+
+        public static void CopyFileAtPath(string source, string destination, bool overwrite)
+        {
+            source = Path.GetFullPath(source);
+            destination = Path.GetFullPath(destination);
+            var directory = Path.GetDirectoryName(destination);
+            if (!Directory.Exists(directory))
+                Directory.CreateDirectory(directory);
+            File.Copy(source, destination, overwrite);
+        }
 
         /// <summary>
         /// Load a configuration.
@@ -62,7 +115,7 @@ namespace Framework.Configs
                 return (T)_buffer[type];
 
             var attribute = GetAttribute(type);
-            string json = File.ReadAllText(CONFIG_SAVE_PATH + attribute.Path);
+            string json = ReadAllText(attribute.Path);
             T result = JsonConvert.DeserializeObject<T>(json, _settings);
             
             if(result == null)
@@ -89,11 +142,11 @@ namespace Framework.Configs
             }
 
             var attribute = GetAttribute(type);
-            var path = CONFIG_SAVE_PATH + attribute.Path;
+            var path = GetPath(attribute.Path);
             
             if (File.Exists(path))
             {
-                string json = File.ReadAllText(path);
+                string json = ReadAllTextAtPath(path);
                 result = JsonConvert.DeserializeObject<T>(json);
                 
                 if (result == null)
@@ -114,14 +167,14 @@ namespace Framework.Configs
         public static void Save<T>(T config)
         {
             var attribute = GetAttribute(typeof(T));
-            string path = CONFIG_SAVE_PATH + attribute.Path;
+            string path = GetPath(attribute.Path);
             
             string directoryPath = Path.GetDirectoryName(path);
             if (!Directory.Exists(directoryPath))
                 Directory.CreateDirectory(directoryPath);
 
             string json = JsonConvert.SerializeObject(config, _settings);
-            File.WriteAllText(path, json);
+            WriteAllTextAtPath(path, json);
         }
 
         private static ConfigAttribute GetAttribute(Type type)
@@ -130,6 +183,18 @@ namespace Framework.Configs
             if (attribute != null)
                 return attribute;
             throw new ArgumentException($"Type {type} has no attribute of ConfigAttribute on it. It cannot be loaded with ConfigManager.", type.ToString());
+        }
+
+        private static string ResolveChild(string parent, string segment)
+        {
+            if (string.IsNullOrWhiteSpace(segment) || Path.IsPathRooted(segment))
+                throw new ArgumentException("Configuration path segments must be non-empty and relative.", nameof(segment));
+            var root = Path.GetFullPath(parent).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) +
+                Path.DirectorySeparatorChar;
+            var child = Path.GetFullPath(Path.Combine(root, segment));
+            if (!child.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Configuration paths must stay inside the Configs directory.", nameof(segment));
+            return child;
         }
 
 #if UNITY_EDITOR
@@ -148,7 +213,7 @@ namespace Framework.Configs
                 if (attribute == null)
                     continue;
 
-               string path = CONFIG_SAVE_PATH + attribute.Path;
+                string path = GetPath(attribute.Path);
 
                 if (File.Exists(path))
                 {
@@ -166,7 +231,7 @@ namespace Framework.Configs
                 
                 // Serialize
                 string json = JsonConvert.SerializeObject(instance, _settings);
-                File.WriteAllText(path, json);
+                WriteAllTextAtPath(path, json);
                 Debug.Log($"Successfully create config file for type {type} at path {path}.");
             }
 
@@ -179,10 +244,10 @@ namespace Framework.Configs
         [MenuItem("Utils/Configs/Remove All Config File")]
         public static void ClearConfigFiles()
         {
-            if (Directory.Exists(CONFIG_SAVE_PATH))
+            if (Directory.Exists(RootDirectory))
             {
-                Directory.Delete(CONFIG_SAVE_PATH, true);
-                Debug.Log("Removed the directory at " + CONFIG_SAVE_PATH);
+                Directory.Delete(RootDirectory, true);
+                Debug.Log("Removed the directory at " + RootDirectory);
             }
         }
 #endif

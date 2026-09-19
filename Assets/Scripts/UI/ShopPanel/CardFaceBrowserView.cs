@@ -30,14 +30,19 @@ namespace Game.UI
         private TextMeshProUGUI _feedback;
         private string _message = "正在读取牌面…";
         private const int PageSize = 4;
-        public event Action<uint> BalanceChanged;
+        private uint _dollars;
+        private uint _availableChips;
+        private bool _canExchange;
+        public event Action<uint, uint, bool> WalletChanged;
 
         public void BeginOnline()
         {
             if (_online) return;
             _online = true;
             _accountId = GameController.Instance.State.AccountId;
-            StartRequest(ShopAction.Read, null);
+            var room = NetworkManager.singleton as NetworkRoom;
+            if (room != null && room.TryGetCollection(out var collection)) ApplyCollection(collection.CardFaces);
+            else room?.LoadCollection();
         }
 
         private void OnEnable() => Draw();
@@ -52,6 +57,18 @@ namespace Game.UI
             _message = "正在读取牌面…";
         }
 
+        public void ApplyCollection(CardFaceShopResponse response)
+        {
+            if (!_online || _pending.RequestId != 0) return;
+            _snapshot = response;
+            _dollars = response.Dollars;
+            _availableChips = response.AvailableChips;
+            _canExchange = response.CanExchange;
+            WalletChanged?.Invoke(response.Dollars, response.AvailableChips, response.CanExchange);
+            _message = "牌面仅改变你自己看到的效果。";
+            Draw();
+        }
+
         public void CancelConfirmation() => CloseConfirmation();
         private void CloseConfirmation()
         {
@@ -60,11 +77,13 @@ namespace Game.UI
             _confirmation = null;
         }
 
-        private void StartRequest(ShopAction action, string id)
+        private void StartRequest(ShopAction action, string id, bool authorizeChipConversion = false,
+            uint authorizedShortfall = 0)
         {
             CloseConfirmation();
             _pending = new CardFaceShopRequest { Action = action, ProductId = id,
-                CatalogRevision = _snapshot.CatalogRevision, OperationId = action == ShopAction.Read ? null : Guid.NewGuid().ToString("N") };
+                CatalogRevision = _snapshot.CatalogRevision, OperationId = action == ShopAction.Read ? null : Guid.NewGuid().ToString("N"),
+                AuthorizeChipConversion = authorizeChipConversion, AuthorizedShortfall = authorizedShortfall };
             _attempts = 0;
             Send();
             Draw();
@@ -73,7 +92,8 @@ namespace Game.UI
         private void Send()
         {
             _pending.RequestId = (NetworkManager.singleton as NetworkRoom)?.RequestCardFaceShop(
-                _pending.Action, _pending.ProductId, _pending.CatalogRevision, _pending.OperationId) ?? 0;
+                _pending.Action, _pending.ProductId, _pending.CatalogRevision, _pending.OperationId,
+                _pending.AuthorizeChipConversion, _pending.AuthorizedShortfall) ?? 0;
             _attempts++;
             _deadline = Time.realtimeSinceStartupAsDouble + 8;
             _message = _pending.RequestId == 0 ? "连接不可用，请重新打开牌面商店。" : "正在核对服务器…";
@@ -97,23 +117,35 @@ namespace Game.UI
                 return;
             }
             var action = _pending.Action;
+            var productId = _pending.ProductId;
             _pending = default;
             if (response.HasSnapshot)
             {
                 _snapshot = response;
-                BalanceChanged?.Invoke(response.Chips);
+                _dollars = response.Dollars;
+                _availableChips = response.AvailableChips;
+                _canExchange = response.CanExchange;
+                WalletChanged?.Invoke(response.Dollars, response.AvailableChips, response.CanExchange);
             }
             else _snapshot.CanAct = false;
+            if (response.Result == ShopResult.ConversionRequired && action == ShopAction.Purchase &&
+                response.RequiredConversion > 0)
+            {
+                ShowConversion(productId, response.RequiredConversion);
+                Draw();
+                return;
+            }
             _message = response.Result switch
             {
                 ShopResult.Success => action == ShopAction.Purchase ? "已收藏，可选择装备。" :
                     action == ShopAction.Equip ? "已装备，所有扑克牌展示已更新。" : "牌面仅改变你自己看到的效果。",
                 ShopResult.AlreadyOwned => "你已拥有这套牌面。",
-                ShopResult.InsufficientChips => "余额不足。",
+                ShopResult.InsufficientChips => "美金不足，可用筹码也无法补足。",
                 ShopResult.NotOwned => "请先购买这套牌面。",
                 ShopResult.CatalogChanged => "商品信息已更新，请重新确认。",
+                ShopResult.QuoteChanged => "余额或价格已变化，请重新确认购买。",
                 ShopResult.UnknownProduct => "这套牌面暂不可购买。",
-                ShopResult.OutsideRoomRequired => "请先离开房间。",
+                ShopResult.OutsideRoomRequired => "牌局中无法更换牌面。",
                 _ => "操作未完成，请重新打开牌面商店核对。"
             };
             Draw();
@@ -151,6 +183,27 @@ namespace Game.UI
             _confirmation.OnCancel += () => _confirmation = null;
         }
 
+        private void ShowConversion(string productId, uint shortfall)
+        {
+            if (!UIManager.Available || string.IsNullOrEmpty(productId)) return;
+            CloseConfirmation();
+            var generation = _generation;
+            _confirmation = MsgBox.Create("CardFaceChipConversion");
+            _confirmation.Type = MsgboxType.ConfirmAndCancel;
+            _confirmation.Title = "兑换筹码付款";
+            _confirmation.Message = $"美金不足，是否将 ${shortfall:N0} 筹码按 1:1 自动兑换为美金并完成购买？";
+            _confirmation.ConfirmButtonText = "兑换并购买";
+            _confirmation.CancelButtonText = "取消";
+            _confirmation.PreferCancel = true;
+            _confirmation.OnCancel += () => _confirmation = null;
+            _confirmation.OnConfirm += () =>
+            {
+                _confirmation = null;
+                if (isActiveAndEnabled && _online && generation == _generation && _pending.RequestId == 0)
+                    StartRequest(ShopAction.Purchase, productId, true, shortfall);
+            };
+        }
+
         private void Draw()
         {
             if (_labelTemplate == null || _cardPrefab == null || !isActiveAndEnabled) return;
@@ -158,7 +211,7 @@ namespace Game.UI
             _drawn.Clear();
             var offers = (_snapshot.Offers ?? Array.Empty<CardFaceOfferMessage>()).ToDictionary(o => o.Id);
             var ownedIds = new HashSet<string>(_snapshot.OwnedIds ?? Array.Empty<string>());
-            var products = CardFaceAppearance.Catalog?.Products.Where(p => p != null && p.Prefab != null &&
+            var products = CardFaceAppearance.Catalog?.Products.Where(p => p != null && p.Cards != null &&
                 (CardFaceItemId.IsDefaultOwned(p.Id) || ownedIds.Contains(p.Id) || offers.TryGetValue(p.Id, out var offer) && offer.Listed)).ToArray()
                 ?? Array.Empty<CardFaceProductSO>();
             var pages = Mathf.Max(1, (products.Length + PageSize - 1) / PageSize);
@@ -175,9 +228,10 @@ namespace Game.UI
                 var owned = CardFaceItemId.IsDefaultOwned(product.Id) || ownedIds.Contains(product.Id);
                 var equipped = product.Id == (string.IsNullOrEmpty(_snapshot.EquippedId) ? "default" : _snapshot.EquippedId);
                 var hasOffer = offers.TryGetValue(product.Id, out var offer);
-                var canAct = _online && _snapshot.HasSnapshot && _snapshot.CanAct && _pending.RequestId == 0 &&
+                var canAct = _online && _snapshot.HasSnapshot && (owned ? _snapshot.CanEquip : _snapshot.CanAct) && _pending.RequestId == 0 &&
                     (owned || hasOffer && offer.Listed);
-                card.Present(product, offer.Price, _snapshot.Chips, owned, equipped, canAct,
+                var canAfford = offer.Price <= (ulong)_dollars + (_canExchange ? _availableChips : 0UL);
+                card.Present(product, offer.Price, canAfford, owned, equipped, canAct,
                     () => Select(product, offer, owned));
             }
             _feedback = Label(_message, transform, new Vector2(0, -515), new Vector2(1160, 40), 21);

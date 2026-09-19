@@ -2,22 +2,24 @@
 
 当前内置「经典牌面」ID 为 `default`、「简约款」ID 为 `minimal`，所有新老账户默认拥有这两款，无需购买；初始装备仍为经典款，已有装备保持不变。默认所有权由服务端直接提供，无需逐个玩家补发或迁移数据库。商城和个人仓库的「牌面」页共用购买、正反面预览和装备界面。UI 沿用名片商城，每页固定 2×2、最多 4 款；不足 4 款时从左上角依次填充，其余留空。装备随账号保存，只影响该玩家自己看到的手牌、公共牌与结算牌面，不同步给其他玩家。
 
+「猫猫宫廷」`cat-court` 与「宝石宫廷」`jewel-court` 均已上架，SO 默认售价各 $50,000。可选外部覆盖位于 `Configs/Shop/CardFaces.json`。宝石宫廷包含按确认的纹饰底板 v2 组合导出的 52 张正面，牌背已使用专属白金宝石纹饰，详见 [设计与接入记录](JewelCourtCardFaces.md)。
+
 ## 简约款来源
 
 采用 Bad Hand Studio 的 [Simplified Playing Cards](https://badhandstudio.itch.io/simplified-playing-cards)，原始 SVG、作者免费使用声明和可复现导出脚本保存在 `ArtSources/CardFaces/Minimal`。本项目按非商业用途使用。已调整为左上点数、右下花色，沿用原包红色几何牌背，导出 52 张正面与 1 张牌背。
 
-`minimal` 与 `default` 均显示“免费默认款”；服务端启动时会为旧版外部目录补上缺少的 `minimal` 内置条目，因此无需手动给已有玩家发奖。修改内置款的价格或下架会被配置校验拒绝。统一物品 ID 为 `cardface-minimal`，对已有玩家发放返回 `AlreadyOwned`。
+`minimal` 与 `default` 均显示“免费默认款”，并由 SO 默认目录保证存在，因此无需手动给已有玩家发奖。修改内置款的价格或下架会被配置校验拒绝。统一物品 ID 为 `cardface-minimal`，对已有玩家发放返回 `AlreadyOwned`。
 
-按用户要求，本次新增美术后暂未运行测试、联机回归或构建。
+简约款最初接入时按用户要求未运行测试、联机回归或构建；宝石宫廷的后续验证记录见上方链接。
 
 ## 新增一套牌面
 
 1. 准备 **52 张正面 + 1 张牌背**，四种花色、2～A 齐全，不含大小王。统一竖版 **17:24** 比例；当前显示基准为 **204×288**，建议原图至少 **408×576**。同一套所有图的尺寸、透明边距、圆角位置一致；数字和花色缩小到 102×144 时仍应清晰。Unity 导入类型为 Sprite (2D and UI)，透明通道启用，避免有损压缩造成文字毛边。
-2. 复制 `Assets/Resources/SO/PokerCardsSO.asset` 到自有美术目录，逐项替换 52 张 `Front` 和 `Back`；不要覆盖经典牌面或修改第三方资源。可使用独立 PNG，也可使用已正确切片的图集。
-3. 复制 `Assets/Prefabs/UI/Panels/GamePanel/ClassicCardFace.prefab`。根节点保持 `RectTransform`，挂 `CardFaceView`，绑定 `_image` 和新建的 `_cards`。根节点按父槽位拉伸，内部保持 17:24，不修改外部布局。装饰放在子节点内；所有美术 Graphic 关闭 Raycast Target。**不要放入 `PokerElement`、NetworkIdentity 或游戏规则组件**。更复杂的视觉可继承 `CardFaceView`，实现 `Display(Poker, bool)`；`false` 时必须只展示牌背。
-4. 在 Unity 的 `Create > Poker > Card Faces > Product` 创建商品 SO，填写稳定 ID、名称、说明和预制体，加入 `Assets/Resources/SO/CardFaces/CardFaceCatalog.asset` 的 `_products`。ID 使用 1～48 位小写字母、数字、`_`、`-`；售出或发放后不改 ID。
-5. 在默认 `Assets/Resources/SO/Shop/CardFaceServerCatalog.json` 添加报价：`{"Id":"new-style","Price":1000,"Listed":true}`。部署后实际服务端读取服务器网络配置同目录的 `CardFaceServerCatalog.json`；已有外部文件不会被默认文件覆盖，需更新外部文件并重启服务器。客户端 SO 不决定价格或所有权。
-6. 执行 `Poker > Card Faces > Validate Catalog`，再在 `Game.unity` 检查牌面页的黑桃 A 正面/牌背预览、实际手牌、公共牌和结算展示。已售牌面下架时保留 SO、预制体和服务端条目，将 `Listed` 改为 `false`；拥有者仍能装备。
+2. 复制 `Assets/Resources/SO/Shop/CardFaces/ClassicCards.asset` 到 `Assets/Resources/SO/Shop/CardFaces/`，逐项替换 52 张 `Front` 和 `Back`；不要覆盖经典牌面或修改第三方资源。可使用独立 PNG，也可使用已正确切片的图集。
+3. 所有牌面共用 `Assets/Prefabs/UI/Panels/GamePanel/CardFaceView.prefab`，由 `CardFaceCatalog.asset` 的 `View Prefab` 统一引用，无需为新主题创建 prefab。组件提供 `SetCards(PokerCardsSO)` 和 `Display(Poker, bool)`，后者的 `false` 仅显示对应牌背。美术 Graphic 关闭 Raycast Target，不加入游戏规则或网络组件。
+4. 在 Unity 的 `Create > Poker > Card Faces > Product` 创建商品 SO，填写稳定 ID、名称、说明、`Cards` 图片数据、默认价格和上架状态，加入 `Assets/Resources/SO/Shop/CardFaces/CardFaceCatalog.asset` 的 `_products`。ID 使用 1～48 位小写字母、数字、`_`、`-`；售出或发放后不改 ID。
+5. 如需部署后调价或上下架，在 `Configs/Shop/CardFaces.json` 按 ID 写局部覆盖，例如 `{"Id":"new-style","Price":1000,"Listed":true}`。未列出的商品和字段沿用 SO；未知 ID 忽略并报警告。保存后重启服务器生效。
+6. 执行 `Poker > Card Faces > Validate Catalog`，再在 `Game.unity` 检查牌面页的黑桃 A 正面/牌背预览、实际手牌、公共牌和结算展示。已售牌面下架时保留 SO、图片数据和服务端条目，将 `Listed` 改为 `false`；拥有者仍能装备。
 
 ## 用物品 ID 发放奖励
 

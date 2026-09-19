@@ -20,6 +20,12 @@ namespace Game.Network
 
         public ulong TurnId { get; set; }
 
+        // Server-selected duration for the acting player; zero supports older snapshots.
+        public float ActionTimeLimit { get; set; }
+
+        // Absolute deadline in Mirror's synchronized network clock.
+        public double? ActionDeadline { get; set; }
+
         public List<PlayerInfo> Players { get; set; }
 
         [JsonIgnore]
@@ -108,6 +114,10 @@ namespace Game.Network
             RoomInfo = serverGameInfo.RoomInfo;
             HandId = serverGameInfo.HandId;
             TurnId = serverGameInfo.TurnId;
+            ActionTimeLimit = (float)serverGameInfo.Timer.Duration;
+            ActionDeadline = serverGameInfo.OperatingPlayer >= 0 && serverGameInfo.Timer.IsCounting
+                ? Mirror.NetworkTime.time + Math.Max(0d, serverGameInfo.Timer.TimeRemaining)
+                : (double?)null;
             Players = new List<PlayerInfo>();
             for(int i = 0; i < serverGameInfo.PlayersCount; i++)
             {

@@ -54,12 +54,15 @@ namespace Game.Achievements
         public uint StreetBet { get; }
         public uint RemainingChips { get; }
         public bool Disconnected { get; }
+        public uint StackBefore { get; }
+        public uint CommittedChips { get; }
 
         public AchievementAction(string accountId, GameStage stage, ulong turnId, PlayerOperationType type,
-            uint streetBet, uint remainingChips, bool disconnected)
+            uint streetBet, uint remainingChips, bool disconnected, uint stackBefore = 0, uint committedChips = 0)
         {
             AccountId = accountId; Stage = stage; TurnId = turnId; Type = type;
             StreetBet = streetBet; RemainingChips = remainingChips; Disconnected = disconnected;
+            StackBefore = stackBefore; CommittedChips = committedChips;
         }
     }
 

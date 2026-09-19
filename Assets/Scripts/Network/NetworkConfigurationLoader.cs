@@ -1,4 +1,5 @@
 using Cysharp.Threading.Tasks;
+using Framework.Configs;
 using System;
 using System.IO;
 using System.Threading;
@@ -30,26 +31,45 @@ namespace Game.Network
         public static string GetServerPath()
         {
             var supplied = GetArgument("-pokerServerConfig");
-            return Path.GetFullPath(supplied ?? Path.Combine(GetExecutableDirectory(), "Configs", ServerFileName));
+            return supplied == null ? ConfigManager.GetPath("Network", ServerFileName) : Path.GetFullPath(supplied);
         }
 
         public static string GetClientPath()
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
-            return Application.streamingAssetsPath.TrimEnd('/') + "/" + ClientFileName;
+            return new Uri(new Uri(Application.absoluteURL),
+                "Configs/Network/" + ClientFileName).AbsoluteUri;
 #else
-            return Path.GetFullPath(GetArgument("-pokerClientConfig") ??
-                Path.Combine(Application.streamingAssetsPath, ClientFileName));
+            var supplied = GetArgument("-pokerClientConfig");
+            return supplied == null ? ConfigManager.GetPath("Network", ClientFileName) : Path.GetFullPath(supplied);
 #endif
         }
 
         public static ServerNetworkConfiguration LoadAndApplyServer(NetworkRoom manager)
         {
             var path = GetServerPath();
-            var configuration = NetworkConfiguration.ParseServer(File.ReadAllText(path));
+            var configuration = NetworkConfiguration.ParseServer(ConfigManager.ReadAllTextAtPath(path));
             configuration.Apply(manager, path);
             LogInfo($"Server network configuration loaded: port {configuration.ListenPort}, SSL {configuration.UseSsl}, max connections {configuration.MaxConnections}.");
             return configuration;
+        }
+
+        public static async UniTask<ClientNetworkConfiguration> LoadAndApplyEditorLocalHostAsync(
+            NetworkRoom manager, CancellationToken cancellationToken)
+        {
+            if (manager == null)
+                throw new ArgumentNullException(nameof(manager));
+            var serverPath = GetServerPath();
+            var configuredServer = NetworkConfiguration.ParseServer(ConfigManager.ReadAllTextAtPath(serverPath));
+            var configuredClient = await LoadClientAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var localServer = configuredServer.ForEditorLocalHost();
+            var localClient = configuredClient.ForEditorLocalHost(localServer.ListenPort);
+            localServer.Apply(manager, serverPath);
+            manager.ConfigureClient(localClient);
+            LogInfo($"Editor local host configuration loaded: {localClient.ServerUri}, SSL false, max connections {localServer.MaxConnections}.");
+            return localClient;
         }
 
         public static async UniTask<ClientNetworkConfiguration> LoadClientAsync(CancellationToken cancellationToken)
@@ -64,7 +84,7 @@ namespace Game.Network
             else
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                json = File.ReadAllText(path);
+                json = ConfigManager.ReadAllTextAtPath(path);
             }
             cancellationToken.ThrowIfCancellationRequested();
             var configuration = NetworkConfiguration.ParseClient(json);
@@ -112,12 +132,6 @@ namespace Game.Network
             // Also expose startup failures in Player.log, server stdout and the browser console.
             Debug.LogError(message);
 #endif
-        }
-
-        private static string GetExecutableDirectory()
-        {
-            // Editor: project root. Windows/Linux players: directory containing the executable and *_Data.
-            return Path.GetDirectoryName(Application.dataPath);
         }
 
         private static string GetArgument(string name)

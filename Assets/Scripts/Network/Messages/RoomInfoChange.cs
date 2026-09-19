@@ -38,6 +38,8 @@ namespace Game.Network
         /// </summary>
         public float ThinkingTime;
 
+        public int InterHandWaitSeconds;
+
         /// <summary>
         /// 最大玩家数（2~16）
         /// </summary>

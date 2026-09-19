@@ -76,7 +76,7 @@
 
 ## 4. 三表配置与编辑器
 
-服务器三份外部 JSON 为权威来源，拟定目录 Config/DailyTasks/：
+服务器三份外部 JSON 为权威来源，目录为 Configs/DailyTasks/：
 - TaskDefinitions.json：稳定 ID、名称描述、type、params、maxCompletions；参数编译为目标/条件和每轮 Reward。
 - FixedTasks.json：每日固定任务 ID、启用状态、顺序。
 - RandomTasks.json：随机容量、候选 ID、权重、有效业务天数。

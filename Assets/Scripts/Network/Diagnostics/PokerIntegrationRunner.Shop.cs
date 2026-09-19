@@ -20,7 +20,7 @@ namespace Game.Network.Diagnostics
         private IEnumerator ShopWait(ShopPanel panel)
         {
             var until = Time.realtimeSinceStartup + 15f;
-            while ((Field<NamecardShopRequest>(panel, "_pending").RequestId != 0 ||
+            while ((Field<ulong>(_networkRoom, "_collectionRequest") != 0 || Field<NamecardShopRequest>(panel, "_pending").RequestId != 0 ||
                 Field<ItemShopRequest>(panel, "_pendingItem").RequestId != 0) &&
                 Time.realtimeSinceStartup < until)
                 yield return null;
@@ -44,6 +44,32 @@ namespace Game.Network.Diagnostics
             Click(panel, "_namecardsTab");
             yield return ShopWait(panel);
             if (_finishing) yield break;
+            if (purchase)
+            {
+                var reads = Field<ulong>(_networkRoom, "_nextCollectionRequest");
+                if (reads != 1 || !_networkRoom.TryGetCollection(out var initial) || !initial.CardFaces.HasSnapshot)
+                    Fail("First collection open did not fetch all three categories in one request.");
+                panel.SelectTab(ShopTab.CardFaces);
+                yield return null;
+                panel.SelectTab(ShopTab.Items);
+                panel.SelectTab(ShopTab.Namecards);
+                Click(panel, "_back");
+                Click(TitlePanel.Instance, "_shop");
+                panel = ShopPanel.Instance;
+                panel.SelectTab(ShopTab.Namecards);
+                if (Field<ulong>(_networkRoom, "_nextCollectionRequest") != reads || !Field<bool>(panel, "_hasAccount"))
+                    Fail("Switching tabs or reopening sent another collection read or lost the cached UI.");
+                yield return new WaitForSecondsRealtime(0.25f);
+                var cache = Field<ClientSnapshotCache<CollectionResponse>>(_networkRoom, "_collectionCache");
+                typeof(ClientSnapshotCache<CollectionResponse>).GetField("_expiresAt", System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.NonPublic).SetValue(cache, Time.realtimeSinceStartupAsDouble - 1);
+                _networkRoom.LoadCollection();
+                _networkRoom.LoadCollection();
+                yield return ShopWait(panel);
+                if (Field<ulong>(_networkRoom, "_nextCollectionRequest") != reads + 1)
+                    Fail("Expired collection did not coalesce refreshes into exactly one request.");
+                WriteResult("collection-cache-" + _clientIndex + ".checked", "One full fetch, cached tab switches/reopen, expiry and concurrent-read coalescing verified.");
+            }
             var cards = Field<ShopItemCard[]>(panel, "_cards");
             var expectedPages = Mathf.Max(1, (panel.Catalog.GetListedProducts().Count(p => p.IsListed || p.IsDefault) + 3) / 4);
             if (panel.PageCount != expectedPages || cards.Length != 4)
@@ -85,6 +111,9 @@ namespace Game.Network.Diagnostics
                 yield return CheckItemsUI(panel, purchase);
                 if (_finishing) yield break;
             }
+            if (!_networkRoom.TryGetCollection(out var updated) || updated.Items.Chips != GameController.Instance.State.Chips ||
+                updated.Namecards.EquippedId != Field<string>(panel, "_equippedId"))
+                Fail("Operation push did not refresh the complete collection cache.");
             for (var page = panel.CurrentPage; page + 1 < expectedPages; page++) Click(panel, "_next");
             if (panel.CurrentPage != expectedPages - 1 || Field<Button>(panel, "_next").interactable)
                 Fail("Last page boundary failed.");
@@ -115,7 +144,7 @@ namespace Game.Network.Diagnostics
                     var appearance = item.GetComponent<NamecardAppearance>();
                     var art = Field<Image>(appearance, "_artwork");
                     if (art.gameObject.activeSelf != (expected != "") ||
-                        expected != "" && art.sprite != Resources.Load<Game.SO.NamecardCatalogSO>("SO/Shop/NamecardCatalog").GetProduct(expected).Artwork)
+                        expected != "" && art.sprite != Resources.Load<Game.SO.NamecardCatalogSO>(Game.SO.NamecardCatalogSO.ResourcePath).GetProduct(expected).Artwork)
                         Fail("Waiting-room namecard artwork differs.");
                 }
             }
@@ -138,7 +167,7 @@ namespace Game.Network.Diagnostics
                 var art = Field<Image>(appearance, "_artwork");
                 var border = Field<Image>(appearance, "_outline");
                 if (art.gameObject.activeSelf != (expected != "") ||
-                    expected != "" && (art.sprite != Resources.Load<Game.SO.NamecardCatalogSO>("SO/Shop/NamecardCatalog").GetProduct(expected).Artwork || border.gameObject.activeSelf != item.IsOperating))
+                    expected != "" && (art.sprite != Resources.Load<Game.SO.NamecardCatalogSO>(Game.SO.NamecardCatalogSO.ResourcePath).GetProduct(expected).Artwork || border.gameObject.activeSelf != item.IsOperating))
                     Fail("Table artwork or operating outline differs.");
             }
             if (!_shopGameChecked)

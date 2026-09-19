@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Game.Achievements;
+using Game.Events;
 using Game.Tasks;
 
 namespace Game.Network.Accounts
@@ -32,7 +33,13 @@ namespace Game.Network.Accounts
     public sealed class PendingAchievementEvent
     {
         public string AccountId { get; set; }
-        public AchievementContext Context { get; set; }
+        public PlayerEvent Event { get; set; }
+        // Compatibility for callers constructing legacy hand events.
+        public AchievementContext Context
+        {
+            get => (Event as HandStageRecordedEvent)?.Context;
+            set => Event = value == null ? null : new HandStageRecordedEvent(value);
+        }
     }
 
     public abstract class AchievementAccountTransaction
@@ -43,6 +50,11 @@ namespace Game.Network.Accounts
         public bool Changed { get; set; }
         public abstract bool CanClaim { get; }
         public abstract AchievementResult Grant(Reward reward, IReadOnlyDictionary<string, uint> limits, string claimKey);
+    }
+
+    public interface IPlayerEventRepository
+    {
+        void PublishPlayerEvent(PlayerEvent playerEvent);
     }
 
     public interface IAchievementRepository

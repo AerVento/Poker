@@ -1,5 +1,8 @@
 using System;
 using System.Linq;
+using System.Text;
+using Framework.Configs;
+using Game.Network;
 using Game.SO;
 using Game.UI;
 using TMPro;
@@ -9,19 +12,35 @@ using UnityEngine.UI;
 
 namespace Game.Editor
 {
+    [CustomEditor(typeof(CardFaceCatalogSO))]
+    public sealed class CardFaceCatalogEditor : UnityEditor.Editor
+    {
+        public override void OnInspectorGUI()
+        {
+            DrawDefaultInspector();
+            if (!GUILayout.Button("导出默认配置…")) return;
+            var path = EditorUtility.SaveFilePanel("导出牌面商店默认配置",
+                ShopCatalogConfigManager.DefaultDirectory, CardFaceCatalogLoader.FileName, "json");
+            if (string.IsNullOrEmpty(path)) return;
+            ConfigManager.WriteAllTextAtPath(path,
+                CardFaceCatalogLoader.ExportDefaults((CardFaceCatalogSO)target), new UTF8Encoding(false));
+            AssetDatabase.Refresh();
+        }
+    }
+
     public static class CardFaceEditor
     {
-        private const string Folder = "Assets/Resources/SO/CardFaces";
-        private const string VisualPath = "Assets/Prefabs/UI/Panels/GamePanel/ClassicCardFace.prefab";
+        private const string Folder = "Assets/Resources/SO/Shop/CardFaces";
+        private const string VisualPath = "Assets/Prefabs/UI/Panels/GamePanel/CardFaceView.prefab";
 
         [MenuItem("Poker/Card Faces/Install Classic and Shop Tab")]
         public static void Install()
         {
-            if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder("Assets/Resources/SO", "CardFaces");
+            if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder("Assets/Resources/SO/Shop", "CardFaces");
             var visual = AssetDatabase.LoadAssetAtPath<CardFaceView>(VisualPath);
             if (visual == null)
             {
-                var root = new GameObject("ClassicCardFace", typeof(RectTransform), typeof(Image), typeof(CardFaceView));
+                var root = new GameObject("CardFaceView", typeof(RectTransform), typeof(Image), typeof(CardFaceView));
                 try
                 {
                     ((RectTransform)root.transform).sizeDelta = new Vector2(204, 288);
@@ -43,7 +62,7 @@ namespace Game.Editor
             {
                 product = ScriptableObject.CreateInstance<CardFaceProductSO>();
                 var so = new SerializedObject(product);
-                so.FindProperty("_prefab").objectReferenceValue = visual;
+                so.FindProperty("_cards").objectReferenceValue = visual.Cards;
                 so.ApplyModifiedPropertiesWithoutUndo();
                 AssetDatabase.CreateAsset(product, Folder + "/Classic.asset");
             }
@@ -52,6 +71,7 @@ namespace Game.Editor
             {
                 catalog = ScriptableObject.CreateInstance<CardFaceCatalogSO>();
                 var so = new SerializedObject(catalog);
+                so.FindProperty("_viewPrefab").objectReferenceValue = visual;
                 var products = so.FindProperty("_products");
                 products.arraySize = 1;
                 products.GetArrayElementAtIndex(0).objectReferenceValue = product;
@@ -173,11 +193,11 @@ namespace Game.Editor
                 throw new InvalidOperationException("Card faces require unique IDs and a default product.");
             foreach (var product in catalog.Products)
             {
-                if (!Network.Accounts.CardFaceServerCatalog.IsValidId(product.Id) || product.Prefab == null ||
-                    product.Prefab.Image == null || product.Prefab.Cards == null || product.Prefab.Cards.Back == null ||
-                    Poker.GetAll().Any(card => product.Prefab.Cards.GetSprite(card) == null) ||
-                    product.Prefab.GetComponentsInChildren<PokerElement>(true).Length != 0 ||
-                    product.Prefab.GetComponentsInChildren<Mirror.NetworkIdentity>(true).Length != 0)
+                if (!Network.Accounts.CardFaceServerCatalog.IsValidId(product.Id) || catalog.ViewPrefab == null ||
+                    catalog.ViewPrefab.Image == null || product.Cards == null || product.Cards.Back == null ||
+                    Poker.GetAll().Any(card => product.Cards.GetSprite(card) == null) ||
+                    catalog.ViewPrefab.GetComponentsInChildren<PokerElement>(true).Length != 0 ||
+                    catalog.ViewPrefab.GetComponentsInChildren<Mirror.NetworkIdentity>(true).Length != 0)
                     throw new InvalidOperationException("Incomplete or unsafe card face: " + product.Id);
             }
             Debug.Log("Card face catalog validated: " + catalog.Products.Count);

@@ -11,7 +11,7 @@ namespace Game.Facts
         Flush = 16, FullHouse = 32, FourOfAKind = 64, StraightFlush = 128
     }
 
-    public enum HandFactKind { PatternObserved, Settled }
+    public enum HandFactKind { PatternObserved, Settled, CardsRevealed }
 
     // Server-only facts. No task IDs, rewards, or player task state belong here.
     public sealed class HandFact

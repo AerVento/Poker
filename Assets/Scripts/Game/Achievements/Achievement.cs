@@ -13,6 +13,13 @@ namespace Game.Achievements
         public const string Hand = "牌型";
     }
 
+    public static class HiddenAchievementPresentation
+    {
+        public const string Name = "隐藏成就";
+        public const string Description = "继续游戏以解锁";
+        public const string IconPath = "UI/Achievements/Hidden-v1";
+    }
+
     // Definitions are shared and stateless. All player-specific work belongs in progress.
     // Add a public, non-abstract class with a public parameterless constructor in this assembly.
     public abstract class Achievement
@@ -22,10 +29,12 @@ namespace Game.Achievements
         public abstract string Description { get; }
         public virtual string Category => AchievementCategories.General;
         public virtual string IconPath => "UI/Achievements/Default";
+        public virtual bool Hidden => false;
         public virtual int SortOrder => 0;
         public virtual int Target => 1;
         public abstract Reward Reward { get; }
-        public abstract void Evaluate(AchievementContext context, string accountId, AchievementProgress progress);
+        // Compatibility hook for existing hand-only definitions. New definitions implement typed handlers.
+        public virtual void Evaluate(AchievementContext context, string accountId, AchievementProgress progress) { }
     }
 
     public sealed class AchievementProgress

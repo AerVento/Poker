@@ -390,6 +390,18 @@ INSERT INTO chip_ledger VALUES('b1','b1','B',1,'legacy','HandCommit',-200,1000,8
         }
 
         [Test]
+        public void EachLeaderboardQueriesOnlyItsOwnProjection()
+        {
+            Create("A");
+            var wealth = _repository.ReadLeaderboard("A", LeaderboardKind.Wealth);
+            Assert.IsNotNull(wealth.TopPlayers);
+            Assert.IsNull(wealth.ServiceTopPlayers);
+            var service = _repository.ReadLeaderboard("A", LeaderboardKind.Service);
+            Assert.IsNull(service.TopPlayers);
+            Assert.IsNotNull(service.ServiceTopPlayers);
+        }
+
+        [Test]
         public void LeaderboardRejectsUnauthenticatedReplacedStaleAndFrequentRequests()
         {
             var account=Create("A"); var go=new GameObject("Leaderboard request test");go.SetActive(false);

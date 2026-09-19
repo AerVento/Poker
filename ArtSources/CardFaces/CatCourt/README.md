@@ -32,6 +32,6 @@
 
 ## 上架
 
-默认服务端目录中的 `cat-court` 保持 `Listed: false`，价格为 0 的未定价占位条目。正式上架时填写确定的 Price，再将 Listed 改为 true。服务器已有外部 CardFaceServerCatalog.json 时还需同步更新该文件并重启，详见 `Docs/CardFaces.md`。客户端商品 SO 不控制成交价或所有权。
+默认服务端目录与本地 `Configs/CardFaceServerCatalog.json` 中的 `cat-court` 已设为 `Listed: true`、`Price: 50000`，商店售价 $50,000。原先未默认上架是因为目录将其配置为下架的未定价占位条目。服务器已有外部 CardFaceServerCatalog.json 时还需同步更新该文件并重启，详见 `Docs/CardFaces.md`。客户端商品 SO 不控制成交价或所有权。
 
 本次资产制作不向账号发放物品，不修改已装备牌面，不修改线上服务器配置。

@@ -46,6 +46,8 @@ namespace Game.UI
         [SerializeField]
         private TMP_InputField _thinkingTime;
 
+        [SerializeField] private TMP_InputField _interHandWait;
+
         [SerializeField]
         private TMP_InputField _maxPlayer;
 
@@ -128,6 +130,7 @@ namespace Game.UI
 
             _smallBlindChips.onEndEdit.AddListener(ChangeSmallBlindChip);
             _thinkingTime.onEndEdit.AddListener(ChangeTime);
+            _interHandWait.onEndEdit.AddListener(ChangeInterHandWait);
             _maxPlayer.onEndEdit.AddListener(ChangeMaxPlayer);
 
         }
@@ -141,6 +144,7 @@ namespace Game.UI
 
             _smallBlindChips.onEndEdit.RemoveListener(ChangeSmallBlindChip);
             _thinkingTime.onEndEdit.RemoveListener(ChangeTime);
+            _interHandWait.onEndEdit.RemoveListener(ChangeInterHandWait);
             _maxPlayer.onEndEdit.RemoveListener(ChangeMaxPlayer);
 
         }
@@ -204,6 +208,19 @@ namespace Game.UI
             }
         }
 
+        private void ChangeInterHandWait(string value)
+        {
+            if (!int.TryParse(value, out var seconds) || seconds < RoomInfo.MinInterHandWaitSeconds ||
+                seconds > RoomInfo.MaxInterHandWaitSeconds)
+            {
+                _interHandWait.SetTextWithoutNotify(_roomInfo.InterHandWaitSeconds.ToString());
+                SetSettingsHint("下一手等待时间须为 1～60 秒，已恢复原值。");
+                return;
+            }
+            SetSettingsHint(string.Empty);
+            SendChangeRequest(_roomInfo.SmallBlindChips, _roomInfo.ThinkingTime, _roomInfo.MaxPlayerCount, seconds);
+        }
+
         private void ChangeMaxPlayer(string value)
         {
             if (!System.Int32.TryParse(value, out var result) || result < 2 || result > 16 || result < _roomInfo.PlayerCount)
@@ -233,11 +250,13 @@ namespace Game.UI
             bool interactable = IsOwner && _roomInfo.IsWaiting;
             _smallBlindChips.interactable = interactable;
             _thinkingTime.interactable = interactable;
+            _interHandWait.interactable = interactable;
             _maxPlayer.interactable = interactable;
 
             _title.text = $"房间{_roomInfo.Id}";
             _smallBlindChips.text = _roomInfo.SmallBlindChips.ToString();
             _thinkingTime.text = _roomInfo.ThinkingTime.ToString();
+            _interHandWait.SetTextWithoutNotify(_roomInfo.InterHandWaitSeconds.ToString());
             _maxPlayer.text = _roomInfo.MaxPlayerCount.ToString();
 
             if (_accountStatus != null && GameController.Available)
@@ -306,8 +325,12 @@ namespace Game.UI
             }
         }
 
-        private void SendChangeRequest(int smallBlindChips, float thinkingTime, int maxPlayer)
+        private void SendChangeRequest(int smallBlindChips, float thinkingTime, int maxPlayer, int? interHandWait = null)
         {
+            if (!NetworkClient.isConnected || NetworkClient.connection == null ||
+                !NetworkClient.connection.isAuthenticated || !GameController.Available ||
+                !GameController.Instance.State.IsAuthenticated)
+                return;
             if (!IsOwner || !_roomInfo.IsWaiting)
                 return;
             NetworkClient.Send(new RoomInfoChange()
@@ -317,6 +340,7 @@ namespace Game.UI
                 InitialChips = _roomInfo.InitialChips,
                 SmallBlindChips = smallBlindChips,
                 ThinkingTime = thinkingTime,
+                InterHandWaitSeconds = interHandWait ?? _roomInfo.InterHandWaitSeconds,
                 MaxPlayer = maxPlayer,
             });
         }

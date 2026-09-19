@@ -1,12 +1,15 @@
 namespace Game.Network.Accounts
 {
+    public enum LeaderboardKind : byte { All, Wealth, Service }
+
     public struct LeaderboardEntry
     {
         public long Rank;
         public string UserName;
         public string NamecardId;
         public ulong ServiceYears;
-        public uint Chips;
+        // Historical field name; wealth rankings expose dollars + chips without currency separation.
+        public ulong Chips;
         public bool IsSelf;
     }
 
@@ -33,6 +36,6 @@ namespace Game.Network.Accounts
 
     public interface ILeaderboardRepository
     {
-        LeaderboardSnapshot ReadLeaderboard(string accountId);
+        LeaderboardSnapshot ReadLeaderboard(string accountId, LeaderboardKind kind = LeaderboardKind.All);
     }
 }

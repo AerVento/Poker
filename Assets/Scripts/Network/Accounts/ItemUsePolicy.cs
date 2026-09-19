@@ -4,6 +4,28 @@ using System.Linq;
 
 namespace Game.Network.Accounts
 {
+    public enum ItemUseLocation : byte
+    {
+        OutsideRoom,
+        WaitingRoom,
+        StartedRoom,
+    }
+
+    [Flags]
+    public enum ItemUseLocationMask : byte
+    {
+        None = 0,
+        OutsideRoom = 1 << 0,
+        WaitingRoom = 1 << 1,
+        StartedRoom = 1 << 2,
+    }
+
+    public enum ItemUseKind : byte
+    {
+        Standard,
+        Gift,
+    }
+
     public sealed class ItemUseContext
     {
         public string AccountId { get; }
@@ -70,17 +92,38 @@ namespace Game.Network.Accounts
         public IReadOnlyList<IItemUseCondition> Conditions { get; }
         public IReadOnlyList<IItemUseEffect> Effects { get; }
         public uint Cost { get; }
+        public ItemUseLocationMask AllowedLocations { get; }
+        public ItemUseKind Kind { get; }
 
-        public ItemUsePolicy(IEnumerable<IItemUseCondition> conditions, IEnumerable<IItemUseEffect> effects)
+        public ItemUsePolicy(IEnumerable<IItemUseCondition> conditions, IEnumerable<IItemUseEffect> effects,
+            ItemUseLocationMask allowedLocations = ItemUseLocationMask.OutsideRoom,
+            ItemUseKind kind = ItemUseKind.Standard)
         {
             var checks = (conditions ?? Array.Empty<IItemUseCondition>()).ToArray();
             var plans = (effects ?? Array.Empty<IItemUseEffect>()).ToArray();
-            if (checks.Length > 16 || plans.Length == 0 || plans.Length > 16 ||
-                checks.Any(c => c?.Descriptor == null) || plans.Any(e => e == null || e.Amount == 0 || e.Version != 1))
+            if (checks.Length > 16 || plans.Length > 16 || allowedLocations == ItemUseLocationMask.None ||
+                !Enum.IsDefined(typeof(ItemUseKind), kind) ||
+                checks.Any(c => c?.Descriptor == null) || plans.Any(e => e == null || e.Amount == 0 || e.Version != 1) ||
+                (kind == ItemUseKind.Standard && plans.Length == 0) ||
+                (kind == ItemUseKind.Gift && plans.Length != 0))
                 throw new ArgumentException("Invalid item use policy.");
             Conditions = Array.AsReadOnly(checks);
             Effects = Array.AsReadOnly(plans);
+            AllowedLocations = allowedLocations;
+            Kind = kind;
             foreach (var effect in plans) Cost = checked(Cost + effect.Amount);
+        }
+
+        public bool Allows(ItemUseLocation location)
+        {
+            var flag = location switch
+            {
+                ItemUseLocation.OutsideRoom => ItemUseLocationMask.OutsideRoom,
+                ItemUseLocation.WaitingRoom => ItemUseLocationMask.WaitingRoom,
+                ItemUseLocation.StartedRoom => ItemUseLocationMask.StartedRoom,
+                _ => ItemUseLocationMask.None,
+            };
+            return (AllowedLocations & flag) != 0;
         }
     }
 

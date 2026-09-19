@@ -1,3 +1,4 @@
+using Framework.Configs;
 using Game.Network;
 using Mirror;
 using Mirror.SimpleWeb;
@@ -130,7 +131,7 @@ namespace Game.Tests
                 var json = ServerJson.Replace("false", "true")
                     .Replace("\"path\":\"\"", "\"path\":" + System.Text.Json.JsonSerializer.Serialize(certificate))
                     .Replace("\"password\":\"\"", "\"password\":\"p@ss\\\"word\"");
-                File.WriteAllText(path, json);
+                ConfigManager.WriteAllTextAtPath(path, json);
                 var parsed = NetworkConfiguration.ParseServer(json);
                 var mirror = SslConfigLoader.Load(true, path, SslProtocols.Tls12);
                 Assert.AreEqual(parsed.CertificatePath, mirror.certPath);
@@ -176,6 +177,26 @@ namespace Game.Tests
             {
                 UnityEngine.Object.DestroyImmediate(root);
             }
+        }
+
+        [Test]
+        public void EditorLocalHost_UsesServerPortAndForcesLoopbackWithoutSsl()
+        {
+            var configuredClient = NetworkConfiguration.ParseClient(
+                ClientJson.Replace("127.0.0.1", "poker.example.com").Replace("false", "true"));
+            var configuredServer = NetworkConfiguration.ParseServer(ServerJson);
+
+            var localServer = configuredServer.ForEditorLocalHost();
+            var localClient = configuredClient.ForEditorLocalHost(localServer.ListenPort);
+
+            Assert.AreEqual(configuredServer.ListenPort, localServer.ListenPort);
+            Assert.AreEqual(configuredServer.MaxConnections, localServer.MaxConnections);
+            Assert.IsFalse(localServer.UseSsl);
+            Assert.AreEqual(string.Empty, localServer.CertificatePath);
+            Assert.AreEqual("127.0.0.1", localClient.ServerHost);
+            Assert.AreEqual(configuredServer.ListenPort, localClient.ServerPort);
+            Assert.AreEqual(configuredClient.ConnectTimeoutSeconds, localClient.ConnectTimeoutSeconds);
+            Assert.IsFalse(localClient.UseSsl);
         }
     }
 }

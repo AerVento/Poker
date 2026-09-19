@@ -14,11 +14,13 @@ namespace Game.Network
     public struct LeaderboardRequest : NetworkMessage
     {
         public ulong RequestId;
+        public LeaderboardKind Kind;
     }
 
     public struct LeaderboardResponse : NetworkMessage
     {
         public ulong RequestId;
+        public LeaderboardKind Kind;
         public string AccountId;
         public LeaderboardResult Result;
         public LeaderboardSnapshot Snapshot;

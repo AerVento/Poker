@@ -153,7 +153,7 @@ namespace Game.UI
                 return;
 
             var state = GameController.Instance.State;
-            _accountStatus.text = $"{state.UserName}  ¡¤  ${state.Chips:N0}";
+            _accountStatus.text = $"{state.UserName}  ¡¤  ÃÀ½ð ${state.Dollars:N0}  ¡¤  ³ïÂë ${state.Chips:N0}";
         }
 
         private void CreateRoom()

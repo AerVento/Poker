@@ -8,7 +8,7 @@ namespace Game.Tasks
     public sealed class TaskContext
     {
         public bool IsWithinValidity { get; set; }
-        public uint PlayerChip { get; set; }
+        public ulong PlayerChip { get; set; }
     }
 
     public sealed class HandUse
@@ -85,6 +85,11 @@ namespace Game.Tasks
         public bool Matches(HandFact fact)
         {
             var kind = Conditions.Any(c => c.RequiresSettlement) ? HandFactKind.Settled : HandFactKind.PatternObserved;
+            // A voluntary reveal is a pattern observation only. It must never replay
+            // a hand-count or victory objective, even when it follows a winning hand.
+            if (fact.Kind == HandFactKind.CardsRevealed)
+                return kind == HandFactKind.PatternObserved &&
+                    Conditions.All(c => c is PatternObservedCondition && c.Matches(fact));
             return fact.Kind == kind && Conditions.All(c => c.Matches(fact));
         }
     }
@@ -116,7 +121,7 @@ namespace Game.Tasks
         public DirectClaimWhenLesserThan(Reward reward, uint threshold) : base(reward) { Threshold = threshold; }
         public override bool Available(TaskContext context, TaskState state) =>
             base.Available(context, state) && context.PlayerChip < Threshold;
-        public override string Description => "领取时余额低于 $" + Threshold.ToString("N0");
+        public override string Description => "领取时总资产低于 $" + Threshold.ToString("N0");
     }
 
     public sealed class DirectClaimWhenAtMost : DirectClaim
@@ -125,7 +130,7 @@ namespace Game.Tasks
         public DirectClaimWhenAtMost(Reward reward, uint threshold) : base(reward) { Threshold = threshold; }
         public override bool Available(TaskContext context, TaskState state) =>
             base.Available(context, state) && context.PlayerChip <= Threshold;
-        public override string Description => "领取时余额不高于 $" + Threshold.ToString("N0");
+        public override string Description => "领取时总资产不高于 $" + Threshold.ToString("N0");
     }
 
     public class ObjectiveTask : GameTask

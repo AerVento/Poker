@@ -29,7 +29,7 @@ namespace Game.Network.Diagnostics
         private IEnumerator WaitForItems(ShopPanel panel)
         {
             var until = Time.realtimeSinceStartup + 25f;
-            while (Field<ItemShopRequest>(panel, "_pendingItem").RequestId != 0 && Time.realtimeSinceStartup < until)
+            while ((Field<ulong>(_networkRoom, "_collectionRequest") != 0 || Field<ItemShopRequest>(panel, "_pendingItem").RequestId != 0) && Time.realtimeSinceStartup < until)
                 yield return null;
             if (!panel.ItemsView.Snapshot.CanAct) Fail("Item inventory did not load an actionable snapshot.");
         }
@@ -45,7 +45,13 @@ namespace Game.Network.Diagnostics
             typeof(ItemDefinitionSO).GetField("_displayName", flags).SetValue(definition, "Integration keepsake");
             typeof(ItemDefinitionSO).GetField("_kind", flags).SetValue(definition, ItemKind.NonConsumable);
             var view = panel.ItemsView;
-            typeof(ItemBrowserView).GetField("_definitions", flags).SetValue(view, new[] { definition });
+            var originalCatalog = (ItemShopCatalogSO)typeof(ItemBrowserView).GetField("_catalog", flags).GetValue(view);
+            var catalog = ScriptableObject.CreateInstance<ItemShopCatalogSO>();
+            var entry = new ItemShopCatalogSO.Entry();
+            typeof(ItemShopCatalogSO.Entry).GetField("_item", flags).SetValue(entry, definition);
+            typeof(ItemShopCatalogSO).GetField("_products", flags).SetValue(catalog,
+                new System.Collections.Generic.List<ItemShopCatalogSO.Entry> { entry });
+            typeof(ItemBrowserView).GetField("_catalog", flags).SetValue(view, catalog);
             view.SetSnapshot(view.Snapshot);
             view.SelectItem(definition.Id);
             if (purchase)
@@ -75,6 +81,8 @@ namespace Game.Network.Diagnostics
             panel.SelectTab(ShopTab.Namecards);
             WriteResult("items-" + _clientIndex + (purchase ? "-purchase" : "-reopen") + ".checked",
                 "Actual item UI: quote, cancellation, authoritative purchase, shared balance, permanent inventory and reopen.");
+            typeof(ItemBrowserView).GetField("_catalog", flags).SetValue(view, originalCatalog);
+            Destroy(catalog);
             Destroy(definition);
         }
     }

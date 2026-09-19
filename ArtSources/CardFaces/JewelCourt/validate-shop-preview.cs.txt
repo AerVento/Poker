@@ -1,0 +1,66 @@
+var preview = UnityEditor.SceneManagement.EditorSceneManager.NewPreviewScene();
+var previousActive = RenderTexture.active;
+var report = new System.Collections.Generic.List<object>();
+try
+{
+    var camObject = new GameObject("JewelCourtPreviewCamera", typeof(Camera));
+    UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(camObject, preview);
+    var cam = camObject.GetComponent<Camera>();
+    cam.scene = preview;
+    cam.clearFlags = CameraClearFlags.SolidColor;
+    cam.backgroundColor = new Color(0.04f, 0.09f, 0.08f);
+    cam.orthographic = true;
+    cam.transform.position = new Vector3(0,0,-10);
+    cam.nearClipPlane = 0.1f; cam.farClipPlane = 100f;
+    var canvasObject = new GameObject("JewelCourtPreviewCanvas", typeof(RectTransform), typeof(Canvas));
+    UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(canvasObject, preview);
+    var canvas = canvasObject.GetComponent<Canvas>();
+    canvas.renderMode = RenderMode.ScreenSpaceCamera;
+    canvas.worldCamera = cam; canvas.planeDistance = 1;
+    var holder = new GameObject("Products", typeof(RectTransform)).GetComponent<RectTransform>();
+    holder.SetParent(canvas.transform,false);
+    holder.anchorMin = holder.anchorMax = new Vector2(0.5f,0.5f);
+    holder.sizeDelta = new Vector2(1600,850);
+    var catalog=Resources.Load<Game.SO.CardFaceCatalogSO>("SO/CardFaces/CardFaceCatalog");
+    var ids=new [] { "default","minimal","cat-court","jewel-court" };
+    for(int i=0;i<ids.Length;i++)
+    {
+        var go=(GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Panels/ShopPanel/CardFaceShopCard.prefab"), holder);
+        var rect=go.GetComponent<RectTransform>(); rect.anchoredPosition=new Vector2(i%2==0?-374:374,i<2?195:-195);
+        var card=go.GetComponent<Game.UI.CardFaceShopCard>();
+        bool builtIn=i<2;
+        card.Present(catalog.Find(ids[i]),builtIn?0u:50000u,100000u,builtIn,i==0,true,delegate{});
+        var labels=card.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true);
+        bool priceFound=builtIn;
+        foreach(var label in labels) {label.ForceMeshUpdate(true,true); if(label.text=="$50,000") priceFound=true;}
+        if(!priceFound) throw new System.Exception("Shop price missing: "+ids[i]);
+        if(card.GetComponentsInChildren<Game.UI.CardFaceView>().Length!=2) throw new System.Exception("Expected front and back previews.");
+        // Real Button UnityEvent wiring, with a harmless local callback.
+        var so=new SerializedObject(card);
+        var button=(UnityEngine.UI.Button)so.FindProperty("_action").objectReferenceValue;
+        bool clicked=false;
+        card.GetType().GetField("_onAction",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).SetValue(card,(System.Action)(()=>clicked=true));
+        card.GetType().GetMethod("OnEnable",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).Invoke(card,null);
+        if(button.interactable){button.onClick.Invoke(); if(!clicked) throw new System.Exception("Button callback failed.");}
+        button.interactable=false; clicked=false; button.onClick.Invoke(); if(clicked) throw new System.Exception("Disabled button invoked action.");
+        button.interactable=!builtIn;
+    }
+    foreach(var size in new [] { new Vector2Int(1920,1080), new Vector2Int(1366,768), new Vector2Int(1440,1080) })
+    {
+        var rt=new RenderTexture(size.x,size.y,24);
+        cam.targetTexture=rt;
+        canvas.scaleFactor=Mathf.Min(size.x/1920f,size.y/1080f);
+        Canvas.ForceUpdateCanvases();
+        foreach(var text in canvas.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true)) text.ForceMeshUpdate(true,true);
+        cam.Render(); RenderTexture.active=rt;
+        var texture=new Texture2D(size.x,size.y,TextureFormat.RGB24,false);
+        texture.ReadPixels(new Rect(0,0,size.x,size.y),0,0); texture.Apply();
+        var path="Logs/JewelCourtShop-"+size.x+"x"+size.y+".png";
+        System.IO.File.WriteAllBytes(path,texture.EncodeToPNG());
+        report.Add(new{path=path,width=size.x,height=size.y});
+        RenderTexture.active=previousActive;cam.targetTexture=null;
+        UnityEngine.Object.DestroyImmediate(texture); rt.Release(); UnityEngine.Object.DestroyImmediate(rt);
+    }
+}
+finally { RenderTexture.active=previousActive; UnityEditor.SceneManagement.EditorSceneManager.ClosePreviewScene(preview); }
+return new {passed=true, checks="Real shop card prefabs: 4 products, correct prices, front/back previews, action and disabled callbacks", captures=report};

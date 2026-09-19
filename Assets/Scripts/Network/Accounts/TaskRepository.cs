@@ -54,8 +54,7 @@ namespace Game.Network.Accounts
         public PlayerTaskDocument Document { get; protected set; }
         public bool AlreadyConsumed { get; protected set; }
         public bool Changed { get; set; }
-        public virtual DailyTaskResult RewardBlockReason => HasActiveHand ? DailyTaskResult.ActiveHand :
-            Account.LastRoomId.HasValue ? DailyTaskResult.OutsideRoomRequired : DailyTaskResult.Success;
+        public virtual DailyTaskResult RewardBlockReason => DailyTaskResult.Success;
         public virtual void AuthorizeRewardAccess(TaskRewardAccess access) { }
         public abstract bool HasLegacyClaim(string key);
         public abstract DailyTaskResult Grant(Reward reward, IReadOnlyDictionary<string, uint> itemLimits, string claimKey);

@@ -66,7 +66,11 @@ namespace Game.Network
         {
             var room = _rooms.FindRoom(roomId);
             var game = _games.GetGameInfo(roomId);
-            if (room == null || room.IsWaiting || game == null)
+            if (room == null)
+                return TableParticipationResult.RoomUnavailable;
+            if (room.IsWaiting)
+                return RequestWaitingRoom(room, name, action, handId);
+            if (game == null)
                 return TableParticipationResult.RoomUnavailable;
             if (!room.ContainsMember(name))
                 return TableParticipationResult.NotMember;
@@ -112,6 +116,30 @@ namespace Game.Network
 
             _revisions[name] = checked(GetRevision(name) + 1);
             return TableParticipationResult.Success;
+        }
+
+        private TableParticipationResult RequestWaitingRoom(RoomInfo room, string name,
+            TableParticipationAction action, string handId)
+        {
+            if (!room.ContainsMember(name) || !_isConnected(name))
+                return TableParticipationResult.NotMember;
+            if (!string.IsNullOrEmpty(handId))
+                return TableParticipationResult.StaleRequest;
+            if (action == TableParticipationAction.ObserveWaitingRoom)
+            {
+                _rooms.MoveToSpectator(room.Id, name);
+                return TableParticipationResult.Success;
+            }
+            if (action != TableParticipationAction.JoinWaitingRoom)
+                return TableParticipationResult.InvalidAction;
+            if (room.FindSeat(name) != null)
+                return TableParticipationResult.Success;
+            var chips = _getChips(name);
+            if (!chips.HasValue) return TableParticipationResult.StorageUnavailable;
+            if (chips.Value < checked((uint)room.SmallBlindChips * 2U))
+                return TableParticipationResult.InsufficientChips;
+            return _rooms.Restore(room.Id, name, true) == 0
+                ? TableParticipationResult.Success : TableParticipationResult.TableFull;
         }
 
         public void AdmitForNextHand(int roomId)

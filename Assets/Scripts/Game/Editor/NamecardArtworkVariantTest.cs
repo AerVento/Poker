@@ -15,7 +15,7 @@ namespace Game.Tests
     {
         private GameObject _holder;
         private NamecardProductSO _copy;
-        private static NamecardCatalogSO Catalog => Resources.Load<NamecardCatalogSO>("SO/Shop/NamecardCatalog");
+        private static NamecardCatalogSO Catalog => Resources.Load<NamecardCatalogSO>(NamecardCatalogSO.ResourcePath);
 
         [TearDown]
         public void TearDown()

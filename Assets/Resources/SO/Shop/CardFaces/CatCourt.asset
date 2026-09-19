@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5170973467e4c55a6032f026869f0c9, type: 3}
+  m_Name: CatCourt
+  m_EditorClassIdentifier: 
+  _id: cat-court
+  _displayName: "\u732B\u732B\u5BAB\u5EF7"
+  _description: "\u56DB\u79CD\u82B1\u8272\u5316\u4F5C\u53EF\u7231\u732B\u5934\uFF0C\u5BAB\u5EF7\u732B\u54AA\u6F14\u7ECE
+    J\u3001Q\u3001K\u3002\u542B 52 \u5F20\u724C\u9762\u4E0E\u4E13\u5C5E\u724C\u80CC\u3002"
+  _cards: {fileID: 11400000, guid: 32191f7722e70634f972bd4c948b9cc8, type: 2}
+  _price: 50000
+  _isListed: 1

@@ -186,7 +186,7 @@ WHERE participant.account_id=$account AND hand.status='Active';";
             public override DailyTaskResult Grant(Reward reward, IReadOnlyDictionary<string, uint> limits, string claimKey)
             {
                 if (RewardBlockReason != DailyTaskResult.Success) return RewardBlockReason;
-                if ((ulong)Account.Chips + reward.Chip > uint.MaxValue) return DailyTaskResult.BalanceLimit;
+                if ((ulong)Account.Dollars + reward.Chip > uint.MaxValue) return DailyTaskResult.BalanceLimit;
                 var owned = ReadItemStacks(_connection, _transaction, Account.AccountId).ToDictionary(i => i.ItemId, i => i.Quantity);
                 foreach (var item in reward.Items)
                 {
@@ -194,12 +194,13 @@ WHERE participant.account_id=$account AND hand.status='Active';";
                     if (!limits.TryGetValue(item.ItemId, out var maximum) || (ulong)count + item.Quantity > maximum)
                         return DailyTaskResult.ItemLimit;
                 }
-                var before = Account.Chips;
+                // Reward.Chip is retained in old JSON snapshots; redemptions now always credit dollars.
+                var before = Account.Dollars;
                 var after = checked(before + reward.Chip);
                 using (var update = _connection.CreateCommand())
                 {
                     update.Transaction = _transaction;
-                    update.CommandText = @"UPDATE player_accounts SET chips=$chips,version=version+1,updated_at_utc=$now
+                    update.CommandText = @"UPDATE player_accounts SET dollars=$chips,version=version+1,updated_at_utc=$now
 WHERE account_id=$account AND version=$version;";
                     update.Parameters.AddWithValue("$chips", (long)after);
                     update.Parameters.AddWithValue("$now", FormatDateTime(DateTime.UtcNow));
@@ -218,9 +219,11 @@ ON CONFLICT(account_id,item_id) DO UPDATE SET quantity=quantity+excluded.quantit
                     update.Parameters.AddWithValue("$count", (long)item.Quantity);
                     update.ExecuteNonQuery();
                 }
-                InsertLedger(_connection, _transaction, Guid.NewGuid().ToString("N"), claimKey, Account.AccountId,
+                if (reward.Items.Count > 0)
+                    RecordInventoryChanged(_connection, _transaction, Account.AccountId, claimKey, "task-reward", DateTime.UtcNow);
+                InsertDollarLedger(_connection, _transaction, Guid.NewGuid().ToString("N"), claimKey, Account.AccountId,
                     "TaskReward", reward.Chip, before, after, _rewardAccess?.RoomId, _rewardAccess?.HandId, DateTime.UtcNow);
-                Account.Chips = after;
+                Account.Dollars = after;
                 Account.Version++;
                 Changed = true;
                 return DailyTaskResult.Success;

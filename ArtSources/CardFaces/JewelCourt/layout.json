@@ -1,0 +1,283 @@
+{
+  "layout": {
+    "cardSize": [
+      816,
+      1152
+    ],
+    "rankBox": [
+      66,
+      70,
+      354,
+      310
+    ],
+    "suitBox": [
+      144,
+      338,
+      276,
+      470
+    ],
+    "rankBoxOverrides": {
+      "10": [
+        66,
+        70,
+        534,
+        310
+      ]
+    },
+    "jewelBox": [
+      398,
+      626,
+      744,
+      1068
+    ],
+    "portraitBox": [
+      346,
+      600,
+      754,
+      1070
+    ],
+    "bottomRightIndex": false,
+    "frontOnly": true
+  },
+  "rankInk": {
+    "Spade": "#151B20",
+    "Heart": "#B20B20",
+    "Diamond": "#B20B20",
+    "Club": "#151B20"
+  },
+  "artwork": {
+    "jewel/Spade": {
+      "path": "Elements/Jewels/Spade.png",
+      "size": [
+        494,
+        571
+      ],
+      "sourceBox": [
+        0,
+        0,
+        627,
+        627
+      ]
+    },
+    "jewel/Heart": {
+      "path": "Elements/Jewels/Heart.png",
+      "size": [
+        507,
+        510
+      ],
+      "sourceBox": [
+        627,
+        0,
+        1254,
+        627
+      ]
+    },
+    "jewel/Diamond": {
+      "path": "Elements/Jewels/Diamond.png",
+      "size": [
+        507,
+        577
+      ],
+      "sourceBox": [
+        0,
+        627,
+        627,
+        1254
+      ]
+    },
+    "jewel/Club": {
+      "path": "Elements/Jewels/Club.png",
+      "size": [
+        525,
+        552
+      ],
+      "sourceBox": [
+        627,
+        627,
+        1254,
+        1254
+      ]
+    },
+    "court/Spade/J": {
+      "path": "Elements/Court/Spade_J.png",
+      "size": [
+        624,
+        718
+      ],
+      "sourceBox": [
+        0,
+        0,
+        616,
+        836
+      ]
+    },
+    "court/Spade/Q": {
+      "path": "Elements/Court/Spade_Q.png",
+      "size": [
+        617,
+        681
+      ],
+      "sourceBox": [
+        616,
+        0,
+        1231,
+        836
+      ]
+    },
+    "court/Spade/K": {
+      "path": "Elements/Court/Spade_K.png",
+      "size": [
+        650,
+        697
+      ],
+      "sourceBox": [
+        1231,
+        0,
+        1881,
+        836
+      ]
+    },
+    "court/Heart/J": {
+      "path": "Elements/Court/Heart_J.png",
+      "size": [
+        628,
+        738
+      ],
+      "sourceBox": [
+        0,
+        0,
+        618,
+        836
+      ]
+    },
+    "court/Heart/Q": {
+      "path": "Elements/Court/Heart_Q.png",
+      "size": [
+        624,
+        699
+      ],
+      "sourceBox": [
+        618,
+        0,
+        1239,
+        836
+      ]
+    },
+    "court/Heart/K": {
+      "path": "Elements/Court/Heart_K.png",
+      "size": [
+        652,
+        766
+      ],
+      "sourceBox": [
+        1239,
+        0,
+        1882,
+        836
+      ]
+    },
+    "court/Diamond/J": {
+      "path": "Elements/Court/Diamond_J.png",
+      "size": [
+        637,
+        773
+      ],
+      "sourceBox": [
+        0,
+        0,
+        626,
+        836
+      ]
+    },
+    "court/Diamond/Q": {
+      "path": "Elements/Court/Diamond_Q.png",
+      "size": [
+        615,
+        719
+      ],
+      "sourceBox": [
+        626,
+        0,
+        1236,
+        836
+      ]
+    },
+    "court/Diamond/K": {
+      "path": "Elements/Court/Diamond_K.png",
+      "size": [
+        656,
+        796
+      ],
+      "sourceBox": [
+        1236,
+        0,
+        1882,
+        836
+      ]
+    },
+    "court/Club/J": {
+      "path": "Elements/Court/Club_J.png",
+      "size": [
+        624,
+        712
+      ],
+      "sourceBox": [
+        0,
+        0,
+        612,
+        836
+      ]
+    },
+    "court/Club/Q": {
+      "path": "Elements/Court/Club_Q.png",
+      "size": [
+        619,
+        672
+      ],
+      "sourceBox": [
+        612,
+        0,
+        1224,
+        836
+      ]
+    },
+    "court/Club/K": {
+      "path": "Elements/Court/Club_K.png",
+      "size": [
+        667,
+        755
+      ],
+      "sourceBox": [
+        1224,
+        0,
+        1881,
+        836
+      ]
+    }
+  },
+  "ranks": [
+    "A",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "J",
+    "Q",
+    "K"
+  ],
+  "suits": [
+    "Spade",
+    "Heart",
+    "Diamond",
+    "Club"
+  ],
+  "rankBoxUnits": "pixels, top-left origin",
+  "base": "Elements/Base.png",
+  "rankTemplate": "Elements/Ranks/{rank}.png",
+  "suitTemplate": "Elements/Suits/{suit}.png"
+}

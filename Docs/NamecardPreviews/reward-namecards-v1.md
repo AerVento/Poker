@@ -15,9 +15,9 @@
 
 使用内置 image_gen 分别生成四张图片。宽版 2048×768；独立构图的紧凑源图 1448×1086，Unity 分别等比导入至 1024×384 和 1024×768。四张图片使用 Sprite/Single/Full Rect、Max Size 1024、无 Mipmap、Clamp、NPOT None；`.meta` 由 Unity 生成。
 
-- `Assets/Sprites/Namecards/straight-flush-8x3-v1.png`
+- `Assets/Sprites/Namecards/straight-flush-wide-v1.png`
 - `Assets/Sprites/Namecards/straight-flush-4x3-v1.png`
-- `Assets/Sprites/Namecards/royal-straight-flush-8x3-v1.png`
+- `Assets/Sprites/Namecards/royal-straight-flush-wide-v1.png`
 - `Assets/Sprites/Namecards/royal-straight-flush-4x3-v1.png`
 
 完整提示词、定向修改与文件清单见 [reward-namecards-v1.json](reward-namecards-v1.json)。同花顺宽版经过一次局部修改，将顶部饰件收回 64 px 边框限制内。每款两种比例均接入同一商品 SO。
@@ -26,7 +26,7 @@
 
 商品 SO 新增「成就奖励」标记，用于禁售及奖励名片展示。它不影响已拥有者的装备资格。商品描述为纯主题文案。
 
-服务器目录由 `Poker/Shop/Export Server Catalog` 生成。沿用现有约定，SO 中上架但不可购买的商品导出 `Listed: false`：商城由本地 SO 展示，而服务端拒绝购买，仍允许已拥有者装备。已有部署必须将两条新 ID 加入外部 `NamecardServerCatalog.json` 并保留 `Listed: false`；内置配置不会覆盖已有外部文件。
+服务端默认目录直接由 `NamecardCatalog.asset` 创建。SO 中上架但不可购买的商品会得到 `Listed: false`：商城可展示奖励来源，服务端拒绝购买，已拥有者仍能装备。外部 `Configs/Shop/Namecards.json` 仅用于按 ID 调价或上下架，无需复制完整目录；新 ID 随新版 SO 进入默认目录。
 
 已有成就完成记录保留原奖励快照，不自动追补或修改历史领奖；本次配置适用于更新后新达成的成就。
 

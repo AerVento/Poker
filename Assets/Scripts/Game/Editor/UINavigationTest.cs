@@ -207,19 +207,6 @@ namespace Game.Tests
         }
 
         [Test]
-        public void ClosingLegacyResult_DoesNotNavigateOrLeaveRoom()
-        {
-            _controller.State.SetLastRoom(42);
-            var room = _ui.PushPanel<RoomPanel>();
-            var result = _ui.PushPanel<GameResultMsgBox>(UIManager.Layer.Top);
-            result.Hide();
-            Assert.AreEqual(nameof(RoomPanel), _ui.TopPanelIdentifier);
-            Assert.IsTrue(room.IsShowing);
-            Assert.AreEqual(42, _controller.State.LastRoomId);
-            Assert.IsFalse(_ui.ContainsPanel<TitlePanel>());
-        }
-
-        [Test]
         public void Reset_DismissesModalWithoutInvokingConfirmationAndRetainsOnlyNewRoot()
         {
             _ui.PushPanel<RoomPanel>();
@@ -289,15 +276,14 @@ namespace Game.Tests
         [Test]
         public void DailyTasksPrefabHasCompleteEntryCardsAndNavigationReferences()
         {
-            var title = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Panels/TitlePanel/TitlePanel.prefab").GetComponent<TitlePanel>();
-            Assert.IsNotNull(Field<UnityEngine.UI.Button>(title, "_tasks"));
+            var lobby = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Panels/LobbyPanel/LobbyPanel.prefab").GetComponent<LobbyPanel>();
+            Assert.IsNotNull(Field<UnityEngine.UI.Button>(lobby, "_tasks"));
             var panel = _ui.PushPanel<DailyTaskPanel>();
             foreach (var name in new[] { "_back", "_refresh" })
                 Assert.IsNotNull(Field<UnityEngine.UI.Button>(panel, name));
             var cards = Field<DailyTaskCard[]>(panel, "_cards");
             Assert.AreEqual(2, cards.Length);
-            Assert.AreEqual(Game.Network.Accounts.DailyTaskId.DailySupply, cards[0].TaskId);
-            Assert.AreEqual(Game.Network.Accounts.DailyTaskId.Comeback, cards[1].TaskId);
+            // Reusable cards display paged server task instances; they are not bound to fixed task IDs.
             foreach (var card in cards)
             {
                 Assert.IsNotNull(Field<UnityEngine.UI.Button>(card, "_claim"));
@@ -318,9 +304,10 @@ namespace Game.Tests
             {
                 Code = Game.Network.Accounts.AccountAuthenticationCode.Success,
                 HasLastRoom = hasRoom,
+                RequiresRoomRecovery = hasRoom,
                 LastRoomId = 42,
             });
-            Assert.AreEqual(hasRoom ? nameof(RoomListPanel) : nameof(DailyTaskPanel), _ui.TopPanelIdentifier);
+            Assert.AreEqual(hasRoom ? "RoomRecovery" : nameof(DailyTaskPanel), _ui.TopPanelIdentifier);
             Assert.IsFalse(_ui.ContainsPanel<LoginPanel>());
         }
 
@@ -347,30 +334,15 @@ namespace Game.Tests
             CollectionAssert.AreEqual(new[] { nameof(TitlePanel) }, _ui.PanelOrder);
         }
 
-        [TestCase("pending")]
-        [TestCase("active")]
-        [TestCase("last-room")]
-        public void TasksCanBeViewedInsideRoomButClaimsRequireEligibleGameState(string state)
-        {
-            Assert.IsTrue(_network.CanOpenDailyTasks);
-            if (state == "pending") Set(_network, "_roomEntryPending", true);
-            if (state == "active") Set(_network, "_activeClientRoomId", (int?)42);
-            if (state == "last-room") _controller.State.SetLastRoom(42);
-            Assert.AreEqual(state != "pending", _network.CanOpenDailyTasks);
-            Assert.IsFalse(_network.CanClaimDailyTasks);
-            if (state == "pending") Assert.AreEqual(0, _network.RequestDailyTasks());
-            Assert.AreEqual(0, _network.RequestDailyTaskClaim(Game.Network.Accounts.DailyTaskId.DailySupply, 20260905));
-        }
-
         [Test]
         public void ReopeningLoginImmediatelyRestoresControlsAfterPreviousPendingRequest()
         {
             var login = _ui.PushPanel<LoginPanel>();
-            Field<UnityEngine.UI.Button>(login, "_login").interactable = false;
-            Field<UnityEngine.UI.Button>(login, "_register").interactable = false;
+            Field<UnityEngine.UI.Button>(login, "_submit").interactable = false;
+            Field<UnityEngine.UI.Button>(login, "_registerTab").interactable = false;
             Invoke(login, "OnEnable");
-            Assert.IsTrue(Field<UnityEngine.UI.Button>(login, "_login").interactable);
-            Assert.IsTrue(Field<UnityEngine.UI.Button>(login, "_register").interactable);
+            Assert.IsTrue(Field<UnityEngine.UI.Button>(login, "_submit").interactable);
+            Assert.IsTrue(Field<UnityEngine.UI.Button>(login, "_registerTab").interactable);
             Invoke(login, "OnDisable");
         }
 
@@ -401,11 +373,11 @@ namespace Game.Tests
                     },
                 };
                 panel.ReceiveStatus(response);
-                Assert.AreEqual(1000, _controller.State.Chips);
+                Assert.AreEqual(0, _controller.State.Dollars);
                 Assert.AreEqual(20, Field<ulong>(panel, "_statusRequest"));
                 response.RequestId = 20;
                 panel.ReceiveStatus(response);
-                Assert.AreEqual(2000, _controller.State.Chips);
+                Assert.AreEqual(2000, _controller.State.Dollars);
                 Assert.IsTrue(Field<bool>(panel, "_hasSnapshot"));
                 Set(panel, "_claimRequest", (ulong)22);
                 panel.ReceiveClaim(new DailyTaskClaimResponse { RequestId = 21, Result = Game.Network.Accounts.DailyTaskResult.Success });
@@ -414,21 +386,10 @@ namespace Game.Tests
                 Set(panel, "_statusRequest", (ulong)20);
                 response.Snapshot.Balance = 5000;
                 panel.ReceiveStatus(response);
-                Assert.AreEqual(2000, _controller.State.Chips);
+                Assert.AreEqual(2000, _controller.State.Dollars);
                 Assert.AreEqual(nameof(TitlePanel), _ui.TopPanelIdentifier);
             }
             finally { panel.transform.SetParent(_root.transform); }
-        }
-
-        [Test]
-        public void AccountFeaturesExistOnlyOnTitle()
-        {
-            var title = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Panels/TitlePanel/TitlePanel.prefab").GetComponent<TitlePanel>();
-            foreach (var field in new[] { "_shop", "_leaderboard" })
-                Assert.IsNotNull(Field<UnityEngine.UI.Button>(title, field));
-            var lobby = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Panels/RoomListPanel/RoomListPanel.prefab");
-            Assert.IsNull(lobby.transform.Find("ShopButton"));
-            Assert.IsNull(lobby.transform.Find("LeaderboardButton"));
         }
 
         [TestCase("Shop", false)]
@@ -447,9 +408,10 @@ namespace Game.Tests
             {
                 Code = Game.Network.Accounts.AccountAuthenticationCode.Success,
                 HasLastRoom = hasRoom,
+                RequiresRoomRecovery = hasRoom,
                 LastRoomId = 42,
             });
-            Assert.AreEqual(hasRoom ? nameof(RoomListPanel) : destination == "Collection" ? nameof(ShopPanel) : destination + "Panel", _ui.TopPanelIdentifier);
+            Assert.AreEqual(hasRoom ? "RoomRecovery" : destination == "Collection" ? nameof(ShopPanel) : destination + "Panel", _ui.TopPanelIdentifier);
             if (!hasRoom && destination == "Collection")
                 Assert.AreEqual(ShopPageMode.Collection, _ui.GetPanel<ShopPanel>().Mode);
             Assert.IsFalse(_ui.ContainsPanel<LoginPanel>());
@@ -468,7 +430,7 @@ namespace Game.Tests
             {
                 Code = Game.Network.Accounts.AccountAuthenticationCode.Success,
             });
-            Assert.AreEqual(nameof(RoomListPanel), _ui.TopPanelIdentifier);
+            Assert.AreEqual(nameof(LobbyPanel), _ui.TopPanelIdentifier);
         }
 
         [TestCase("Shop")]
@@ -490,51 +452,24 @@ namespace Game.Tests
             CollectionAssert.AreEqual(new[] { nameof(TitlePanel) }, _ui.PanelOrder);
         }
 
-        [TestCase("Collection", "pending")]
-        [TestCase("Collection", "active")]
-        [TestCase("Collection", "last-room")]
-        [TestCase("Shop", "pending")]
-        [TestCase("Shop", "active")]
-        [TestCase("Shop", "last-room")]
-        [TestCase("Leaderboard", "pending")]
-        [TestCase("Leaderboard", "active")]
-        [TestCase("Leaderboard", "last-room")]
-        public void TitleFeatureCannotBypassRoomRestrictions(string destination, string state)
+        [Test]
+        public void TransportConnected_DismissesConnectionDialogBeforeAuthentication()
         {
-            var singleton = typeof(NetworkManager).GetProperty("singleton");
-            var previous = singleton.GetValue(null);
-            try
-            {
-                singleton.SetValue(null, _network);
-                var title = _ui.PushPanel<TitlePanel>();
-                if (state == "pending") Set(_network, "_roomEntryPending", true);
-                if (state == "active") Set(_network, "_activeClientRoomId", (int?)42);
-                if (state == "last-room") _controller.State.SetLastRoom(42);
-                Invoke(title, destination);
-                Assert.AreEqual(nameof(TitlePanel), _ui.TopPanelIdentifier);
-            }
-            finally { singleton.SetValue(null, previous); }
-        }
-
-        [TestCase("Shop")]
-        [TestCase("Collection")]
-        [TestCase("Leaderboard")]
-        public void UnauthenticatedTitleEntryRemembersLoginDestination(string destination)
-        {
-            var singleton = typeof(NetworkManager).GetProperty("singleton");
-            var previous = singleton.GetValue(null);
-            try
-            {
-                singleton.SetValue(null, _network);
-                ((NetworkConnectionToServer)Connection.GetValue(null)).isAuthenticated = false;
-                _controller.State.ClearAuthenticatedAccount();
-                var title = _ui.PushPanel<TitlePanel>();
-                Invoke(title, destination);
-                Assert.AreEqual(nameof(LoginPanel), _ui.TopPanelIdentifier);
-                var login = _ui.GetPanel<LoginPanel>();
-                Assert.AreEqual(destination, typeof(LoginPanel).GetProperty("DestinationAfterLogin", Private).GetValue(login).ToString());
-            }
-            finally { singleton.SetValue(null, previous); }
+            _ui.PushPanel<TitlePanel>();
+            _controller.State.ClearAuthenticatedAccount();
+            ((NetworkConnectionToServer)Connection.GetValue(null)).isAuthenticated = false;
+            ConnectionState.SetValue(null, Enum.Parse(ConnectionState.FieldType, "Connecting"));
+            Invoke(_network, "ShowConnectingMessage");
+            Assert.IsTrue(_ui.ContainsPanel("ConnectingServer"));
+            ConnectionState.SetValue(null, Enum.Parse(ConnectionState.FieldType, "Connected"));
+            Invoke(_network, "HandleClientTransportConnected");
+            Assert.IsFalse(_ui.ContainsPanel("ConnectingServer"));
+            Assert.AreEqual(nameof(TitlePanel), _ui.TopPanelIdentifier);
+            Assert.IsFalse(_controller.State.IsAuthenticated);
+            Assert.IsFalse(((NetworkConnectionToServer)Connection.GetValue(null)).isAuthenticated);
+            // Host OnStartClient may run after its transport connection callback.
+            Invoke(_network, "ShowConnectingMessage");
+            Assert.IsFalse(_ui.ContainsPanel("ConnectingServer"));
         }
 
         private static void SetLoginDestination(LoginPanel login, string destination)

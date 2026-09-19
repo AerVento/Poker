@@ -1,57 +1,103 @@
-# 臭鸡蛋礼物特效
+# 臭鸡蛋礼物与牌局接入
 
-## 直接播放
+## 在 Unity 中直接查看
 
-在 Unity 2022.3.52f1c1 中打开 `Assets/Scenes/RottenEggGiftDemo.unity`，按 Play。
-也可以使用菜单 **Poker > Gifts > Play Rotten Egg Demo**。
+使用 Unity `2022.3.52f1c1` 打开 `Assets/Scenes/RottenEggGiftDemo.unity` 并进入 Play Mode，或执行菜单 **Poker > Gifts > Play Rotten Egg Demo**。
 
-演示默认循环播放。点击任意玩家名片打开礼物菜单，点击「使用 · 预览」投掷，点击菜单外关闭。「再扔一次」立即重播，「循环播放」可以关闭自动重播。
-这是独立美术演示，不连接服务器，不购买或扣除物品，不改变正式构建场景。
+演示场景可以点击玩家名片后投掷一次，也可以点击「连投 × 5」查看节流后的重叠效果。演示不连接服务器、不扣除库存。
 
-## 动画
+正式牌局不需要手工挂组件。`GamePanel.prefab` 已挂载 `GiftInteractionController`，并通过 Inspector 引用礼物菜单，特效 prefab 由 `GiftCatalogSO.asset` 统一配置；菜单 prefab 自己持有主题底板、中文字体和礼物图标。进入已经开始的牌局后：
 
-- 0.00–0.32 秒：屏幕中心弹出 Q 版臭鸡蛋，带弹性缩放。
-- 0.32–1.04 秒：沿抛物线旋转飞向目标名片，带绿色拖尾。
-- 1.04–3.04 秒：命中飞溅，碎蛋与蛋液向下滑落，臭气上升。
-- 3.04–3.69 秒：整体平滑渐隐；隐藏视觉节点，供下一次复用。
+1. 点击其他玩家名片打开礼物菜单。
+2. 点击菜单外关闭。
+3. 连续点击「臭鸡蛋」会在 0.2 秒窗口内合并成一个请求。
+4. 服务端成功扣除整批库存后向房间成员转播；所有客户端按队列播放。
 
-时间、蛋大小、抛物线高度和滑落距离可在 prefab Inspector 调节。
+臭鸡蛋当前商城单价为 50，可在 `Assets/Resources/SO/Shop/ItemShopCatalog.asset` 调整。商城中的消耗品购买会显示数字输入框，支持一次购买 100 个；服务器在一个事务中按输入数量扣款并增加库存。
 
-## 接入牌局
+## 便捷接口
 
-将 `Assets/Prefabs/Gifts/RottenEggGiftEffect.prefab` 实例化到 UI Canvas 下，RectTransform 拉伸铺满画布。
-收到服务端确认的礼物使用事件后调用：
+通常只需使用名片菜单。其他牌局 UI 也可以把一次点击交给同一个 0.2 秒批处理器：
+
+```csharp
+GiftInteractionController.EnsureActive()?.QueueGift(
+    GiftItemIds.RottenEgg,
+    targetSeatIndex);
+```
+
+返回 `true` 表示这次点击已加入待发送批次。客户端只做库存预留和表现排队；服务端仍会重新验证身份、房间阶段、目标座位与真实库存。
+
+需要绕过 UI 编写自动化客户端时，可以直接发送一批命令：
+
+```csharp
+var operationId = networkRoom.RequestGiftUseBatch(new[]
+{
+    new GiftUseCommandMessage
+    {
+        ItemId = GiftItemIds.RottenEgg,
+        TargetSeatIndex = 4,
+        Quantity = 5,
+    },
+});
+```
+
+正式业务代码优先调用 `QueueGift`，这样能共享捕获窗口、本地库存预留与反馈。
+
+若要在其他界面直接播放美术资源，请序列化引用 `Assets/Prefabs/Gifts/RottenEggGiftEffect.prefab`，实例化后调用：
 
 ```csharp
 effect.Play(receiverNamecardRectTransform);
 ```
 
-`Play` 会重新开始当前实例的动画；需要同时多份礼物时使用多个实例。
-`Stop()` 立即收起；目标被销毁、隐藏或特效组件停用时自动停止。
-`PreviewAt(target, seconds)` 可固定动画时间用于美术检查，再调用 `Play` 恢复播放。
+`Stop()` 会立即停止，`PreviewAt(target, seconds)` 可固定动画时间用于美术检查。
 
-使用 unscaledDeltaTime，牌局暂停时仍可播放。每帧将目标名片转换为特效 Canvas 坐标，支持 Overlay 和配置了 worldCamera 的 Screen Space Camera Canvas。特效图层不接收射线，不修改目标名片的位置或缩放。
-推荐放在根 Canvas 的独立、未裁剪容器中；显示层排序为 30000。正式接入时由服务端校验礼物数量、消耗和收发双方身份，客户端只播放表现。
+## 服务端规则
 
-## 美术来源
+- `ItemUsePolicy` 使用 `AllowedLocations` 决定物品可在房间外、等待房间或已开始房间使用。
+- 三种契约只允许在房间外使用；臭鸡蛋属于 `ItemUseKind.Gift`，只允许在已开始的房间使用。
+- 发送者身份从已认证连接推导，客户端请求不携带发送者。
+- 目标使用稳定的 `SeatIndex`，服务端拒绝不存在、已经离开或发送者自己的座位。
+- 一批请求最多 32 条合并命令、200 个实际礼物。正常连点远低于这个协议防滥用边界。
+- `ConsumeGiftBatch` 在一个 SQLite 事务中校验并扣除整批物品；优先消耗库存，不足部分按服务器单价扣美金；按命令顺序保留可支付的前缀（允许最后一条只执行部分数量），遇到无法支付的礼物后停止。整批只有一个数据库事务。
+- `operationId` 写入幂等收据。相同请求重试会返回成功，但不会再次扣除或再次转播。
+- 礼物事务统一写入库存、幂等收据和实际成功数量的域事件；自动购买时同时扣美金、增加账户版本并记录美金流水，不扣筹码。
 
-两张透明 PNG 使用内置 imagegen 生成，原始 alpha 保留；Unity 导入为 1024 上限、无 mipmap 的 Sprite。臭气、拖尾、飞溅和流淌由 uGUI 网格辅助表现。
+服务端在首次成功提交后发送 `GiftPlaybackBatchMessage`，其中包含服务端推导的发送者座位、目标座位、数量和统一的 `StartAtNetworkTime`。房间内客户端收到相同事件后开始表现。
+
+## 播放节流
+
+客户端没有对象池。每个礼物都会实例化一个独立特效对象，并在动画结束后销毁。
+
+播放间隔由特效自身完整时长计算：
+
+```text
+播放间隔 = 完整动画时长 / 10
+```
+
+因此同一种特效连续播放时，屏幕上最多约有 10 个仍在播放。臭鸡蛋当前完整时长约 3.69 秒，间隔约 0.369 秒；若以后把完整动画改为 2 秒，间隔会自动变为 0.2 秒。队列不因显示并发数而丢弃已经被服务端接受的礼物。
+
+## 动画时间线
+
+- 0.00–0.32 秒：屏幕中心弹出 Q 版臭鸡蛋。
+- 0.32–1.04 秒：沿抛物线旋转飞向目标名片。
+- 1.04–3.04 秒：命中飞溅，碎蛋和蛋液在名片上滑落约 2 秒。
+- 3.04–3.69 秒：整体渐隐。
+
+完整鸡蛋、碎裂组、光环和拖尾当前使用 `0.5` 的宽高缩放，即原画面面积的四分之一。时间、缩放、抛物线高度与滑落距离可在 `Assets/Prefabs/Gifts/RottenEggGiftEffect.prefab` 的 Inspector 中调整。表现使用 `unscaledDeltaTime`，支持 Overlay Canvas 和配置了 `worldCamera` 的 Screen Space Camera Canvas。
+
+## 资源
 
 - `Assets/Art/Gifts/RottenEgg.png`：完整鸡蛋。
 - `Assets/Art/Gifts/RottenEggSplat.png`：破裂蛋液与蛋壳。
-- 完整生成提示词见 `Docs/RottenEggArtPrompts.md`。
+- `Assets/Resources/SO/Shop/Items/Products/RottenEgg.asset`：商城和收藏定义。
+- `Assets/Prefabs/Gifts/RottenEggGiftEffect.prefab`：由 `GamePanel` 序列化引用的特效 prefab。
+- `Assets/Prefabs/UI/Panels/GamePanel/GiftMenuView.prefab`：牌局内礼物菜单和特效播放层。
+- `Assets/Prefabs/UI/Shared/QuantityInputField.prefab`：商城批量购买复用的数字输入框。
+- `Assets/Scenes/RottenEggGiftDemo.unity`：无需联网的播放场景。
+- 美术生成提示词见 `Docs/RottenEggArtPrompts.md`。
 
-后续的正式礼物菜单、库存消耗、商城批量购买和网络广播属于业务接入，不在本次特效演示中。
+## 库存不足时直接赠送
 
-## 本次验证
+礼物面板有库存时显示数量；无库存时显示美金单价，可支付时为白色，不可支付时为红色且按钮不可用。连续点击只合并相邻的同类、同目标礼物，保持点击顺序。客户端保留待发送金额，最终播放数量和扣款以服务端结果为准。
 
-2026-09-09，在 Unity 2022.3.52f1c1 中完成脚本编译及演示场景 Play Mode 验证：
-
-- 检查弹出、抛物线飞行、命中滑落、渐隐四阶段，检查 2 秒滑落距离及渐隐中点/终点透明度。
-- 三个名片的命中位置误差小于 1 屏幕像素；目标移动后贴图继续跟随。
-- 菜单外实际 EventSystem 射线及 PointerClick 分发可关闭菜单；所有特效 Graphic 不接收射线。
-- 重播重置计时，空目标、隐藏目标、停用组件均安全停止。
-- 1920×1080 截图检查；辅助图形有有效渲染网格；Missing Script 为 0，最终 Console error 为 0。
-- PNG 角落 alpha 为 0；新 C# 均为 UTF-8 / CRLF，资源都有对应 `.meta`。
-
-本次未运行牌型 NUnit、联网 server/client 流程或平台构建；本次没有改动牌型、网络协议、商城交易或正式牌局 UI。截图保留于本地 `Logs/GiftPreview`，不纳入版本控制。
+红名／强制名片惩罚期间（服刑年数 ≥ 100）禁止送礼。客户端保留打开礼物菜单的入口，图标显示灰色遮罩并禁用；服务端在礼物批次的同一事务内读取契约库存并拒绝请求。低于惩罚门槛的小额借款不影响送礼。

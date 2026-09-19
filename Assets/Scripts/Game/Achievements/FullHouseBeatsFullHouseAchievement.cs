@@ -4,7 +4,7 @@ using Game.Tasks;
 
 namespace Game.Achievements
 {
-    public sealed class FullHouseBeatsFullHouseAchievement : Achievement
+    public sealed class FullHouseBeatsFullHouseAchievement : HandAchievement
     {
         public override string Id => "full_house_beats_full_house";
         public override string Name => "葫芦之上";

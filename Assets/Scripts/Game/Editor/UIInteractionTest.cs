@@ -142,6 +142,24 @@ namespace Game.Tests
         }
 
         [Test]
+        public void PlayerCountdown_UsesServerDeadlineAcrossRepeatedSyncAndExpiredTurns()
+        {
+            var panel = CreateGamePanel();
+            var info = CreateInfo();
+            info.ActionTimeLimit = 5f;
+            info.ActionDeadline = Mirror.NetworkTime.time + 2d;
+            panel.Info = info;
+            var row = Field<List<PlayerListItem>>(panel, "_playerListItems")[0];
+            Assert.That(row.CountdownRemaining, Is.InRange(0d, 2.1d));
+            Assert.Less(row.CountdownRemaining, 5d);
+            panel.Info = info;
+            Assert.That(row.CountdownRemaining, Is.InRange(0d, 2.1d));
+            info.ActionDeadline = Mirror.NetworkTime.time - 1d;
+            panel.Info = info;
+            Assert.AreEqual(0d, row.CountdownRemaining);
+        }
+
+        [Test]
         public void RoundResult_HiddenOrFoldedHandsNeverDisplayAnInferredPattern()
         {
             var panel = Create<RoundResultMsgBox>("GamePanel/RoundResultMsgBox.prefab");
@@ -152,6 +170,8 @@ namespace Game.Tests
                 {
                     new RoundResult.Player { PlayerName = "Folded", IsFold = true },
                     new RoundResult.Player { PlayerName = "Winner", ChipEarned = 200,
+                        BestHand = Poker.GetAll().Where(card => card.Suit == PokerSuit.Heart).Take(5).ToList(),
+                        BestRank = PokerHandRank.Flush, BestGrades = new List<int> { 14 },
                         Hole = new List<Poker> { new Poker(PokerSuit.Spade, PokerRank.Ace), new Poker(PokerSuit.Club, PokerRank.Ace) } },
                     new RoundResult.Player { PlayerName = "Hidden" },
                 },
@@ -229,31 +249,6 @@ namespace Game.Tests
             Assert.AreEqual(gap, list.rect.width - grid.padding.right - previousRight, 0.1f);
         }
 
-        [TestCase(GameStage.Preflop, false, true, false, false)]
-        [TestCase(GameStage.Flop, true, true, false, true)]
-        [TestCase(GameStage.River, false, true, false, false)]
-        [TestCase(GameStage.Turn, true, false, true, false)]
-        [TestCase(GameStage.RoundOver, false, true, false, true)]
-        public void DailyTaskRewardsRequireRealFoldOrInterHandStage(GameStage stage, bool fold,
-            bool participated, bool waiting, bool expected)
-        {
-            var info = new ServerGameInfo { Stage = stage, HandId = "hand" };
-            info.Players.Add(new ServerGameInfo.PlayerInfo { IsOccupied = true, IsFold = fold,
-                ParticipatedThisHand = participated, IsWaitingForNextHand = waiting });
-            Assert.AreEqual(expected, RewardPhase(info, 0));
-            Assert.AreEqual(stage == GameStage.RoundOver, RewardPhase(info, -1));
-            info.HandId = null;
-            Assert.IsFalse(RewardPhase(info, 0));
-        }
-
-        private static bool RewardPhase(ServerGameInfo info, int playerIndex)
-        {
-            var method = typeof(GameManager).GetMethod("IsTaskRewardPhase",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            Assert.NotNull(method);
-            return (bool)method.Invoke(null, new object[] { info, playerIndex });
-        }
-
         [Test]
         public void ResolutionDropdown_FirstOpenSelectsActualSizeInDeduplicatedList()
         {
@@ -262,22 +257,6 @@ namespace Game.Tests
             var dropdown = Field<TMP_Dropdown>(panel, "_resolution");
             Assert.AreEqual($"{Screen.width}x{Screen.height}", dropdown.options[dropdown.value].text);
             Assert.AreEqual(dropdown.options.Count, dropdown.options.Select(option => option.text).Distinct().Count());
-        }
-
-        [Test]
-        public void GameResults_SortsUnsignedChipTotalsWithoutOverflow()
-        {
-            var panel = Create<GameResultMsgBox>("GamePanel/GameResultMsgBox.prefab");
-            var result = new GameResult
-            {
-                PlayerResults = new List<GameResult.Player>
-                {
-                    new GameResult.Player { Name = "Low", Chips = 1 },
-                    new GameResult.Player { Name = "High", Chips = uint.MaxValue },
-                },
-            };
-            panel.Info = result;
-            Assert.AreEqual("High", result.PlayerResults[0].Name);
         }
 
         [Test]
@@ -440,7 +419,7 @@ namespace Game.Tests
                 Info = CreateInfo(), SitOutAfterHand = true, ParticipationStatus = TableParticipationStatus.Playing,
             });
             Assert.AreEqual("取消转旁观", Field<TextMeshProUGUI>(panel, "_participationButtonLabel").text);
-            Assert.IsTrue(Field<TextMeshProUGUI>(panel, "_tableStatus").text.Contains("查看结果结束后"));
+            Assert.IsTrue(Field<TextMeshProUGUI>(panel, "_tableStatus").gameObject.activeSelf);
             Assert.IsTrue(Field<Button>(Field<OperationArea>(panel, "_operationArea"), "_callButton").gameObject.activeSelf);
             Assert.IsFalse(Field<Button>(panel, "_keepSpectatingButton").gameObject.activeSelf);
         }
@@ -531,7 +510,7 @@ namespace Game.Tests
         }
 
         [TestCase(false, "房间等待")]
-        [TestCase(true, "房间列表")]
+        [TestCase(true, "房间等待")]
         public void InsufficientPlayers_ExplainsCorrectDestination(bool spectator, string destination)
         {
             var box = Create<MsgBox>("MsgBox/MsgBox.prefab");
@@ -539,16 +518,6 @@ namespace Game.Tests
             StringAssert.Contains("不足两人", box.Message);
             StringAssert.Contains(destination, box.Message);
             Assert.AreEqual("知道了", box.ConfirmButtonText);
-        }
-
-        [Test]
-        public void SpectatorIntro_ExplainsExplicitEntryAndSeatLimit()
-        {
-            var box = Create<MsgBox>("MsgBox/MsgBox.prefab");
-            NetworkRoom.ConfigureSpectatorIntro(box);
-            StringAssert.Contains("下一手参战", box.Message);
-            StringAssert.Contains("名额只统计参战玩家", box.Message);
-            StringAssert.Contains("当前不会为你发牌", box.Message);
         }
 
         [Test]

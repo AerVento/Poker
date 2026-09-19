@@ -139,7 +139,7 @@ namespace Game.Tests
         public void ClassicAssetsHaveAllCardsAndHiddenPokerUsesSelectedBack()
         {
             Game.Editor.CardFaceEditor.Validate();
-            var catalog = Resources.Load<CardFaceCatalogSO>("SO/CardFaces/CardFaceCatalog");
+            var catalog = Resources.Load<CardFaceCatalogSO>(CardFaceCatalogSO.ResourcePath);
             Assert.IsNotNull(catalog.Find("minimal"));
             CardFaceAppearance.Equip("missing-client-art");
             Assert.AreSame(catalog.Default, CardFaceAppearance.Current);
@@ -152,11 +152,11 @@ namespace Game.Tests
                 slot.IsShowing = false;
                 var view = root.GetComponentInChildren<CardFaceView>();
                 Assert.IsNotNull(view);
-                Assert.AreSame(catalog.Default.Prefab.Cards.Back, view.Image.sprite);
+                Assert.AreSame(catalog.Default.Cards.Back, view.Image.sprite);
                 slot.Poker = new Poker(PokerSuit.Spade, PokerRank.Ace);
-                Assert.AreSame(catalog.Default.Prefab.Cards.Back, view.Image.sprite);
+                Assert.AreSame(catalog.Default.Cards.Back, view.Image.sprite);
                 slot.IsShowing = true;
-                Assert.AreSame(catalog.Default.Prefab.Cards.GetSprite(slot.Poker), view.Image.sprite);
+                Assert.AreSame(catalog.Default.Cards.GetSprite(slot.Poker), view.Image.sprite);
             }
             finally { UnityEngine.Object.DestroyImmediate(root); }
         }

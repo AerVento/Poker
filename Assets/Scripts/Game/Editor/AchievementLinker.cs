@@ -2,6 +2,7 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using Game.Achievements;
+using Game.Events;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEditor.UnityLinker;
@@ -19,7 +20,12 @@ namespace Game.EditorTools
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             new XDocument(new XElement("linker", new XElement("assembly",
                 new XAttribute("fullname", typeof(Achievement).Assembly.GetName().Name),
-                AchievementCatalog.DiscoverTypes().Select(t => new XElement("type",
+                typeof(Achievement).Assembly.GetTypes().Where(t => typeof(Achievement).IsAssignableFrom(t))
+                    .Concat(PlayerEventRegistry.CreateDefault().EventTypes)
+                    .Concat(new[] { typeof(AchievementContext), typeof(AchievementAction), typeof(AchievementPlayer),
+                        typeof(AchievementStreet), typeof(AchievementPot), typeof(ItemStack), typeof(Poker),
+                        typeof(PlayerEvent), typeof(AccountEvent), typeof(HandAchievement), typeof(Achievement), typeof(IAchievementHandler<>) })
+                    .Distinct().Select(t => new XElement("type",
                     new XAttribute("fullname", t.FullName), new XAttribute("preserve", "all")))))).Save(path);
             return path;
         }

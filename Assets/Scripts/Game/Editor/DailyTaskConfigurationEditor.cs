@@ -6,6 +6,7 @@ using System.Text.Json;
 using Game.Facts;
 using Game.Network.Tasks;
 using Game.Tasks;
+using Framework.Configs;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -226,9 +227,10 @@ namespace Game.Editor
                 {
                     Directory.CreateDirectory(_directory);
                     // Write complete files first; a revision mismatch is rejected by the server on restart.
-                    for (var i = 0; i < texts.Length; i++) File.WriteAllText(Path.Combine(_directory, ServerTaskConfigurationLoader.FileNames[i] + ".tmp"), texts[i], new System.Text.UTF8Encoding(false));
-                    foreach (var name in ServerTaskConfigurationLoader.FileNames)
-                        File.Copy(Path.Combine(_directory, name + ".tmp"), Path.Combine(_directory, name), true);
+                for (var i = 0; i < texts.Length; i++) ConfigManager.WriteAllTextAtPath(
+                    Path.Combine(_directory, ServerTaskConfigurationLoader.FileNames[i] + ".tmp"), texts[i], new System.Text.UTF8Encoding(false));
+                foreach (var name in ServerTaskConfigurationLoader.FileNames)
+                    ConfigManager.CopyFileAtPath(Path.Combine(_directory, name + ".tmp"), Path.Combine(_directory, name), true);
                     foreach (var name in ServerTaskConfigurationLoader.FileNames) File.Delete(Path.Combine(_directory, name + ".tmp"));
                 }
                 _error = false; _message = save ? "三张表已保存。重启服务器后，新分配的任务使用此版本。" : "三张表校验通过。";
@@ -238,9 +240,7 @@ namespace Game.Editor
 
         internal static TaskCatalog ValidateWithItems(string[] texts)
         {
-            var asset = Resources.Load<TextAsset>("SO/Shop/ItemServerCatalog");
-            var items = asset == null ? Array.Empty<Game.Network.Accounts.ServerItemDefinition>() :
-                JsonSerializer.Deserialize<Game.Network.Accounts.ServerItemDefinition[]>(asset.text);
+            var items = Game.Network.ItemCatalogLoader.LoadServer().Products;
             return TaskCatalog.Load(texts[0], texts[1], texts[2], id => items.FirstOrDefault(i => i.Id == id)?.MaxQuantity);
         }
 
@@ -248,7 +248,8 @@ namespace Game.Editor
         {
             try
             {
-                var texts = ServerTaskConfigurationLoader.FileNames.Select(n => File.ReadAllText(Path.Combine(_directory, n))).ToArray();
+                var texts = ServerTaskConfigurationLoader.FileNames.Select(n =>
+                    ConfigManager.ReadAllTextAtPath(Path.Combine(_directory, n))).ToArray();
                 var catalog = ValidateWithItems(texts);
                 var definitions = new List<Definition>();
                 foreach (var source in catalog.Definitions.Values)
@@ -289,16 +290,18 @@ namespace Game.Editor
         public void OnPreprocessBuild(BuildReport report)
         {
             var directory = ServerTaskConfigurationLoader.DefaultDirectory;
-            try { DailyTaskConfigurationEditor.ValidateWithItems(ServerTaskConfigurationLoader.FileNames.Select(n => File.ReadAllText(Path.Combine(directory, n))).ToArray()); }
+            try { DailyTaskConfigurationEditor.ValidateWithItems(ServerTaskConfigurationLoader.FileNames.Select(n =>
+                ConfigManager.ReadAllTextAtPath(Path.Combine(directory, n))).ToArray()); }
             catch (Exception error) { throw new BuildFailedException("Daily task configuration: " + error.Message); }
         }
         public void OnPostprocessBuild(BuildReport report)
         {
             if (report.summary.platform != BuildTarget.StandaloneWindows64 && report.summary.platform != BuildTarget.StandaloneLinux64) return;
-            var destination = Path.Combine(Path.GetDirectoryName(report.summary.outputPath), "Config", "DailyTasks");
+            var destination = Path.Combine(Path.GetDirectoryName(report.summary.outputPath), "Configs", "DailyTasks");
             Directory.CreateDirectory(destination);
             foreach (var name in ServerTaskConfigurationLoader.FileNames)
-                File.Copy(Path.Combine(ServerTaskConfigurationLoader.DefaultDirectory, name), Path.Combine(destination, name), true);
+                ConfigManager.CopyFileAtPath(Path.Combine(ServerTaskConfigurationLoader.DefaultDirectory, name),
+                    Path.Combine(destination, name), true);
         }
     }
 }

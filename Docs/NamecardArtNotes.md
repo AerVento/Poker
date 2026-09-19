@@ -1,6 +1,6 @@
 # 名片商品美术记录
 
-最新进展：11 款横向名片已更新为细边框与不透明主题背景，源 PNG 位于 `Assets/Sprites/Namecards/*-v2.png`，商品 SO 已引用新图。尺寸与留白标准见 [NamecardArtStandard.md](NamecardArtStandard.md)。下面的 v1／v2 章节保留历史生成记录。
+最新进展：11 款横向名片已更新为细边框与不透明主题背景，源 PNG 位于 `Assets/Sprites/Namecards/*-wide-v2.png`，商品 SO 已引用新图。尺寸与留白标准见 [NamecardArtStandard.md](NamecardArtStandard.md)。下面的 v1／v2 章节保留历史生成记录。
 
 日期：2026-09-06。按照用户“先生成几个商品美术让我看看效果”的要求，本次仅制作供选择风格的静态名片底图，不代表商店或装备功能已实现。商店直接展示少量商品，不提供筛选功能，规则详见 [商店计划](NamecardShopPlan.md)。
 
@@ -80,7 +80,7 @@
 
 用户要求新名片替换绿色底板，统一边框上限与文字留白；随后明确内部需要与主题相符的背景，不能只剩纯黑或透明中心。因此 11 款均重新生成：保持 2048 × 768，收紧边框，加入星云、熔岩、极光、云龙、樱枝等低对比背景。
 
-- 最终横图：`Assets/Sprites/Namecards/{id}-v2.png`，11 张均为 2048 × 768 RGB PNG，内部完全不透明。Unity 导入后为 1024 × 384 Sprite。
+- 最终横图：`Assets/Sprites/Namecards/{id}-wide-v2.png`，11 张均为 2048 × 768 RGB PNG，内部完全不透明。Unity 导入后为 1024 × 384 Sprite。
 - 完整图片为生成工具原样输出；已逐张查看并核对源图与工程副本 SHA-256，没有用脚本补画、拉伸或伪造 Alpha。
 - 生成使用内置 `image_gen.imagegen`，未使用 CLI。边框中间稿提示词见 [prompts-v3-thin-frame-studies.json](NamecardPreviews/prompts-v3-thin-frame-studies.json)，最终背景与两款角部修订提示词见 [prompts-v4-themed-backgrounds.json](NamecardPreviews/prompts-v4-themed-backgrounds.json)。
 - 最终尺寸、色彩模式、资源路径和 SHA-256 见 [manifest-v4.json](NamecardPreviews/manifest-v4.json)。v1 原图保留，商品 ID、价格、默认款和库存不变。

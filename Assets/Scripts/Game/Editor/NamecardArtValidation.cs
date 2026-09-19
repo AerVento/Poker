@@ -64,7 +64,7 @@ namespace Game.Editor
         [MenuItem("Poker/Shop/Validate Namecard Artwork")]
         public static void ValidateAll()
         {
-            var catalog = Resources.Load<NamecardCatalogSO>("SO/Shop/NamecardCatalog");
+            var catalog = Resources.Load<NamecardCatalogSO>(NamecardCatalogSO.ResourcePath);
             if (catalog == null)
             {
                 Debug.LogError("Missing namecard catalog.");

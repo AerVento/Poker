@@ -12,7 +12,7 @@
 
 ## 配置商品
 
-目录位于 **Assets/Resources/SO/Shop/NamecardCatalog.asset**，每款商品位于 **Assets/Resources/SO/Shop/Products/**。中文 Inspector 支持：
+目录位于 **Assets/Resources/SO/Shop/Namecards/NamecardCatalog.asset**，每款商品位于 **Assets/Resources/SO/Shop/Namecards/Products/**。中文 Inspector 支持：
 
 - 商品 ID：关联库存的稳定标识，售出后不要更改。
 - 名片名称、商品介绍：分别显示在卡片底部；介绍建议一句短文案。

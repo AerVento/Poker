@@ -12,6 +12,7 @@ namespace Game.UI
         [SerializeField] private TextMeshProUGUI _title;
         [SerializeField] private TextMeshProUGUI _description;
         [SerializeField] private TextMeshProUGUI _reward;
+        [SerializeField] private Image _rewardCurrencyIcon;
         [SerializeField] private TextMeshProUGUI _progress;
         [SerializeField] private TextMeshProUGUI _status;
         [SerializeField] private Button _claim;
@@ -61,7 +62,8 @@ namespace Game.UI
             _taskId = state.Id;
             _title.text = state.Name;
             _description.text = state.Description;
-            _reward.text = $"+ {state.Reward:N0}" + (state.RewardItems != null && state.RewardItems.Length > 0 ? " + 道具" : "");
+            _reward.text = $"+ ${state.Reward:N0}" + (state.RewardItems != null && state.RewardItems.Length > 0 ? " + 道具" : "");
+            if (_rewardCurrencyIcon != null) _rewardCurrencyIcon.gameObject.SetActive(state.Reward > 0);
             DisplayProgress(state);
             EnsureDeleteButton();
             _delete.GetComponentInChildren<TaskActionIcon>().Display(state.CanRefresh);
@@ -77,9 +79,9 @@ namespace Game.UI
                 DailyTaskAvailability.Expired => "已到期",
                 DailyTaskAvailability.OutsideRoom => string.Empty,
                 DailyTaskAvailability.ItemLimit => "奖励道具已达持有上限",
-                DailyTaskAvailability.BalanceTooHigh => "当前余额尚未满足领取条件",
+                DailyTaskAvailability.BalanceTooHigh => "当前总资产尚未满足领取条件",
                 DailyTaskAvailability.ActiveHand => string.Empty,
-                _ => "余额已达上限，暂不可领取",
+                _ => "美金余额已达上限，暂不可领取",
             };
             if (state.OutDated) _status.text = "历史任务 · 奖励领取后自动移除";
             var label = busy ? "处理中…" : !canClaim ? "暂不可领取" : state.Availability switch
@@ -127,8 +129,10 @@ namespace Game.UI
                 _description.rectTransform.anchoredPosition = new Vector2(0, 82);
                 _description.rectTransform.sizeDelta = new Vector2(544, 64);
                 _reward.fontSize = 32;
-                _reward.rectTransform.anchoredPosition = new Vector2(-40, 132);
-                _reward.rectTransform.sizeDelta = new Vector2(464, 40);
+                var rewardRect = _reward.transform.parent.name == "RewardCurrencyDisplay"
+                    ? (RectTransform)_reward.transform.parent : _reward.rectTransform;
+                rewardRect.anchoredPosition = new Vector2(-40, 132);
+                rewardRect.sizeDelta = new Vector2(464, 40);
                 _title.rectTransform.anchoredPosition = new Vector2(0, 199);
                 _status.fontSize = 18;
                 _status.rectTransform.anchoredPosition = new Vector2(0, -145);

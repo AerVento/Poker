@@ -6,17 +6,17 @@
 
 | 名称 / ID | 8:3 宽版 | 4:3 紧凑版 |
 | --- | --- | --- |
-| 星河 / galaxy | [宽版](../Assets/Sprites/Namecards/galaxy-v2.png) | [4:3](../Assets/Sprites/Namecards/galaxy-4x3-v1.png) |
-| 赤焰 / ember | [宽版](../Assets/Sprites/Namecards/ember-v2.png) | [4:3](../Assets/Sprites/Namecards/ember-4x3-v1.png) |
-| 霓虹 / neon | [宽版](../Assets/Sprites/Namecards/neon-v2.png) | [4:3](../Assets/Sprites/Namecards/neon-4x3-v1.png) |
-| 鎏金 / gilded | [宽版](../Assets/Sprites/Namecards/gilded-v2.png) | [4:3](../Assets/Sprites/Namecards/gilded-4x3-v1.png) |
-| 极霜 / frost | [宽版](../Assets/Sprites/Namecards/frost-v2.png) | [4:3](../Assets/Sprites/Namecards/frost-4x3-v1.png) |
-| 幽海 / abyss | [宽版](../Assets/Sprites/Namecards/abyss-v2.png) | [4:3](../Assets/Sprites/Namecards/abyss-4x3-v1.png) |
-| 龙珀 / jade | [宽版](../Assets/Sprites/Namecards/jade-v2.png) | [4:3](../Assets/Sprites/Namecards/jade-4x3-v1.png) |
-| 绯樱 / sakura | [宽版](../Assets/Sprites/Namecards/sakura-v2.png) | [4:3](../Assets/Sprites/Namecards/sakura-4x3-v1.png) |
-| 时轮 / clockwork | [宽版](../Assets/Sprites/Namecards/clockwork-v2.png) | [4:3](../Assets/Sprites/Namecards/clockwork-4x3-v1.png) |
-| 蚀日 / eclipse | [宽版](../Assets/Sprites/Namecards/eclipse-v2.png) | [4:3](../Assets/Sprites/Namecards/eclipse-4x3-v1.png) |
-| 幻晶 / prism | [宽版](../Assets/Sprites/Namecards/prism-v2.png) | [4:3](../Assets/Sprites/Namecards/prism-4x3-v1.png) |
+| 星河 / galaxy | [宽版](../Assets/Sprites/Namecards/galaxy-wide-v2.png) | [4:3](../Assets/Sprites/Namecards/galaxy-4x3-v1.png) |
+| 赤焰 / ember | [宽版](../Assets/Sprites/Namecards/ember-wide-v2.png) | [4:3](../Assets/Sprites/Namecards/ember-4x3-v1.png) |
+| 霓虹 / neon | [宽版](../Assets/Sprites/Namecards/neon-wide-v2.png) | [4:3](../Assets/Sprites/Namecards/neon-4x3-v1.png) |
+| 鎏金 / gilded | [宽版](../Assets/Sprites/Namecards/gilded-wide-v2.png) | [4:3](../Assets/Sprites/Namecards/gilded-4x3-v1.png) |
+| 极霜 / frost | [宽版](../Assets/Sprites/Namecards/frost-wide-v2.png) | [4:3](../Assets/Sprites/Namecards/frost-4x3-v1.png) |
+| 幽海 / abyss | [宽版](../Assets/Sprites/Namecards/abyss-wide-v2.png) | [4:3](../Assets/Sprites/Namecards/abyss-4x3-v1.png) |
+| 龙珀 / jade | [宽版](../Assets/Sprites/Namecards/jade-wide-v2.png) | [4:3](../Assets/Sprites/Namecards/jade-4x3-v1.png) |
+| 绯樱 / sakura | [宽版](../Assets/Sprites/Namecards/sakura-wide-v2.png) | [4:3](../Assets/Sprites/Namecards/sakura-4x3-v1.png) |
+| 时轮 / clockwork | [宽版](../Assets/Sprites/Namecards/clockwork-wide-v2.png) | [4:3](../Assets/Sprites/Namecards/clockwork-4x3-v1.png) |
+| 蚀日 / eclipse | [宽版](../Assets/Sprites/Namecards/eclipse-wide-v2.png) | [4:3](../Assets/Sprites/Namecards/eclipse-4x3-v1.png) |
+| 幻晶 / prism | [宽版](../Assets/Sprites/Namecards/prism-wide-v2.png) | [4:3](../Assets/Sprites/Namecards/prism-4x3-v1.png) |
 
 ## 4:3 图册
 

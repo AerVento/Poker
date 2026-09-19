@@ -193,7 +193,7 @@ namespace Game.UI.GamePanelElement
                 _info.CurrentPlayer.StageBet == _info.CurrentHighestPlayerBet);
             _betOrRaiseButton.gameObject.SetActive(canBet);
             _betInput.gameObject.SetActive(canBet);
-            _betOrRaiseTitle.text = _info.CurrentHighestPlayerBet == 0 ? "下注到" : "加注到";
+            _betOrRaiseTitle.text = _info.CurrentHighestPlayerBet == 0 ? "下注" : "加注";
             if (_resetBetInput)
             {
                 _betChips = MinimumBetTotal;

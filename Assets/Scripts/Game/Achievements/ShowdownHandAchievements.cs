@@ -1,10 +1,11 @@
 using System.Linq;
+using Game.Events;
 using Game.Network;
 using Game.Tasks;
 
 namespace Game.Achievements
 {
-    public abstract class ShowdownHandAchievement : Achievement
+    public abstract class ShowdownHandAchievement : HandAchievement, IAchievementHandler<HandCardsRevealedEvent>
     {
         public override string Category => AchievementCategories.Hand;
         public override string IconPath => "UI/Achievements/Cards-v1";
@@ -15,6 +16,16 @@ namespace Game.Achievements
             if (context.Stage != GameStage.RoundOver || !context.Showdown) return;
             var player = context.Players.FirstOrDefault(p => p.AccountId == accountId);
             if (player != null && !player.Folded && player.BestRank == Rank)
+            {
+                progress.Count = Target;
+            }
+        }
+
+        public void Evaluate(HandCardsRevealedEvent playerEvent, string accountId, AchievementProgress progress)
+        {
+            if (playerEvent.AccountId != accountId || playerEvent.Hole.Count != 2 ||
+                playerEvent.Community.Count < 3 || playerEvent.Community.Count > 5) return;
+            if (AchievementPatternEvaluator.GetBest(playerEvent.Community.Concat(playerEvent.Hole).ToArray()).Rank == Rank)
             {
                 progress.Count = Target;
             }

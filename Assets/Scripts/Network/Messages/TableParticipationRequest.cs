@@ -8,6 +8,8 @@ namespace Game.Network
         KeepSpectating,
         SitOutAfterHand,
         CancelSitOut,
+        JoinWaitingRoom,
+        ObserveWaitingRoom,
     }
 
     public enum TableParticipationResult : byte

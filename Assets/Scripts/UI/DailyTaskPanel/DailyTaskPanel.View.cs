@@ -57,8 +57,8 @@ namespace Game.UI
             _pageLabel.fontSize = 22;
             _pageLabel.raycastTarget = false;
             _feedback.rectTransform.anchoredPosition = new Vector2(0, -371);
-            _previousCard = MakePageButton("PreviousTask", "‹", -412);
-            _nextCard = MakePageButton("NextTask", "›", 412);
+            _previousCard = MakePageButton("PreviousTask", false, -412);
+            _nextCard = MakePageButton("NextTask", true, 412);
             _previousCard.onClick.AddListener(() => _scroll.SelectPage(_scroll.CurrentIndex - 1));
             _nextCard.onClick.AddListener(() => _scroll.SelectPage(_scroll.CurrentIndex + 1));
             _scroll.PageChanged += (index, count) =>
@@ -74,23 +74,18 @@ namespace Game.UI
                 text.text = "每日一份期许，每手一段新程。";
         }
 
-        private Button MakePageButton(string name, string label, float x)
+        private Button MakePageButton(string name, bool pointsRight, float x)
         {
-            var button = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button)).GetComponent<Button>();
-            button.transform.SetParent(_content, false);
+            var button = Instantiate(_back, _content);
+            button.name = name;
+            button.onClick.RemoveAllListeners();
             var rect = (RectTransform)button.transform;
-            rect.sizeDelta = new Vector2(72, 96);
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(72, 72);
             rect.anchoredPosition = new Vector2(x, -25);
-            button.targetGraphic = button.GetComponent<Image>();
-            button.targetGraphic.color = new Color(0.13f, 0.23f, 0.19f, 0.9f);
-            var text = Instantiate(_resetTime, button.transform);
-            text.text = label;
-            text.fontSize = 48;
-            text.alignment = TMPro.TextAlignmentOptions.Center;
-            text.rectTransform.anchorMin = Vector2.zero;
-            text.rectTransform.anchorMax = Vector2.one;
-            text.rectTransform.offsetMin = text.rectTransform.offsetMax = Vector2.zero;
-            text.raycastTarget = false;
+            var scale = rect.localScale;
+            scale.x = Mathf.Abs(scale.x) * (pointsRight ? -1 : 1);
+            rect.localScale = scale;
             return button;
         }
 

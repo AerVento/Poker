@@ -89,14 +89,16 @@ namespace Game
         public string OperationId { get; } = Guid.NewGuid().ToString("N");
         public ItemAction Action { get; }
         public string ItemId { get; }
-        public uint Quantity => 1;
+        public uint Quantity { get; }
         public uint QuotedPrice { get; }
 
-        public ItemActionRequest(ItemAction action, string itemId, uint quotedPrice = 0)
+        public ItemActionRequest(ItemAction action, string itemId, uint quotedPrice = 0, uint quantity = 1)
         {
+            if (quantity == 0) throw new ArgumentOutOfRangeException(nameof(quantity));
             Action = action;
             ItemId = itemId;
             QuotedPrice = quotedPrice;
+            Quantity = quantity;
         }
     }
 }

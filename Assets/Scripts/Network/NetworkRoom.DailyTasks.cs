@@ -14,28 +14,14 @@ namespace Game.Network
         private ulong _nextDailyTaskRequest;
 
         public bool CanOpenDailyTasks => HasAuthenticatedClient && !_roomEntryPending;
-        public bool CanClaimDailyTasks => CanOpenDailyTasks &&
-            (!_activeClientRoomId.HasValue && !GameController.Instance.State.LastRoomId.HasValue ||
-             _activeClientRoomId.HasValue && GamePanel.Instance != null &&
-             GamePanel.Instance.Info.RoomInfo?.Id == _activeClientRoomId && GamePanel.Instance.CanClaimDailyTaskRewards);
+        public bool CanClaimDailyTasks => CanOpenDailyTasks;
 
-        private TaskRewardAccess TaskAccess(PlayerAccount account)
-            => _roomManager.WhichRoom(account.UserName, out var roomId)
-                ? _gameManager.GetTaskRewardAccess(roomId, account.AccountId) : null;
-
-        private DailyTaskResult ValidateTaskRewardPhase(PlayerAccount account)
-        {
-            if (_roomManager.WhichRoom(account.UserName, out var roomId))
-                return _gameManager.GetTaskRewardAccess(roomId, account.AccountId) != null ? DailyTaskResult.Success :
-                    _gameManager.GetGameInfo(roomId) != null ? DailyTaskResult.ActiveHand : DailyTaskResult.OutsideRoomRequired;
-            return account.LastRoomId.HasValue ? DailyTaskResult.OutsideRoomRequired : DailyTaskResult.Success;
-        }
+        private TaskRewardAccess TaskAccess(PlayerAccount account) => null;
+        private DailyTaskResult ValidateTaskRewardPhase(PlayerAccount account) => DailyTaskResult.Success;
 
         private void SynchronizeTaskRewardBalance(PlayerAccount account)
         {
-            if (!_roomManager.WhichRoom(account.UserName, out var roomId)) return;
-            _gameManager.RefreshTaskRewardBalance(roomId, account);
-            BroadcastGameInfo(roomId);
+            // Rewards are dollars and never alter a running hand's chip snapshots.
         }
 
         private void RegisterDailyTaskServerHandlers()
@@ -53,9 +39,10 @@ namespace Game.Network
                 {
                     if (_playerManager.TryGetSession(conn, out var session)) session.Account = account.Copy();
                     SynchronizeTaskRewardBalance(account);
-                    conn.Send(new AccountBalanceSync { Chips = account.Chips });
+                    conn.Send(new AccountBalanceSync { Chips = account.Chips, Dollars = account.Dollars });
                 }
                 conn.Send(response);
+                if (account != null) conn.Send(ReadCollection(conn));
             }, requireAuthentication: true);
             RegisterServerHandler<DailyTasksRequest>((conn, request) =>
                 conn.Send(ProcessDailyTasksRequest(conn, request)), requireAuthentication: true);
@@ -68,9 +55,10 @@ namespace Game.Network
                     if (_playerManager.TryGetSession(conn, out var session))
                         session.Account = account.Copy();
                     SynchronizeTaskRewardBalance(account);
-                    conn.Send(new AccountBalanceSync { Chips = account.Chips });
+                    conn.Send(new AccountBalanceSync { Chips = account.Chips, Dollars = account.Dollars });
                 }
                 conn.Send(response);
+                if (account != null) conn.Send(ReadCollection(conn));
             }, requireAuthentication: true);
         }
 

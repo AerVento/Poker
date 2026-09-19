@@ -4,7 +4,7 @@ using Game.Tasks;
 
 namespace Game.Achievements
 {
-    public sealed class FoodChainAchievement : Achievement
+    public sealed class FoodChainAchievement : HandAchievement
     {
         public override string Id => "showdown_food_chain";
         public override string Name => "大鱼吃小鱼，小鱼吃虾米";
@@ -34,7 +34,7 @@ namespace Game.Achievements
         }
     }
 
-    public sealed class PairOfTwosWinsAchievement : Achievement
+    public sealed class PairOfTwosWinsAchievement : HandAchievement
     {
         public override string Id => "pair_of_twos_wins";
         public override string Name => "这也能行？";
@@ -57,7 +57,7 @@ namespace Game.Achievements
         }
     }
 
-    public sealed class RoyalStraightFlushAchievement : Achievement
+    public sealed class RoyalStraightFlushAchievement : HandAchievement
     {
         public override string Id => "royal_straight_flush";
         public override string Name => "皇家同花顺";

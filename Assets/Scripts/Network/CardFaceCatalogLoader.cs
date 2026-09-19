@@ -1,104 +1,45 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
+using System.Linq;
 using System.Text.Json;
 using Game.Network.Accounts;
-using UnityEngine;
+using Game.SO;
 
 namespace Game.Network
 {
     public static class CardFaceCatalogLoader
     {
-        public const string FileName = "CardFaceServerCatalog.json";
+        public const string FileName = "CardFaces.json";
+        public static string ServerPath => ShopCatalogConfigManager.GetPath(FileName);
 
-        public static CardFaceServerCatalog LoadServer()
+        public static CardFaceServerCatalog LoadServer() => ShopCatalogConfigManager.Load(
+            "card face shop", FileName, () => CardFaceCatalogSO.LoadDefault().CreateServerCatalog(), ApplyOverrides);
+
+        public static string ExportDefaults(CardFaceCatalogSO catalog)
+            => JsonSerializer.Serialize(catalog.CreateServerCatalog().Products, new JsonSerializerOptions { WriteIndented = true });
+
+        public static CardFaceServerCatalog ApplyOverrides(CardFaceServerCatalog defaults, string json,
+            Action<string> warning = null)
         {
-            // Follow -pokerServerConfig as well as the default executable/Configs directory.
-            var path = Path.Combine(Path.GetDirectoryName(NetworkConfigurationLoader.GetServerPath()), FileName);
-            var catalog = LoadOrCreate(path, () =>
+            if (defaults == null) throw new ArgumentNullException(nameof(defaults));
+            defaults.Validate();
+            var products = defaults.Products.Select(p => new CardFaceOffer
             {
-                var asset = Resources.Load<TextAsset>("SO/Shop/CardFaceServerCatalog");
-                if (asset == null)
-                    throw new InvalidOperationException("Missing exported card face server catalog.");
-                return asset.text;
-            });
-            NetworkConfigurationLoader.LogInfo($"CardFace server catalog loaded: {path}, " +
-                $"{catalog.Products.Length} products, revision {catalog.Revision}. Restart the server to apply edits.");
-            return catalog;
-        }
-
-        public static CardFaceServerCatalog LoadOrCreate(string path, Func<string> loadDefaults)
-        {
-            path = Path.GetFullPath(path);
-            try
+                Id = p.Id, Price = p.Price, Listed = p.Listed
+            }).ToArray();
+            var byId = products.ToDictionary(p => p.Id, StringComparer.Ordinal);
+            ShopCatalogConfigManager.ApplyOverrideArray("card face shop", json, byId, (product, field, value) =>
             {
-                if (File.Exists(path))
-                    return Parse(File.ReadAllText(path));
-
-                var json = loadDefaults();
-                var catalog = Parse(json);
-                Directory.CreateDirectory(Path.GetDirectoryName(path));
-                // Never overwrite an operator's file, even if it appeared after the existence check.
-                using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-                using (var writer = new StreamWriter(stream, new UTF8Encoding(false)))
-                    writer.Write(json);
-                return catalog;
-            }
-            catch (Exception exception) when (exception is IOException || exception is InvalidDataException || exception is UnauthorizedAccessException ||
-                exception is InvalidOperationException)
-            {
-                throw new InvalidDataException($"Unable to load card face server catalog '{path}': {exception.Message}", exception);
-            }
-        }
-
-        public static CardFaceServerCatalog Parse(string json)
-        {
-            if (string.IsNullOrWhiteSpace(json))
-                throw new InvalidDataException("The card face catalog is empty.");
-            try
-            {
-                using var document = JsonDocument.Parse(json.TrimStart('\uFEFF'));
-                var root = document.RootElement;
-                if (root.ValueKind != JsonValueKind.Array || root.GetArrayLength() == 0 || root.GetArrayLength() > 500)
-                    throw new InvalidDataException("The card face catalog must be an array of 1 to 500 products.");
-                var products = new List<CardFaceOffer>();
-                foreach (var element in root.EnumerateArray())
+                switch (field)
                 {
-                    if (element.ValueKind != JsonValueKind.Object)
-                        throw new InvalidDataException("Each card face product must be an object.");
-                    var fields = new HashSet<string>(StringComparer.Ordinal);
-                    foreach (var field in element.EnumerateObject())
-                    {
-                        if ((field.Name != "Id" && field.Name != "Price" && field.Name != "Listed") || !fields.Add(field.Name))
-                            throw new InvalidDataException($"Unknown or duplicate card face field '{field.Name}'. Use Id, Price and Listed.");
-                    }
-                    // Missing Price/Listed must not silently turn a product into a free/listed item.
-                    if (fields.Count != 3 || element.GetProperty("Id").ValueKind != JsonValueKind.String ||
-                        element.GetProperty("Price").ValueKind != JsonValueKind.Number ||
-                        !element.GetProperty("Price").TryGetUInt32(out var price) ||
-                        (element.GetProperty("Listed").ValueKind != JsonValueKind.True &&
-                         element.GetProperty("Listed").ValueKind != JsonValueKind.False))
-                        throw new InvalidDataException("Each product requires a string Id, an unsigned integer Price and a boolean Listed.");
-                    products.Add(new CardFaceOffer
-                    {
-                        Id = element.GetProperty("Id").GetString(),
-                        Price = price,
-                        Listed = element.GetProperty("Listed").GetBoolean()
-                    });
+                    case "Price": product.Price = ShopCatalogConfigManager.ReadUInt(value, "Price"); break;
+                    case "Listed": product.Listed = ShopCatalogConfigManager.ReadBoolean(value, "Listed"); break;
+                    default: throw new InvalidDataException("Unknown card face shop override field: " + field);
                 }
-                // Built-in gifts remain available with an older external server catalog.
-                foreach (var id in CardFaceItemId.DefaultOwnedIds)
-                    if (id != "default" && !products.Exists(product => product.Id == id))
-                        products.Add(new CardFaceOffer { Id = id, Price = 0, Listed = true });
-                var catalog = new CardFaceServerCatalog { Products = products.ToArray() };
-                catalog.Validate();
-                return catalog;
-            }
-            catch (Exception exception) when (exception is JsonException || exception is InvalidOperationException)
-            {
-                throw new InvalidDataException("Invalid card face catalog: " + exception.Message, exception);
-            }
+            }, warning);
+            var result = new CardFaceServerCatalog { Products = products };
+            result.Validate();
+            return result;
         }
     }
 }

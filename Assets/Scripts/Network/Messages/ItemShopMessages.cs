@@ -9,6 +9,8 @@ namespace Game.Network
         public ulong RequestId;
         public ItemShopAction Action;
         public string OperationId;
+        public bool AuthorizeChipConversion;
+        public uint AuthorizedShortfall;
         public string ItemId;
         public uint Quantity;
         public uint QuotedPrice;
@@ -23,6 +25,10 @@ namespace Game.Network
         public ItemShopResult Result;
         public bool HasSnapshot;
         public uint Chips;
+        public uint Dollars;
+        public uint AvailableChips;
+        public bool CanExchange;
+        public uint RequiredConversion;
         public bool CanAct;
         public string CatalogRevision;
         public ItemStackMessage[] Items;
@@ -30,6 +36,7 @@ namespace Game.Network
         public bool IsNewlyApplied;
         public bool HasOutcome;
         public uint AppliedRewardChips;
+        public uint AppliedRewardDollars => AppliedRewardChips;
         public bool HasFailedCondition;
         public PurchaseConditionMessage FailedCondition;
         public ItemEffectOutcomeMessage[] Effects;
@@ -47,6 +54,7 @@ namespace Game.Network
         public uint Price;
         public bool Listed;
         public uint RewardChips;
+        public uint RewardDollars => RewardChips;
         public uint MaxQuantity;
         public PurchaseConditionMessage[] PurchaseConditions;
         public bool CanPurchase;

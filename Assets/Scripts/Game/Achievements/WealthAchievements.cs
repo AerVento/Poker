@@ -5,7 +5,7 @@ using Game.Tasks;
 
 namespace Game.Achievements
 {
-    public abstract class NetWinningsAchievement : Achievement
+    public abstract class NetWinningsAchievement : HandAchievement
     {
         public override string Category => AchievementCategories.Wealth;
         protected abstract bool Cumulative { get; }

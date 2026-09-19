@@ -1,6 +1,6 @@
 # 服务器任务三表配置与刷新规则
 
-更新：2026-09-07。状态：配置规范；实际服务器配置目录为 Config/DailyTasks，schemaVersion=2 的 type/params 格式以重复任务设计和实际三表为准。
+更新：2026-09-07。状态：配置规范；实际服务器配置目录为 Configs/DailyTasks，schemaVersion=2 的 type/params 格式以重复任务设计和实际三表为准。
 
 本稿是 [每日任务书](DailyTaskRefactorSpecification.md) 的分配与事件处理规范。重复次数及类型参数以 [重复任务设计](DailyTaskRepeatAndTypeConfiguration.md) 为最新补充；未标注重复的例子默认次数为 1。最新决定：任务系统在计入事件时查询当前任务池，已过期实例不新增进度；撤销开手绑定任务实例及跨到期宽限方案。任务内容、固定池、随机池仍分为三表。
 
@@ -16,7 +16,7 @@
 
 固定任务每业务日刷新各账户，不占随机名额。随机任务当日首次有效登录补空位；延续此前确认，持续在线跨零点视为新业务日首次上线。面板只展示，不触发重新分配。两个刷新服务、幂等记录分开，固定刷新不替离线账户抽随机任务。
 
-建议部署于 `Config/DailyTasks/`，三表同一 schemaVersion/revision 整套校验和生效。编辑器提供三个对应页签，读写同一服务器 JSON；无需为每个任务写代码，不增加另一套 SO 权威数值。
+建议部署于 `Configs/DailyTasks/`，三表同一 schemaVersion/revision 整套校验和生效。编辑器提供三个对应页签，读写同一服务器 JSON；无需为每个任务写代码，不增加另一套 SO 权威数值。
 
 ## 2. type + params 的完整配置示例
 

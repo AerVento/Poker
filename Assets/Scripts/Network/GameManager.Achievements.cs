@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Game.Achievements;
+using Game.Events;
 using Game.Network.Accounts;
 
 namespace Game.Network
@@ -30,8 +31,15 @@ namespace Game.Network
             var player = info.Players[info.OperatingPlayer];
             var action = player.LastOperation;
             if (action == null) return;
-            AchievementHistoryFor(info.HandId).Actions.Add(new AchievementAction(player.AccountId, info.Stage,
-                action.TurnId, action.Type, player.StageBet, player.Chips, player.IsDisconnected));
+            var recorded = new AchievementAction(player.AccountId, info.Stage,
+                action.TurnId, action.Type, player.StageBet, player.Chips, player.IsDisconnected,
+                player.LastActionStackBefore, player.LastActionCommittedChips);
+            AchievementHistoryFor(info.HandId).Actions.Add(recorded);
+            if (_accountRepository is IPlayerEventRepository publisher)
+            {
+                publisher.PublishPlayerEvent(TableEventSource.Action(info.HandId, player.Hole, recorded,
+                    DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
+            }
         }
 
         private void PublishAchievementStreet(ServerGameInfo info)

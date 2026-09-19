@@ -8,6 +8,8 @@ namespace Game.Network
         public ulong RequestId;
         public ShopAction Action;
         public string OperationId;
+        public bool AuthorizeChipConversion;
+        public uint AuthorizedShortfall;
         public string ProductId;
         public string CatalogRevision;
     }
@@ -19,9 +21,14 @@ namespace Game.Network
         public ShopResult Result;
         public bool HasSnapshot;
         public uint Chips;
+        public uint Dollars;
+        public uint AvailableChips;
+        public bool CanExchange;
+        public uint RequiredConversion;
         public string[] OwnedIds;
         public string EquippedId;
         public bool CanAct;
+        public bool CanEquip;
         public string CatalogRevision;
         public NamecardOfferMessage[] Offers;
     }
