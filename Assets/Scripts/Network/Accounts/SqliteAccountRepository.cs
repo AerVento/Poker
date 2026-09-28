@@ -261,6 +261,8 @@ VALUES (
                         InsertDollarLedger(connection, transaction, Guid.NewGuid().ToString("N"),
                             "register-dollars:" + account.AccountId, account.AccountId, "RegistrationGrant",
                             account.Dollars, 0, account.Dollars, null, null, account.CreatedAtUtc);
+                        RecordAssetsChanged(connection, transaction, account.AccountId, "register:" + account.AccountId,
+                            "registration", account.CreatedAtUtc);
 
                         transaction.Commit();
                         return CreateAccountResult.Created;
@@ -594,6 +596,8 @@ WHERE account_id = $accountId AND version = $version;";
                         handId,
                         now);
 
+                    RecordAssetsChanged(connection, transaction, accountId, requestId, transactionType, now);
+
                     transaction.Commit();
                     account.Chips = newChipBalance;
                     account.Version++;
@@ -826,6 +830,8 @@ WHERE hand_id = $handId AND account_id = $accountId;";
                             throw new InvalidOperationException("Settlement achievement context mismatch.");
                         InsertAchievementEvent(connection, transaction, achievementContext);
                     }
+                    foreach (var entry in entries)
+                        RecordAssetsChanged(connection, transaction, entry.AccountId, requestId, "hand-settlement", now);
                     MarkHandCompleted(connection, transaction, handId, "Settled", now);
                     InsertHandRequest(connection, transaction, requestId, handId, "NetSettlement", now);
                     transaction.Commit();

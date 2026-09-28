@@ -136,6 +136,26 @@ namespace Game.Events
         }
     }
 
+    // Immutable server-side asset snapshot. It deliberately includes balances and contract inventory only.
+    public sealed class AccountAssetsChangedEvent : AccountEvent
+    {
+        public override string SourceId => AccountEventSource.Id;
+        public string Reason { get; }
+        public uint Dollars { get; }
+        public uint Chips { get; }
+        public IReadOnlyList<ItemStack> Items { get; }
+
+        public AccountAssetsChangedEvent(string eventId, string accountId, string operationId, long occurredAt,
+            string reason, uint dollars, uint chips, IReadOnlyList<ItemStack> items)
+            : base(eventId, accountId, operationId, occurredAt)
+        {
+            Reason = reason;
+            Dollars = dollars;
+            Chips = chips;
+            Items = Array.AsReadOnly((items ?? Array.Empty<ItemStack>()).ToArray());
+        }
+    }
+
     public sealed class EquipmentChangedEvent : AccountEvent
     {
         public override string SourceId => CollectionEventSource.Id;

@@ -77,7 +77,7 @@ namespace Game.Events
             var registry = new PlayerEventRegistry();
             foreach (var source in new IPlayerEventSource[]
             {
-                new TableEventSource(), new ShopEventSource(), new InventoryEventSource(), new CollectionEventSource()
+                new TableEventSource(), new ShopEventSource(), new InventoryEventSource(), new AccountEventSource(), new CollectionEventSource()
             })
             {
                 source.Register(registry);

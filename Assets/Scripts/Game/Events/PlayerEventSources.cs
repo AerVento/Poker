@@ -74,6 +74,20 @@ namespace Game.Events
         }
     }
 
+    public sealed class AccountEventSource : IPlayerEventSource
+    {
+        public const string Id = "account";
+        public string SourceId => Id;
+        public void Register(PlayerEventRegistry registry) => registry.Register<AccountAssetsChangedEvent>(Id, "assets", 1);
+
+        public static void AssetsChanged(IPlayerEventWriter writer, string accountId, string operationId, long occurredAt,
+            string reason, uint dollars, uint chips, IReadOnlyList<ItemStack> items)
+        {
+            writer.Append(new AccountAssetsChangedEvent($"account:assets:{accountId}:{operationId}", accountId, operationId,
+                occurredAt, reason, dollars, chips, items));
+        }
+    }
+
     public sealed class CollectionEventSource : IPlayerEventSource
     {
         public const string Id = "collection";

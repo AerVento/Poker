@@ -172,6 +172,8 @@ WHERE account_id=$account AND version=$version;";
                     else
                         CollectionEventSource.Equipped(writer, accountId, operationId, occurredAt, "card-face",
                             account.EquippedCardFaceId, productId, account.EquippedNamecardId, productId);
+                    if (action == ShopAction.Purchase)
+                        RecordAssetsChanged(connection, transaction, accountId, operationId, "card-face-purchase", now);
                 }
 
                 using (var receipt = connection.CreateCommand())

@@ -105,6 +105,17 @@ namespace Game.Network.Accounts
         {
             InventoryEventSource.Changed(new TransactionEventWriter(connection, transaction), accountId, operationId,
                 new DateTimeOffset(now).ToUnixTimeMilliseconds(), reason, ReadItemStacks(connection, transaction, accountId));
+            RecordAssetsChanged(connection, transaction, accountId, operationId, reason, now);
+        }
+
+        private static void RecordAssetsChanged(SqliteConnection connection, SqliteTransaction transaction,
+            string accountId, string operationId, string reason, DateTime now)
+        {
+            var account = FindById(connection, transaction, accountId);
+            if (account == null) throw new InvalidOperationException("Cannot capture assets for a missing account.");
+            AccountEventSource.AssetsChanged(new TransactionEventWriter(connection, transaction), accountId, operationId,
+                new DateTimeOffset(now).ToUnixTimeMilliseconds(), reason, account.Dollars, account.Chips,
+                ReadItemStacks(connection, transaction, accountId));
         }
     }
 }

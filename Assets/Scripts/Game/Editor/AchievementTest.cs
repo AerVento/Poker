@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Game.Achievements;
+using Game.Events;
 using Game.Network;
 using Game.Network.Accounts;
 using Game.Network.Achievements;
@@ -115,6 +116,12 @@ namespace Game.Tests
             _repository.PublishAchievementEvent(context);
             _service.DrainEvents();
         }
+
+        private void Publish(PlayerEvent playerEvent)
+        {
+            _repository.PublishPlayerEvent(playerEvent);
+            _service.DrainEvents();
+        }
         private AchievementView State(string account = "Alice") => _service.GetStatus(account).Achievements.Single();
 
         [Test]
@@ -207,6 +214,24 @@ namespace Game.Tests
             var finalStreetOpponentIsStronger = new AchievementProgress();
             achievement.Evaluate(BluffContext(true), "Alice", finalStreetOpponentIsStronger);
             Assert.AreEqual(1, finalStreetOpponentIsStronger.Count);
+        }
+
+        [Test]
+        public void NetAssetsProgressTracksCurrentDebtUntilTheFirstThresholdIsReached()
+        {
+            _service = Service(new EmergingMagnateAchievement());
+            Publish(new AccountAssetsChangedEvent("assets:debt", "Alice", "debt", 1, "contract", 0, 0,
+                new[] { new ItemStack("satan-contract", 1) }));
+            Assert.AreEqual(-100000, State().Progress);
+
+            Publish(new AccountAssetsChangedEvent("assets:threshold", "Alice", "threshold", 2, "settlement", 100000, 0,
+                Array.Empty<ItemStack>()));
+            Assert.AreEqual(100000, State().Progress);
+            Assert.Greater(State().CompletedAt, 0);
+
+            Publish(new AccountAssetsChangedEvent("assets:later-debt", "Alice", "later-debt", 3, "contract", 0, 0,
+                new[] { new ItemStack("satan-contract", 1) }));
+            Assert.AreEqual(100000, State().Progress);
         }
 
         [Test]

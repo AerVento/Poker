@@ -211,6 +211,7 @@ UNION ALL SELECT account_id,transaction_type,amount FROM chip_ledger WHERE reque
                 UpdateDollarBalance(connection, transaction, account, next, now);
                 InsertDollarLedger(connection, transaction, Guid.NewGuid().ToString("N"), requestId, accountId,
                     transactionType, amount, account.Dollars, next, null, null, now);
+                RecordAssetsChanged(connection, transaction, accountId, requestId, transactionType, now);
                 transaction.Commit();
                 account.Dollars = next; account.Version++; account.UpdatedAtUtc = now;
                 return ChipMutationResult.Applied;
