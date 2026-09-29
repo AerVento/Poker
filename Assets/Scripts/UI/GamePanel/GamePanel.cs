@@ -12,7 +12,7 @@ using UnityEngine.UI;
 
 namespace Game.UI
 {
-    public class GamePanel : SingletonPanel<GamePanel>
+    public partial class GamePanel : SingletonPanel<GamePanel>
     {
         [SerializeField]
         private TextMeshProUGUI _title;
@@ -102,6 +102,7 @@ namespace Game.UI
                     foreach (var item in _playerListItems)
                         item.IsOperating = false;
                 }
+                ObserveBalanceSnapshot(value);
                 _info = value;
                 Refresh();
             }
@@ -143,6 +144,7 @@ namespace Game.UI
             if (UIManager.Available && UIManager.Instance.ContainsPanel<InGameOptionPanel>())
                 UIManager.Instance.PopPanel<InGameOptionPanel>();
             UnbindTableControls();
+            ResetBalancePresentation();
             _participationRequestInFlight = false;
             _leaveRequestInFlight = false;
             SetInterHandCountdown(false, 0);
@@ -415,7 +417,7 @@ namespace Game.UI
                 listItem.IsDisconnected = playerInfo.IsDisconnected;
                 listItem.PlayerName = playerInfo.PlayerName;
                 listItem.SetNamecard(_info.RoomInfo.GetNamecard(playerInfo.PlayerName), _info.RoomInfo.GetServiceYears(playerInfo.PlayerName));
-                listItem.Chip = playerInfo.Chips;
+                listItem.Chip = PresentedChips(playerInfo);
                 listItem.Operation = playerInfo.LastOperation;
                 listItem.GetComponent<PlayerListItemStateView>()?.Present(false, playerInfo.IsFold);
                 if (listItem.IsOperating && _info.ActionDeadline.HasValue)

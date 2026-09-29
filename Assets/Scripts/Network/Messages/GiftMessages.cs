@@ -14,6 +14,8 @@ namespace Game.Network
         public GiftUseResult Result;
         public ItemStackMessage[] Items;
         public uint Dollars;
+        public uint AvailableChips;
+        public bool CanExchange;
         public bool CanSend;
         public GiftOfferMessage[] Offers;
     }
@@ -48,6 +50,8 @@ namespace Game.Network
         public bool HasSnapshot;
         public ItemStackMessage[] Items;
         public uint Dollars;
+        public uint AvailableChips;
+        public bool CanExchange;
         public bool CanSend;
         public GiftOfferMessage[] Offers;
     }

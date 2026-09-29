@@ -92,6 +92,9 @@ namespace Game.UI.GamePanelElement
         [Range(0, 1)]
         [SerializeField] private float _foldedAlpha = 0.4f;
 
+        [SerializeField] private RollingBalance _balanceAnimation;
+        private bool _hasBalance;
+
         private uint _chips;
 
         private float _thinkingTime = 30;
@@ -107,7 +110,11 @@ namespace Game.UI.GamePanelElement
         public string PlayerName
         {
             get => _name.text;
-            set => _name.text = value;
+            set
+            {
+                if (_name.text != value) _hasBalance = false;
+                _name.text = value;
+            }
         }
 
         public uint Chip
@@ -116,7 +123,13 @@ namespace Game.UI.GamePanelElement
             set
             {
                 _chips = value;
-                _chipsText.text = "$" + ChipAmountFormatter.Format(value);
+                if (_balanceAnimation != null)
+                {
+                    if (_hasBalance) _balanceAnimation.SetValue(value);
+                    else _balanceAnimation.ResetValue(value);
+                }
+                else _chipsText.text = "$" + ChipAmountFormatter.Format(value);
+                _hasBalance = true;
             }
         }
 
@@ -243,8 +256,11 @@ namespace Game.UI.GamePanelElement
 
         public void StartCountDown() => _timer.Start();
 
+        public void ShowNetResult(long net) => _balanceAnimation?.ShowDelta(net);
+
         private void OnDisable()
         {
+            _hasBalance = false;
             _timer.Stop();
             _isOperating = false;
             _namecard?.SetHighlighted(false);

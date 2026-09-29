@@ -80,7 +80,10 @@ namespace Game.Network
             response.Items = ProjectGiftItems(snapshot.Items);
             response.Dollars = snapshot.Account.Dollars;
             response.CanSend = CanSendGifts(snapshot.Items);
-            response.Offers = ProjectGiftOffers(snapshot.Account);
+            var wallet = ReadCurrentWallet(snapshot.Account);
+            response.AvailableChips = wallet?.AvailableChips ?? 0;
+            response.CanExchange = wallet?.CanExchange ?? false;
+            response.Offers = ProjectGiftOffers(snapshot.Account, wallet);
             return response;
         }
 
@@ -132,6 +135,7 @@ namespace Game.Network
             var repository = (authenticator as AccountAuthenticator)?.AccountRepository as IGiftRepository;
             if (repository == null || _itemRuntime == null)
                 return PopulateGiftItems(response, session);
+            UpdateWalletHandAccess(session.Account);
             var execution = repository.ConsumeGiftBatch(session.Account.AccountId,
                 request.OperationId, commands, _itemRuntime);
             response.Result = execution.Result;
@@ -221,7 +225,10 @@ namespace Game.Network
                 response.Items = ProjectGiftItems(snapshot.Items);
                 response.Dollars = snapshot.Account.Dollars;
                 response.CanSend = CanSendGifts(snapshot.Items);
-                response.Offers = ProjectGiftOffers(snapshot.Account);
+                var wallet = ReadCurrentWallet(snapshot.Account);
+                response.AvailableChips = wallet?.AvailableChips ?? 0;
+                response.CanExchange = wallet?.CanExchange ?? false;
+                response.Offers = ProjectGiftOffers(snapshot.Account, wallet);
                 session.Account = snapshot.Account.Copy();
             }
             return response;
@@ -236,7 +243,7 @@ namespace Game.Network
             return !InfernalNamecard.IsForced(InfernalNamecard.CalculateYears(devil, archdevil, satan));
         }
 
-        private GiftOfferMessage[] ProjectGiftOffers(PlayerAccount account)
+        private GiftOfferMessage[] ProjectGiftOffers(PlayerAccount account, WalletSnapshot wallet)
         {
             return _itemRuntime.Products.Where(product => product.UsePolicy?.Kind == ItemUseKind.Gift)
                 .Select(product => new GiftOfferMessage
@@ -245,7 +252,8 @@ namespace Game.Network
                     Price = product.Price,
                     CanPurchase = product.Policy.OnPurchaseEffects.Count == 0 &&
                         ItemPurchaseRuntime.CheckPurchase(new PurchaseContext(account.AccountId,
-                            account.Dollars, product, 0, account.TotalAssets), false, out _) == ItemShopResult.Success,
+                            (uint)Math.Min(uint.MaxValue, CurrencySystem.PurchasingPower(account.Dollars,
+                                wallet?.AvailableChips ?? 0, wallet?.CanExchange ?? false)), product, 0, account.TotalAssets), false, out _) == ItemShopResult.Success,
                 }).ToArray();
         }
 

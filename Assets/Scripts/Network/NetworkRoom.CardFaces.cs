@@ -76,7 +76,7 @@ namespace Game.Network
                 if (current != null && product != null && product.Price > current.Dollars)
                     response.RequiredConversion = product.Price - current.Dollars;
             }
-            if (response.Result == ShopResult.Success && request.AuthorizeChipConversion)
+            if (response.Result == ShopResult.Success && request.Action == ShopAction.Purchase)
             {
                 var current = WalletRepository?.ReadWallet(response.AccountId)?.Account;
                 if (current != null) SynchronizeWalletBalance(current);

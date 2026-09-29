@@ -31,6 +31,8 @@ namespace Game.UI.Gifts
         private GiftMenuView _menuViewPrefab;
 
         private uint _dollars;
+        private uint _availableChips;
+        private bool _canExchange;
         private readonly Dictionary<string, GiftOfferMessage> _offers = new Dictionary<string, GiftOfferMessage>(StringComparer.Ordinal);
         private readonly List<GiftCatalogSO.Entry> _gifts = new List<GiftCatalogSO.Entry>();
         private static string _selectedGiftId;
@@ -167,7 +169,7 @@ namespace Game.UI.Gifts
             _lastInventoryRequest = response.RequestId;
             if (response.Result == GiftUseResult.Success)
             {
-                ApplyInventory(response.Items, response.Dollars, response.Offers, response.CanSend);
+                ApplyInventory(response.Items, response.Dollars, response.Offers, response.CanSend, response.AvailableChips, response.CanExchange);
                 _feedback.text = string.Empty;
             }
             else if (_owned.Count == 0)
@@ -181,7 +183,7 @@ namespace Game.UI.Gifts
             if (response.HasSnapshot && response.RequestId >= _lastInventoryRequest)
             {
                 _lastInventoryRequest = response.RequestId;
-                ApplyInventory(response.Items, response.Dollars, response.Offers, response.CanSend);
+                ApplyInventory(response.Items, response.Dollars, response.Offers, response.CanSend, response.AvailableChips, response.CanExchange);
             }
             _feedback.text = response.Result == GiftUseResult.Success
                 ? "礼物已送出"
@@ -215,6 +217,8 @@ namespace Game.UI.Gifts
             _offers.Clear();
             _hasInventory = false;
             _dollars = 0;
+            _availableChips = 0;
+            _canExchange = false;
             _pending.Clear();
             _inFlight.Clear();
             _playback.Clear();
@@ -419,16 +423,18 @@ namespace Game.UI.Gifts
                 if (entry.Value <= owned) continue;
                 if (!_offers.TryGetValue(entry.Key, out var quote) || !quote.CanPurchase) return false;
                 cost += (entry.Value - owned) * quote.Price;
-                if (cost > _dollars) return false;
+                if (!CurrencySystem.CanAfford(cost, _dollars, _availableChips, _canExchange)) return false;
             }
             return true;
         }
 
-        private void ApplyInventory(ItemStackMessage[] items, uint dollars, GiftOfferMessage[] offers, bool canSend)
+        private void ApplyInventory(ItemStackMessage[] items, uint dollars, GiftOfferMessage[] offers, bool canSend, uint availableChips, bool canExchange)
         {
             _hasInventory = true;
             _canSend = canSend;
             _dollars = dollars;
+            _availableChips = availableChips;
+            _canExchange = canExchange;
             _offers.Clear();
             foreach (var offer in offers ?? Array.Empty<GiftOfferMessage>())
                 if (!string.IsNullOrEmpty(offer.ItemId)) _offers[offer.ItemId] = offer;
@@ -508,7 +514,7 @@ namespace Game.UI.Gifts
                 GiftUseResult.NotOwned => "尚未拥有这个礼物",
                 GiftUseResult.InsufficientItems => "礼物库存不足",
                 GiftUseResult.ServiceRestricted => "服刑期间无法送礼",
-                GiftUseResult.InsufficientDollars => "美金不足",
+                GiftUseResult.InsufficientDollars => "余额不足",
                 GiftUseResult.UnknownGift => "客户端需要更新礼物资源",
                 GiftUseResult.UseNotAllowed => "这个物品当前不能作为礼物使用",
                 GiftUseResult.InvalidRequest => "礼物请求无效",

@@ -56,6 +56,7 @@ namespace Game.UI.GamePanelElement
             if (!sameHand || automatic)
                 _automatic = automatic;
             _info = result;
+            if (automatic) GamePanel.Instance?.HoldRoundBalances(result);
             if (_info != null)
                 Refresh();
             UpdateReadyState();
@@ -161,6 +162,7 @@ namespace Game.UI.GamePanelElement
                 _network.OnRoundResultChanged -= OnResultChanged;
             }
             _network = null;
+            if (_automatic) GamePanel.Instance?.ReleaseRoundBalances(_info);
             _automatic = false;
         }
 

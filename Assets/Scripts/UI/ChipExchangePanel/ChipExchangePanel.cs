@@ -18,7 +18,10 @@ namespace Game.UI
 
         [Header("Navigation")]
         [SerializeField] private Button _back;
-        [SerializeField] private Button _refresh;
+        [SerializeField, Min(1f)] private float _refreshInterval = 60f;
+        [SerializeField] private QuantityStepper _quantity;
+        private double _nextRefresh;
+        private double _requestDeadline;
 
         [Header("Balances")]
         [SerializeField] private TextMeshProUGUI _dollars;
@@ -52,7 +55,6 @@ namespace Game.UI
         private void OnEnable()
         {
             _back.onClick.AddListener(Back);
-            _refresh.onClick.AddListener(RequestRefresh);
             _dollarsToChips.onClick.AddListener(SelectDollarsToChips);
             _chipsToDollars.onClick.AddListener(SelectChipsToDollars);
             _all.onClick.AddListener(SetMaximumAmount);
@@ -74,7 +76,6 @@ namespace Game.UI
         private void OnDisable()
         {
             _back.onClick.RemoveListener(Back);
-            _refresh.onClick.RemoveListener(RequestRefresh);
             _dollarsToChips.onClick.RemoveListener(SelectDollarsToChips);
             _chipsToDollars.onClick.RemoveListener(SelectChipsToDollars);
             _all.onClick.RemoveListener(SetMaximumAmount);
@@ -83,6 +84,20 @@ namespace Game.UI
             Unsubscribe();
             _pendingRequestId = 0;
             _amount.text = string.Empty;
+        }
+
+        private void Update()
+        {
+            var now = Time.realtimeSinceStartupAsDouble;
+            if (IsBusy && now >= _requestDeadline)
+            {
+                _pendingRequestId = 0;
+                _canExchange = false;
+                SetStatus("连接超时，正在核对余额……");
+                _nextRefresh = now;
+                RefreshControls();
+            }
+            if (!IsBusy && now >= _nextRefresh) RequestRefresh();
         }
 
         private void Back() => UIManager.Instance.PopPanel(Identifier);
@@ -109,6 +124,7 @@ namespace Game.UI
         {
             if (IsBusy)
                 return;
+            _nextRefresh = Time.realtimeSinceStartupAsDouble + Mathf.Max(1f, _refreshInterval);
             ResolveNetworkRoom();
             if (_networkRoom == null || !_networkRoom.CanOpenWallet)
             {
@@ -124,7 +140,8 @@ namespace Game.UI
                 RefreshControls();
                 return;
             }
-            SetStatus("正在刷新……");
+            _requestDeadline = Time.realtimeSinceStartupAsDouble + 10d;
+            SetStatus(string.Empty);
             RefreshControls();
         }
 
@@ -187,6 +204,7 @@ namespace Game.UI
                 return;
             }
 
+            _requestDeadline = Time.realtimeSinceStartupAsDouble + 10d;
             SetStatus("正在兑换……");
             RefreshControls();
         }
@@ -197,6 +215,7 @@ namespace Game.UI
                 return;
 
             _pendingRequestId = 0;
+            _nextRefresh = Time.realtimeSinceStartupAsDouble + Mathf.Max(1f, _refreshInterval);
             if (response.HasSnapshot)
             {
                 SetSnapshot(response.Dollars, response.Chips, response.AvailableChips, response.CanExchange);
@@ -225,6 +244,7 @@ namespace Game.UI
             _canExchange = canExchange;
             _dollars.text = $"${dollars:N0}";
             _chips.text = $"${chips:N0}";
+            _availableChips.gameObject.SetActive(availableChips != chips);
             _availableChips.text = availableChips == chips
                 ? string.Empty
                 : $"可兑换 ${availableChips:N0}";
@@ -242,7 +262,8 @@ namespace Game.UI
             _amount.interactable = !IsBusy && _canExchange;
             _all.interactable = !IsBusy && _canExchange && maximum > 0;
             _exchange.interactable = !IsBusy && _canExchange && validAmount;
-            _refresh.interactable = !IsBusy;
+            _quantity?.Configure(maximum);
+            _quantity?.SetInteractable(!IsBusy && _canExchange);
             _back.interactable = true;
             if (_busyIndicator != null)
                 _busyIndicator.SetActive(IsBusy);

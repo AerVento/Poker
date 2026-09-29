@@ -73,7 +73,10 @@ namespace Game.Network.Accounts
                 var remaining = new Dictionary<string, uint>(owned, StringComparer.Ordinal);
                 var applied = new List<GiftUseCommand>();
                 var purchased = new Dictionary<string, uint>(StringComparer.Ordinal);
-                var balance = account.Dollars;
+                var wallet = ReadWallet(connection, transaction, account);
+                var purchasingPower = (uint)Math.Min(uint.MaxValue,
+                    CurrencySystem.PurchasingPower(account.Dollars, wallet.AvailableChips, wallet.CanExchange));
+                var balance = purchasingPower;
                 var result = ValidateGiftConsumption(account, commands, runtime);
                 var now = DateTime.UtcNow;
                 if (result == GiftUseResult.Success)
@@ -106,6 +109,10 @@ namespace Game.Network.Accounts
                     }
                     if (applied.Count == 0)
                         result = GiftUseResult.InsufficientDollars;
+                    var cost = purchasingPower - balance;
+                    var payment = PrepareDollarPayment(connection, transaction, account, cost, false, 0, "gift:" + operationId);
+                    if (payment != WalletResult.Success) return new GiftUseExecution(GiftUseResult.InsufficientDollars);
+                    balance = account.Dollars - cost;
                     foreach (var pair in remaining)
                     {
                         if (!owned.TryGetValue(pair.Key, out var original) || pair.Value == original)

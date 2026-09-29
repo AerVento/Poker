@@ -138,11 +138,9 @@ JOIN poker_hands h ON h.hand_id=p.hand_id WHERE p.account_id=$account AND h.stat
             PlayerAccount account, bool dollarsToChips, uint amount, string operation)
         {
             var wallet = ReadWallet(connection, transaction, account);
-            if (!wallet.CanExchange) return WalletResult.ExchangeLocked;
-            if (amount > (dollarsToChips ? account.Dollars : wallet.AvailableChips)) return WalletResult.InsufficientFunds;
-            if ((ulong)(dollarsToChips ? account.Chips : account.Dollars) + amount > uint.MaxValue) return WalletResult.BalanceLimit;
-            var dollars = dollarsToChips ? account.Dollars - amount : account.Dollars + amount;
-            var chips = dollarsToChips ? account.Chips + amount : account.Chips - amount;
+            var plan = CurrencySystem.PlanExchange(account.Dollars, account.Chips, wallet.AvailableChips,
+                wallet.CanExchange, dollarsToChips, amount, out var dollars, out var chips);
+            if (plan != CurrencyResult.Success) return ToWalletResult(plan);
             var now = DateTime.UtcNow;
             using var update = connection.CreateCommand();
             update.Transaction = transaction;
@@ -165,15 +163,21 @@ WHERE account_id=$account AND version=$version;";
         private static WalletResult PrepareDollarPayment(SqliteConnection connection, SqliteTransaction transaction,
             PlayerAccount account, ulong cost, bool authorizeChipConversion, uint authorizedShortfall, string operation)
         {
-            if (cost > uint.MaxValue) return WalletResult.BalanceLimit;
-            var shortfall = cost > account.Dollars ? (uint)(cost - account.Dollars) : 0;
-            if (authorizeChipConversion && shortfall != authorizedShortfall) return WalletResult.QuoteChanged;
-            if (shortfall == 0) return WalletResult.Success;
             var wallet = ReadWallet(connection, transaction, account);
-            if (!wallet.CanExchange || wallet.AvailableChips < shortfall) return WalletResult.InsufficientFunds;
-            if (!authorizeChipConversion) return WalletResult.ConversionRequired;
+            var plan = CurrencySystem.PlanPayment(account.Dollars, wallet.AvailableChips, wallet.CanExchange,
+                cost, out var shortfall);
+            if (plan != CurrencyResult.Success) return ToWalletResult(plan);
+            if (shortfall == 0) return WalletResult.Success;
             return ConvertWallet(connection, transaction, account, false, shortfall, "payment:" + account.AccountId + ":" + operation);
         }
+
+        private static WalletResult ToWalletResult(CurrencyResult result) => result switch
+        {
+            CurrencyResult.Success => WalletResult.Success,
+            CurrencyResult.InsufficientFunds => WalletResult.InsufficientFunds,
+            CurrencyResult.ExchangeLocked => WalletResult.ExchangeLocked,
+            _ => WalletResult.BalanceLimit,
+        };
 
         public ChipMutationResult ApplyDollarMutation(string accountId, string requestId, string transactionType,
             long amount, uint? maximumBalanceInclusive, out PlayerAccount account)
@@ -204,9 +208,9 @@ UNION ALL SELECT account_id,transaction_type,amount FROM chip_ledger WHERE reque
                 }
                 if (maximumBalanceInclusive.HasValue && account.TotalAssets > maximumBalanceInclusive.Value)
                     return ChipMutationResult.BalanceRequirementNotMet;
-                if (amount < -(long)account.Dollars) return ChipMutationResult.InsufficientChips;
-                if (amount > (long)uint.MaxValue - account.Dollars) return ChipMutationResult.Overflow;
-                var next = (uint)(account.Dollars + amount);
+                var change = CurrencySystem.PlanBalanceChange(account.Dollars, amount, out var next);
+                if (change == CurrencyResult.InsufficientFunds) return ChipMutationResult.InsufficientChips;
+                if (change != CurrencyResult.Success) return ChipMutationResult.Overflow;
                 var now = DateTime.UtcNow;
                 UpdateDollarBalance(connection, transaction, account, next, now);
                 InsertDollarLedger(connection, transaction, Guid.NewGuid().ToString("N"), requestId, accountId,

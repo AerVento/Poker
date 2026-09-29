@@ -540,29 +540,13 @@ WHERE token_hash = $tokenHash AND revoked_at_utc IS NULL;";
                         return ChipMutationResult.BalanceRequirementNotMet;
                     }
 
-                    long newBalance;
-                    try
-                    {
-                        newBalance = checked((long)account.Chips + amount);
-                    }
-                    catch (OverflowException)
+                    var change = CurrencySystem.PlanBalanceChange(account.Chips, amount, out var newChipBalance);
+                    if (change != CurrencyResult.Success)
                     {
                         transaction.Rollback();
-                        return ChipMutationResult.Overflow;
+                        return change == CurrencyResult.InsufficientFunds
+                            ? ChipMutationResult.InsufficientChips : ChipMutationResult.Overflow;
                     }
-
-                    if (newBalance < 0)
-                    {
-                        transaction.Rollback();
-                        return ChipMutationResult.InsufficientChips;
-                    }
-                    if (newBalance > uint.MaxValue)
-                    {
-                        transaction.Rollback();
-                        return ChipMutationResult.Overflow;
-                    }
-
-                    var newChipBalance = (uint)newBalance;
 
                     var now = DateTime.UtcNow;
                     using (var command = connection.CreateCommand())

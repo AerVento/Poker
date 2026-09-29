@@ -164,7 +164,7 @@ namespace Game.UI
 
         private bool CanCover(uint amount)
         {
-            return amount <= (ulong)_dollars + (_canExchange ? _availableChips : 0UL);
+            return CurrencySystem.CanAfford(amount, _dollars, _availableChips, _canExchange);
         }
 
         private void SelectProduct(NamecardProductSO product)
@@ -208,7 +208,6 @@ namespace Game.UI
         private void CloseConfirmation()
         {
             _revision++;
-            _namecardConversionAwaiting = false;
             var confirmation = _confirmation;
             _confirmation = null;
             if (confirmation != null)

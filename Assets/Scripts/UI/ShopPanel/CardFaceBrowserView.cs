@@ -128,19 +128,13 @@ namespace Game.UI
                 WalletChanged?.Invoke(response.Dollars, response.AvailableChips, response.CanExchange);
             }
             else _snapshot.CanAct = false;
-            if (response.Result == ShopResult.ConversionRequired && action == ShopAction.Purchase &&
-                response.RequiredConversion > 0)
-            {
-                ShowConversion(productId, response.RequiredConversion);
-                Draw();
-                return;
-            }
+            if (response.Result == ShopResult.InsufficientChips) CurrencyFeedback.ShowInsufficientFunds();
             _message = response.Result switch
             {
                 ShopResult.Success => action == ShopAction.Purchase ? "已收藏，可选择装备。" :
                     action == ShopAction.Equip ? "已装备，所有扑克牌展示已更新。" : "牌面仅改变你自己看到的效果。",
                 ShopResult.AlreadyOwned => "你已拥有这套牌面。",
-                ShopResult.InsufficientChips => "美金不足，可用筹码也无法补足。",
+                ShopResult.InsufficientChips => "余额不足。",
                 ShopResult.NotOwned => "请先购买这套牌面。",
                 ShopResult.CatalogChanged => "商品信息已更新，请重新确认。",
                 ShopResult.QuoteChanged => "余额或价格已变化，请重新确认购买。",
@@ -183,26 +177,7 @@ namespace Game.UI
             _confirmation.OnCancel += () => _confirmation = null;
         }
 
-        private void ShowConversion(string productId, uint shortfall)
-        {
-            if (!UIManager.Available || string.IsNullOrEmpty(productId)) return;
-            CloseConfirmation();
-            var generation = _generation;
-            _confirmation = MsgBox.Create("CardFaceChipConversion");
-            _confirmation.Type = MsgboxType.ConfirmAndCancel;
-            _confirmation.Title = "兑换筹码付款";
-            _confirmation.Message = $"美金不足，是否将 ${shortfall:N0} 筹码按 1:1 自动兑换为美金并完成购买？";
-            _confirmation.ConfirmButtonText = "兑换并购买";
-            _confirmation.CancelButtonText = "取消";
-            _confirmation.PreferCancel = true;
-            _confirmation.OnCancel += () => _confirmation = null;
-            _confirmation.OnConfirm += () =>
-            {
-                _confirmation = null;
-                if (isActiveAndEnabled && _online && generation == _generation && _pending.RequestId == 0)
-                    StartRequest(ShopAction.Purchase, productId, true, shortfall);
-            };
-        }
+
 
         private void Draw()
         {
@@ -230,7 +205,7 @@ namespace Game.UI
                 var hasOffer = offers.TryGetValue(product.Id, out var offer);
                 var canAct = _online && _snapshot.HasSnapshot && (owned ? _snapshot.CanEquip : _snapshot.CanAct) && _pending.RequestId == 0 &&
                     (owned || hasOffer && offer.Listed);
-                var canAfford = offer.Price <= (ulong)_dollars + (_canExchange ? _availableChips : 0UL);
+                var canAfford = CurrencySystem.CanAfford(offer.Price, _dollars, _availableChips, _canExchange);
                 card.Present(product, offer.Price, canAfford, owned, equipped, canAct,
                     () => Select(product, offer, owned));
             }

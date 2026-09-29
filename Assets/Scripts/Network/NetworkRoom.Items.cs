@@ -66,7 +66,7 @@ namespace Game.Network
                 new ItemShopService(repository, _itemRuntime, ItemPurchaseEvents).ChangeItem(response.AccountId, request.OperationId,
                     request.Action, request.ItemId, request.Quantity, request.QuotedPrice, request.CatalogRevision, inRoom, request.AuthorizeChipConversion, request.AuthorizedShortfall);
             response.Result = execution.Result;
-            if (execution.IsNewlyApplied && request.AuthorizeChipConversion)
+            if (execution.IsNewlyApplied)
             {
                 var updated = WalletRepository?.ReadWallet(response.AccountId)?.Account;
                 if (updated != null) SynchronizeWalletBalance(updated);

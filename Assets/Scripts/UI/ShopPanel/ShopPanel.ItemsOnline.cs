@@ -16,7 +16,6 @@ namespace Game.UI
         private bool _itemRefreshNeeded;
         private bool _itemUncertain;
         private double _itemRefreshAt;
-        private bool _itemConversionAwaiting;
 
         private void BeginItemsOnline()
         {
@@ -33,7 +32,6 @@ namespace Game.UI
             _itemsView.EligibilityRefreshRequested -= QueueItemRefresh;
             _itemRefreshNeeded = false;
             _itemUncertain = false;
-            _itemConversionAwaiting = false;
         }
 
         private void QueueItemRefresh()
@@ -122,7 +120,6 @@ namespace Game.UI
                 return;
             }
             var action = _pendingItem.Action;
-            var failedRequest = _pendingItem;
             _pendingItem = default;
             _itemRefreshNeeded = false;
             _itemCatalogRevision = response.CatalogRevision;
@@ -130,20 +127,7 @@ namespace Game.UI
             _availableChips = response.AvailableChips;
             _canExchange = response.CanExchange;
             _itemsView.SetWallet(response.Dollars, response.AvailableChips, response.CanExchange, false);
-            if (response.Result == ItemShopResult.ConversionRequired && response.RequiredConversion > 0)
-            {
-                _itemConversionAwaiting = true;
-                var accepted = _itemsView.PromptChipConversion(response.OperationId, snapshot,
-                    response.RequiredConversion,
-                    () => RetryItemWithConversion(failedRequest, response.RequiredConversion),
-                    () => _itemConversionAwaiting = false);
-                if (!accepted)
-                {
-                    _itemConversionAwaiting = false;
-                    _itemsView.SetFeedback("支付状态已变化，请重新选择商品。");
-                }
-                return;
-            }
+            if (response.Result == ItemShopResult.InsufficientChips) CurrencyFeedback.ShowInsufficientFunds();
             var message = response.Result switch
             {
                 ItemShopResult.Success => action == ItemShopAction.Purchase
@@ -153,7 +137,7 @@ namespace Game.UI
                         : "购买已确认，库存与余额已更新。"
                     : action == ItemShopAction.Use ? "使用成功。" : string.Empty,
                 ItemShopResult.AlreadyOwned => "你已拥有这件永久物品，无需重复购买。",
-                ItemShopResult.InsufficientChips => "美金不足，可用筹码也无法补足。",
+                ItemShopResult.InsufficientChips => "余额不足。",
                 ItemShopResult.NotOwned => "你尚未拥有这件物品。",
                 ItemShopResult.UnknownItem => "物品已下架或不可操作，商品列表已刷新。",
                 ItemShopResult.CatalogChanged => "商品配置或价格已更新，请重新确认。",
@@ -198,17 +182,6 @@ namespace Game.UI
                 response.Dollars, response.CanAct);
         }
 
-        private void RetryItemWithConversion(ItemShopRequest failedRequest, uint shortfall)
-        {
-            _itemConversionAwaiting = false;
-            if (!isActiveAndEnabled || !_online || _pendingItem.RequestId != 0) return;
-            failedRequest.RequestId = 0;
-            failedRequest.OperationId = Guid.NewGuid().ToString("N");
-            failedRequest.AuthorizeChipConversion = true;
-            failedRequest.AuthorizedShortfall = shortfall;
-            _itemsView.BeginAuthorizedAction(failedRequest.OperationId);
-            StartItemRequest(failedRequest);
-        }
 
         private static PurchaseConditionDescriptor ReadCondition(PurchaseConditionMessage condition)
             => new PurchaseConditionDescriptor(condition.Kind, condition.Comparison, condition.Threshold, condition.Version);

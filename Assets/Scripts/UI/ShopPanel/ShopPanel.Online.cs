@@ -19,7 +19,6 @@ namespace Game.UI
         private NamecardShopRequest _pending;
         private double _deadline;
         private int _attempts;
-        private bool _namecardConversionAwaiting;
 
         public void BeginOnline()
         {
@@ -47,7 +46,6 @@ namespace Game.UI
             _online = false;
             _accountId = null;
             _pending = default;
-            _namecardConversionAwaiting = false;
             _offers.Clear();
             _catalogRevision = null;
         }
@@ -118,8 +116,8 @@ namespace Game.UI
                 _itemsView.SetFeedback("收藏读取失败，请重新打开重试。");
                 return;
             }
-            if (_pending.RequestId == 0 && !_namecardConversionAwaiting) ApplyNamecards(response.Namecards);
-            if (_pendingItem.RequestId == 0 && !_itemConversionAwaiting)
+            if (_pending.RequestId == 0) ApplyNamecards(response.Namecards);
+            if (_pendingItem.RequestId == 0)
             {
                 _itemRefreshNeeded = false;
                 ApplyItems(response.Items);
@@ -151,24 +149,18 @@ namespace Game.UI
                 return;
             }
             var action = _pending.Action;
-            var productId = _pending.ProductId;
             _pending = default;
             if (response.HasSnapshot)
             {
                 ApplyNamecards(response);
             }
-            if (response.Result == ShopResult.ConversionRequired && action == ShopAction.Purchase &&
-                response.RequiredConversion > 0)
-            {
-                ShowNamecardConversion(productId, response.RequiredConversion);
-                return;
-            }
+            if (response.Result == ShopResult.InsufficientChips) CurrencyFeedback.ShowInsufficientFunds();
             SetFeedback(response.Result switch
             {
                 ShopResult.Success => action == ShopAction.Purchase ? "已收藏。" :
                     action == ShopAction.Equip ? "已装备。" : string.Empty,
                 ShopResult.AlreadyOwned => "你已拥有这张名片，无需重复购买。",
-                ShopResult.InsufficientChips => "美金不足，可用筹码也无法补足。",
+                ShopResult.InsufficientChips => "余额不足。",
                 ShopResult.NotOwned => "请先购买这张名片。",
                 ShopResult.CatalogChanged => "商品价格或上架状态已更新，请重新确认。",
                 ShopResult.QuoteChanged => "余额或价格已变化，请重新确认购买。",
@@ -178,31 +170,6 @@ namespace Game.UI
             });
         }
 
-        private void ShowNamecardConversion(string productId, uint shortfall)
-        {
-            if (!UIManager.Available || string.IsNullOrEmpty(productId)) return;
-            CloseConfirmation();
-            _namecardConversionAwaiting = true;
-            var generation = _revision;
-            _confirmation = MsgBox.Create("NamecardChipConversion");
-            _confirmation.Type = MsgboxType.ConfirmAndCancel;
-            _confirmation.Title = "兑换筹码付款";
-            _confirmation.Message = $"美金不足，是否将 ${shortfall:N0} 筹码按 1:1 自动兑换为美金并完成购买？";
-            _confirmation.ConfirmButtonText = "兑换并购买";
-            _confirmation.CancelButtonText = "取消";
-            _confirmation.PreferCancel = true;
-            _confirmation.OnCancel += () =>
-            {
-                _confirmation = null;
-                _namecardConversionAwaiting = false;
-            };
-            _confirmation.OnConfirm += () =>
-            {
-                _confirmation = null;
-                _namecardConversionAwaiting = false;
-                if (isActiveAndEnabled && _online && generation == _revision && _pending.RequestId == 0)
-                    StartRequest(ShopAction.Purchase, productId, true, shortfall);
-            };
-        }
+
     }
 }

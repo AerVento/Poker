@@ -42,7 +42,6 @@ namespace Game.UI
         private MsgBox _confirmation;
         private string _pendingOperation;
         private Action<ItemActionRequest> _requestHandler;
-        private Action _conversionCancelled;
         private uint _dollars;
         private uint _availableChips;
         private bool _canExchange;
@@ -126,7 +125,7 @@ namespace Game.UI
 
         private bool CanAfford(ulong amount)
         {
-            return amount <= (ulong)_dollars + (_canExchange ? _availableChips : 0UL);
+            return CurrencySystem.CanAfford(amount, _dollars, _availableChips, _canExchange);
         }
 
         public bool CompleteAction(string operationId, ItemInventorySnapshot snapshot, string message)
@@ -277,7 +276,7 @@ namespace Game.UI
             if (bulkPurchase)
             {
                 var remaining = offer.MaxQuantity - _snapshot.QuantityOf(id);
-                var purchasingPower = (ulong)_dollars + (_canExchange ? _availableChips : 0UL);
+                var purchasingPower = CurrencySystem.PurchasingPower(_dollars, _availableChips, _canExchange);
                 var affordable = price == 0 ? remaining : Math.Min(uint.MaxValue, purchasingPower / price);
                 maximumQuantity = Math.Max(1, Math.Min(remaining, (uint)affordable));
             }
@@ -333,44 +332,6 @@ namespace Game.UI
                 $"合计 ${(ulong)price * quantity:N0}（单价 ${price:N0}）";
         }
 
-        public bool PromptChipConversion(string operationId, ItemInventorySnapshot snapshot, uint shortfall,
-            Action onConfirm, Action onCancel)
-        {
-            if (_pendingOperation == null || operationId != _pendingOperation || shortfall == 0 || !UIManager.Available)
-                return false;
-            _pendingOperation = null;
-            SetSnapshot(snapshot);
-            var revision = _revision;
-            _confirmation = MsgBox.Create("ItemChipConversion");
-            _conversionCancelled = onCancel;
-            _confirmation.Type = MsgboxType.ConfirmAndCancel;
-            _confirmation.Title = "兑换筹码付款";
-            _confirmation.Message = $"美金不足，是否将 ${shortfall:N0} 筹码按 1:1 自动兑换为美金并完成此次支付？";
-            _confirmation.ConfirmButtonText = "兑换并支付";
-            _confirmation.CancelButtonText = "取消";
-            _confirmation.PreferCancel = true;
-            _confirmation.OnCancel += () =>
-            {
-                _confirmation = null;
-                CancelConversion();
-            };
-            _confirmation.OnConfirm += () =>
-            {
-                _confirmation = null;
-                _conversionCancelled = null;
-                if (isActiveAndEnabled && revision == _revision) onConfirm?.Invoke();
-            };
-            Redraw();
-            return true;
-        }
-
-        public void BeginAuthorizedAction(string operationId)
-        {
-            _pendingOperation = operationId;
-            _feedback.text = "正在兑换并支付，请稍候…";
-            Redraw();
-        }
-
         private TMP_InputField CreateQuantityInput(MsgBox confirmation, uint maximumQuantity)
         {
             var input = Instantiate(_quantityInputPrefab, confirmation.transform, false);
@@ -399,14 +360,7 @@ namespace Game.UI
             var confirmation = _confirmation;
             _confirmation = null;
             if (confirmation != null) confirmation.Hide();
-            CancelConversion();
         }
 
-        private void CancelConversion()
-        {
-            var cancelled = _conversionCancelled;
-            _conversionCancelled = null;
-            cancelled?.Invoke();
-        }
     }
 }

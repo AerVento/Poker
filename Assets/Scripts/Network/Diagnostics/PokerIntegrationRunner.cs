@@ -193,7 +193,7 @@ namespace Game.Network.Diagnostics
                         Fail("Final chip reconciliation failed: " + JsonSerializer.Serialize(report));
                         yield break;
                     }
-                    if (report.ActiveHandCount != 0 || report.AccountBalanceTotal != (_testRewardNamecards ? 100000 : _testInGameTasks ? 32000 : _testContracts ? 111000 : _testTasks ? 13700 : _testItems ? 11100 : _testShop ? 12000 : _testLeaderboard ? 5530000 : _testAchievements ? 31000 : 30000))
+                    if (report.ActiveHandCount != 0 || report.AccountBalanceTotal != (_reviewScenario == "currency" ? 22500 : _testRewardNamecards ? 100000 : _testInGameTasks ? 32000 : _testContracts ? 111000 : _testTasks ? 13700 : _testItems ? 11100 : _testShop ? 12000 : _testLeaderboard ? 5530000 : _testAchievements ? 31000 : 30000))
                     {
                         Fail("Unexpected final chip totals: " + JsonSerializer.Serialize(report));
                         yield break;
@@ -318,6 +318,12 @@ namespace Game.Network.Diagnostics
                 _networkRoom.StartConfiguredClientConnection();
                 RegisterClientHandlers();
                 _authenticator.Register(_userName, Password);
+            }
+
+            if (_reviewScenario == "currency")
+            {
+                yield return CheckCurrencyPurchases();
+                if (_finishing) yield break;
             }
 
             if (_testContracts)
@@ -886,8 +892,11 @@ namespace Game.Network.Diagnostics
                 Fail("Unexpected departure response: " + response.Status);
                 return;
             }
+            bool returnedToLobby = _reviewScenario == "currency"
+                ? UI.LobbyPanel.Instance != null && UI.LobbyPanel.Instance.gameObject.activeInHierarchy
+                : UI.RoomListPanel.Instance != null && UI.RoomListPanel.Instance.gameObject.activeInHierarchy;
             if (GameController.Instance.State.LastRoomId.HasValue ||
-                !UI.RoomListPanel.Instance.gameObject.activeInHierarchy ||
+                !returnedToLobby ||
                 (UI.GamePanel.Instance != null && UI.GamePanel.Instance.gameObject.activeInHierarchy))
             {
                 Fail("Departure acknowledgement did not return the client to the lobby.");
