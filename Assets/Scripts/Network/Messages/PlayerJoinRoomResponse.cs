@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Game.Network
@@ -15,11 +14,6 @@ namespace Game.Network
         /// -3 = full room, -5 = account storage unavailable, -6 = fewer than one big blind
         /// </summary>
         public int SuccessCode;
-        public string RawData;
-        public RoomInfo RoomInfo
-        {
-            get => JsonSerializer.Deserialize<RoomInfo>(RawData);
-            set => RawData = JsonSerializer.Serialize(value);
-        }
+        public RoomInfo RoomInfo;
     }
 }

@@ -1,0 +1,134 @@
+[
+  {
+    "id": "galaxy",
+    "variant": "wide",
+      "file": "Assets/Sprites/Namecards/galaxy-wide.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGB",
+    "opaque_interior": true,
+    "sha256": "b3457f43fe8e4b101482412f3bf620273c0ea3c3791a31ad3bc524ecab1cbafa"
+  },
+  {
+    "id": "ember",
+    "variant": "wide",
+      "file": "Assets/Sprites/Namecards/ember-wide.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGB",
+    "opaque_interior": true,
+    "sha256": "db18eb6e97cbc2edc40059cbacbd1ca9f8d3426cf3a1e1f3b9d6052216dc9a09"
+  },
+  {
+    "id": "neon",
+    "variant": "wide",
+      "file": "Assets/Sprites/Namecards/neon-wide.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGB",
+    "opaque_interior": true,
+    "sha256": "13aa3a606a35d099e6cbb55541140103b4d2e4b4664a580dd02e789888de9d87"
+  },
+  {
+    "id": "gilded",
+    "variant": "wide",
+      "file": "Assets/Sprites/Namecards/gilded-wide.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGB",
+    "opaque_interior": true,
+    "sha256": "476fb0ddda846fff33091dc17c87b4d03fc50dcd223465f952488c126cd6dd7e"
+  },
+  {
+    "id": "frost",
+    "variant": "wide",
+      "file": "Assets/Sprites/Namecards/frost-wide.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGB",
+    "opaque_interior": true,
+    "sha256": "1a0afd41b607538aa1a68e83f5e6bd812aa2d847b2ed849b930915bc841801aa"
+  },
+  {
+    "id": "abyss",
+    "variant": "wide",
+      "file": "Assets/Sprites/Namecards/abyss-wide.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGB",
+    "opaque_interior": true,
+    "sha256": "6951db3e3fe14fb4f2a85fc13a83d72291bac19e1b54354907a78e7cb6b080a3"
+  },
+  {
+    "id": "jade",
+    "variant": "wide",
+      "file": "Assets/Sprites/Namecards/jade-wide.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGB",
+    "opaque_interior": true,
+    "sha256": "5cd55dec53285f4287dee9f9d337909b6c1c2f1d49fd744c3196061eb116f8f7"
+  },
+  {
+    "id": "sakura",
+    "variant": "wide",
+      "file": "Assets/Sprites/Namecards/sakura-wide.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGB",
+    "opaque_interior": true,
+    "sha256": "d1a853ecd06ac27956a345e8ba13958ac6616f931ddedc89f89e2f02fcbb8e9a"
+  },
+  {
+    "id": "clockwork",
+    "variant": "wide",
+      "file": "Assets/Sprites/Namecards/clockwork-wide.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGB",
+    "opaque_interior": true,
+    "sha256": "de76adb2da62430b46d28412a886c43ce40d7b0e354e4e9b0f62cc1240168bbc"
+  },
+  {
+    "id": "eclipse",
+    "variant": "wide",
+      "file": "Assets/Sprites/Namecards/eclipse-wide.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGB",
+    "opaque_interior": true,
+    "sha256": "5ddc987415d20db014e6b0186cacd3c49639e4f38c52858dc21bb65dee5f6e34"
+  },
+  {
+    "id": "prism",
+    "variant": "wide",
+      "file": "Assets/Sprites/Namecards/prism-wide.png",
+    "size": [
+      2048,
+      768
+    ],
+    "mode": "RGB",
+    "opaque_interior": true,
+    "sha256": "adbd0c943bc7f91946182d0f5e9c830f8069b3c79a11b086167ac08f886f48df"
+  }
+]

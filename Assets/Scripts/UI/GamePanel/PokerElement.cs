@@ -1,6 +1,6 @@
 using Cysharp.Threading.Tasks;
-using Framework.SO;
 using Game.SO;
+using Game.Content;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -16,7 +16,7 @@ namespace Game.UI
         private Poker _poker;
         private bool _isShowing = true;
         private CardFaceView _visual;
-        private CardFaceProductSO _appearance;
+        private readonly RemoteAssetBinding<PokerCardsSO> _binding = new RemoteAssetBinding<PokerCardsSO>();
 
         private void OnEnable()
         {
@@ -24,16 +24,21 @@ namespace Game.UI
             RefreshAppearance();
         }
 
-        private void OnDisable() => CardFaceAppearance.Changed -= RefreshAppearance;
+        private void OnDisable()
+        {
+            CardFaceAppearance.Changed -= RefreshAppearance;
+            if (_visual != null) _visual.SetCards(null);
+            _binding.Dispose();
+        }
 
         private void RefreshAppearance()
         {
             var product = CardFaceAppearance.Current;
             if (_visual == null)
             {
-                if (product != null && CardFaceAppearance.Catalog.ViewPrefab != null)
+                if (CardFaceAppearance.ViewPrefab != null)
                 {
-                    _visual = Instantiate(CardFaceAppearance.Catalog.ViewPrefab, transform);
+                    _visual = Instantiate(CardFaceAppearance.ViewPrefab, transform);
                     var rect = (RectTransform)_visual.transform;
                     rect.anchorMin = Vector2.zero;
                     rect.anchorMax = Vector2.one;
@@ -41,15 +46,26 @@ namespace Game.UI
                     rect.localScale = Vector3.one;
                 }
             }
-            if (_visual != null && (_appearance != product || _visual.Cards == null))
-                _visual.SetCards(product != null ? product.Cards : GetSO());
-            _appearance = product;
+            if (isActiveAndEnabled || !Application.isPlaying)
+                _binding.Bind(product != null ? product.Cards : null, cards =>
+                {
+                    if (_visual != null)
+                    {
+                        _visual.SetCards(cards != null ? cards : ClassicCards);
+                        _visual.Display(_poker, _isShowing);
+                    }
+                });
             if (_image != null) _image.enabled = _visual == null;
             if (_visual != null) _visual.Display(_poker, _isShowing);
-            else if (_image != null) _image.sprite = _isShowing ? GetSO().GetSprite(_poker) : GetSO().Back;
+            else if (_image != null)
+            {
+                var cards = ClassicCards;
+                _image.sprite = cards == null ? null : _isShowing ? cards.GetSprite(_poker) : cards.Back;
+            }
         }
 
-        private PokerCardsSO GetSO() => SingletonSOManager.Instance.GetSOFile<PokerCardsSO>();
+        // The bundled classic cards, used for the default face and before any remote face loads.
+        private static PokerCardsSO ClassicCards => CardFaceAppearance.ClassicCards;
 
         /// <summary>
         /// ÆË¿Ë

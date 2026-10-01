@@ -1,6 +1,6 @@
 # 猫猫宫廷 / Cat Court
 
-本项目的原创 AI 生成牌面套装，使用内置 `image_gen` 生成。设计依据为用户确认的红桃 5、黑桃 J 预览，以及 `Docs/CardFaces.md` 的接入规范。
+本项目的原创 AI 生成牌面套装，使用内置 `image_gen` 生成。设计依据为用户确认的红桃 5、黑桃 J 预览，以及 [牌面](../../../Docs/Systems/CardFaces.md) 的接入规范。
 
 ## 美术规则
 
@@ -14,7 +14,7 @@
 
 ## 资源
 
-- `Assets/Sprites/CardFaces/CatCourt/`：52 张正面及 `Back.png`，各有独立 `.meta`。
+- `Assets/Sprites/CardFaces/CatCourt/`：52 张正面及 `back.png`，各有独立 `.meta`。
 - `Assets/Resources/SO/CardFaces/CatCourtCards.asset`：52 个花色／点数映射与牌背。
 - `Assets/Prefabs/UI/Panels/GamePanel/CatCourtCardFace.prefab`：沿用 CardFaceView，适配父槽位，关闭图像 Raycast Target。
 - `Assets/Resources/SO/CardFaces/CatCourt.asset`：商品，稳定 ID `cat-court`，统一奖励物品 ID `cardface-cat-court`。
@@ -32,6 +32,6 @@
 
 ## 上架
 
-默认服务端目录与本地 `Configs/CardFaceServerCatalog.json` 中的 `cat-court` 已设为 `Listed: true`、`Price: 50000`，商店售价 $50,000。原先未默认上架是因为目录将其配置为下架的未定价占位条目。服务器已有外部 CardFaceServerCatalog.json 时还需同步更新该文件并重启，详见 `Docs/CardFaces.md`。客户端商品 SO 不控制成交价或所有权。
+商品 SO 默认上架，售价 $50,000；部署后可用 `Configs/Shop/CardFaces.json` 覆盖，详见 [牌面](../../../Docs/Systems/CardFaces.md)。客户端商品 SO 不控制成交价或所有权。
 
 本次资产制作不向账号发放物品，不修改已装备牌面，不修改线上服务器配置。

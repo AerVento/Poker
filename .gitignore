@@ -76,3 +76,7 @@ crashlytics-build.properties
 __pycache__/
 *.py[cod]
 /AudioSources/*.tmp.json
+
+# Client build stamp written during player builds
+/[Aa]ssets/[Rr]esources/ClientBuild.txt
+/[Aa]ssets/[Rr]esources/ClientBuild.txt.meta

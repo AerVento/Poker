@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06b53aed6dc4f8e4a8a14ed1cf38e08f, type: 3}
+  m_Name: Items
+  m_EditorClassIdentifier: 
+  _sprites:
+  - _name: archdevil-contract
+    _sprite: {fileID: 21300000, guid: 6fe01ed483b05bd4d8b16b8270764926, type: 3}
+  - _name: champagne
+    _sprite: {fileID: 21300000, guid: a59c667039f90254a8ec257297d7cd75, type: 3}
+  - _name: devil-contract
+    _sprite: {fileID: 21300000, guid: 06ef7464262f376448e1146618b34ff7, type: 3}
+  - _name: gunfire
+    _sprite: {fileID: 21300000, guid: 19d8e4d69e3ea8847a3a3b4a341eb2d1, type: 3}
+  - _name: rotten-egg
+    _sprite: {fileID: 21300000, guid: a07c03253ada8594682f2caf8ef3f7b1, type: 3}
+  - _name: satan-contract
+    _sprite: {fileID: 21300000, guid: c7646dfb210fbec41856138a8f259da9, type: 3}
+  - _name: swiss-bank-note
+    _sprite: {fileID: -2342394708266683031, guid: baad4df9377a9894498a037a04de2d1f, type: 3}

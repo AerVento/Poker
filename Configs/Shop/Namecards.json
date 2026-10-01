@@ -1,1 +1,150 @@
-[]
+[
+  {
+    "Id": "default",
+    "Name": "经典",
+    "Description": "熟悉的墨绿，属于每一位入座者。",
+    "Price": 0,
+    "Listed": true
+  },
+  {
+    "Id": "galaxy",
+    "Name": "星河",
+    "Description": "把璀璨星河，留在你的座位。",
+    "Artwork": "namecards/galaxy",
+    "Price": 50000,
+    "Listed": true
+  },
+  {
+    "Id": "ember",
+    "Name": "赤焰",
+    "Description": "以黑曜为甲，让余烬为你加冕。",
+    "Artwork": "namecards/ember",
+    "Price": 20000,
+    "Listed": true
+  },
+  {
+    "Id": "neon",
+    "Name": "霓虹",
+    "Description": "穿过霓虹夜色，留下你的光轨。",
+    "Artwork": "namecards/neon",
+    "Price": 30000,
+    "Listed": true
+  },
+  {
+    "Id": "gilded",
+    "Name": "鎏金",
+    "Description": "墨绿藏锋，金色自有分量。",
+    "Artwork": "namecards/gilded",
+    "Price": 30000,
+    "Listed": true
+  },
+  {
+    "Id": "frost",
+    "Name": "极霜",
+    "Description": "冰晶凝住锋芒，极光掠过桌沿。",
+    "Artwork": "namecards/frost",
+    "Price": 20000,
+    "Listed": true
+  },
+  {
+    "Id": "abyss",
+    "Name": "幽海",
+    "Description": "潜入无声深海，让幽光替你发声。",
+    "Artwork": "namecards/abyss",
+    "Price": 20000,
+    "Listed": true
+  },
+  {
+    "Id": "jade",
+    "Name": "龙珀",
+    "Description": "青玉藏龙，云纹之间自有威仪。",
+    "Artwork": "namecards/jade",
+    "Price": 30000,
+    "Listed": true
+  },
+  {
+    "Id": "sakura",
+    "Name": "绯樱",
+    "Description": "一席夜樱，把锋芒藏进温柔。",
+    "Artwork": "namecards/sakura",
+    "Price": 40000,
+    "Listed": true
+  },
+  {
+    "Id": "clockwork",
+    "Name": "时轮",
+    "Description": "黄铜齿轮转动，掌握自己的节奏。",
+    "Artwork": "namecards/clockwork",
+    "Price": 10000,
+    "Listed": true
+  },
+  {
+    "Id": "eclipse",
+    "Name": "蚀日",
+    "Description": "日冕划破暗夜，沉默亦有引力。",
+    "Artwork": "namecards/eclipse",
+    "Price": 30000,
+    "Listed": true
+  },
+  {
+    "Id": "prism",
+    "Name": "幻晶",
+    "Description": "万色折光，让每次亮相都不同。",
+    "Artwork": "namecards/prism",
+    "Price": 50000,
+    "Listed": true
+  },
+  {
+    "Id": "twilight-duo",
+    "Name": "幻夜双影",
+    "Description": "花海映双影，与你共赴蓝紫幻夜。",
+    "Artwork": "namecards/twilight-duo",
+    "Price": 50000,
+    "Listed": true
+  },
+  {
+    "Id": "devil-service",
+    "Name": "狱契之印",
+    "Description": "服役百年，狱火将契约烙入灵魂。",
+    "Artwork": "namecards/devil-service",
+    "Price": 0,
+    "Listed": true,
+    "Purchasable": false
+  },
+  {
+    "Id": "archdevil-service",
+    "Name": "深狱领主",
+    "Description": "服役五百年，锁链铸成深狱的权印。",
+    "Artwork": "namecards/archdevil-service",
+    "Price": 0,
+    "Listed": true,
+    "Purchasable": false
+  },
+  {
+    "Id": "satan-service",
+    "Name": "撒旦敕印",
+    "Description": "服役千年，万狱之火俯首于不灭的王冠。",
+    "Artwork": "namecards/satan-service",
+    "Price": 0,
+    "Listed": true,
+    "Purchasable": false
+  },
+  {
+    "Id": "straight-flush",
+    "Name": "同花顺",
+    "Description": "翠影流光，五芒一脉相连。",
+    "Artwork": "namecards/straight-flush",
+    "Price": 0,
+    "Listed": true,
+    "Reward": true
+  },
+  {
+    "Id": "royal-straight-flush",
+    "Name": "皇家同花顺",
+    "Description": "紫绒鎏金，冠冕之下尽显锋芒。",
+    "Artwork": "namecards/royal-straight-flush",
+    "Price": 0,
+    "Listed": true,
+    "Reward": true
+  }
+]

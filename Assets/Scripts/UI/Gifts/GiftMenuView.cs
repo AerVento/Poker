@@ -36,6 +36,8 @@ namespace Game.UI.Gifts
         [SerializeField] private Button _previous;
         [SerializeField] private Button _next;
         [SerializeField] private Image _giftIcon;
+        [SerializeField] private ResourceDownloadView _downloadView;
+        public ResourceDownloadView DownloadView => _downloadView;
         [SerializeField] private TextMeshProUGUI _page;
         [SerializeField] private TextMeshProUGUI _useCost;
         public Button Previous => _previous;

@@ -11,7 +11,7 @@ namespace Game.Achievements
         public override string Name => "虚张声势";
         public override string Description => "跟上对手全下，摊牌时以高出至少两级的牌型赢下双方争夺的奖池。";
         public override string Category => AchievementCategories.Special;
-        public override string IconPath => "UI/Achievements/CallBluff-v1";
+        public override string IconPath => "UI/Achievements/call-bluff";
         public override int SortOrder => 308;
         public override Reward Reward => new Reward(10000);
 

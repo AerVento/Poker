@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Namecard_prism
+  m_EditorClassIdentifier: 
+  m_GroupName: Namecard_prism
+  m_Data:
+    m_SerializedData: []
+  m_GUID: f50e71d0af2f0384f9a9f76b6b7088f0
+  m_SerializeEntries:
+  - m_GUID: 4e9b6c4ed70434f43b1f61f0a10b4647
+    m_Address: namecards/prism
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 8d0b2af6b70451145a85efb7d3a9fece, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: fe9022baa9ef81b4da6043b95c2be06b, type: 2}
+    - {fileID: 11400000, guid: e9fc604eca219f74caee64a8b46a1348, type: 2}

@@ -1,0 +1,134 @@
+{
+  "existingIconBackgroundRepair": {
+  "generator": "Built-in image_gen tool",
+  "date": "2026-09-11",
+  "reason": "Remove baked checkerboard backgrounds revealed by Lobby Play review; retain resource paths and GUIDs.",
+  "icons": [
+    {
+      "name": "ShopButton-v1",
+      "prompt": "BACKGROUND EXTRACTION ONLY. Preserve the entire green-and-gold rounded-square icon button, exact emblem, colors and geometry. Remove ALL grey-white checkerboard outside the outer gold rim and replace with REAL TRANSPARENT ALPHA pixels. This checkerboard is unwanted baked background, NOT a texture to retain. Export true RGBA PNG with fully transparent exterior and smoothly antialiased rim. Do not redraw the button. No opaque background, no visible checkerboard.",
+      "reference": "Assets/Sprites/UITheme/shop-button.png",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-e5ba0f6e-b3a4-4344-ba6f-487dd1a20a7c.png",
+      "asset": "Assets/Sprites/UITheme/shop-button.png"
+    },
+    {
+      "name": "CollectionButton-v1",
+      "prompt": "Create a sibling game icon by editing this reference with a real transparent background. Keep the RGBA transparency outside the rounded square button UNCHANGED. Keep its entire golden border and dark emerald interior exactly as reference. Replace ONLY the shopping cart central emblem with one large elegant closed golden treasure chest / storage box with a single broad latch, representing a personal collection. Bold gold relief, restrained detail, no lettering. Output a true transparent-background RGBA PNG. All pixels outside the outer rim must have alpha zero. No checkerboard, no grey or white backdrop. Maintain the reference's framing, margin, metallic gold, dark green and transparent corners.",
+      "reference": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-e5ba0f6e-b3a4-4344-ba6f-487dd1a20a7c.png",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-284edf9e-7f3e-4e2e-a7a4-3e86347579b8.png",
+      "asset": "Assets/Sprites/UITheme/collection-button.png",
+      "rejectedAttempts": [
+        {
+          "prompt": "BACKGROUND EXTRACTION ONLY. Preserve the entire green-and-gold rounded-square icon button, exact emblem, colors and geometry. Remove ALL grey-white checkerboard outside the outer gold rim and replace with REAL TRANSPARENT ALPHA pixels. This checkerboard is unwanted baked background, NOT a texture to retain. Export true RGBA PNG with fully transparent exterior and smoothly antialiased rim. Do not redraw the button. No opaque background, no visible checkerboard.",
+          "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-bdb9e9ba-9e99-4ce1-b8c3-4a559a492d91.png"
+        },
+        {
+          "prompt": "Extract only the golden chest button. Preserve EVERYTHING inside the complete rounded golden border. Remove the entire grey and white checkerboard OUTSIDE its outer gold rim. That checkerboard is a baked mistake: replace every exterior square with ZERO alpha. Output must be a true 4-channel transparent RGBA PNG with no background. Do not invent a new backdrop. Do not display checkerboard squares in the artwork. The button geometry, gold rim, dark green inside and chest stay exactly as supplied.",
+          "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-2c47bff1-53b5-4545-8bc1-ef5afde778bb.png"
+        }
+      ]
+    }
+  ],
+  "validation": "Both final PNGs visually inspected; Format32bppArgb and transparent exterior corner verified."
+},
+  "generator": "Built-in image_gen tool",
+  "date": "2026-09-11",
+  "icons": [
+    {
+      "name": "Dollars-v1",
+      "prompt": "Create one polished Unity poker game UI icon, centered and square. Match the supplied reference's deep emerald enamel, warm brushed champagne-gold metal relief, top-left soft light, restrained highlights. Bold shapes readable at 64 pixels. No text, letters, numbers, watermarks or checkerboard. True transparent alpha outside the complete silhouette. Create the CENTRAL EMBLEM ONLY, without the rounded-square background or border. A small stack of rectangular ivory-green banknotes with gold edging and a gold oval medallion, no printed text. Clearly paper money. Transparent canvas, silhouette 80 percent of frame.",
+      "referenced_image_paths": [
+        "D:/GitHubRepos/Poker/Assets/Sprites/UITheme/settings-button.png"
+      ],
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-387431cb-42b4-4cbf-abae-0f3444eb2981.png",
+      "asset": "Assets/Sprites/UITheme/dollars.png",
+      "validation": "Visually inspected; RGBA PNG and transparent exterior corner verified."
+    },
+    {
+      "name": "Chips-v1",
+      "prompt": "Create one polished Unity poker game UI icon, centered and square. Match the supplied reference's deep emerald enamel, warm brushed champagne-gold metal relief, top-left soft light, restrained highlights. Bold shapes readable at 64 pixels. No text, letters, numbers, watermarks or checkerboard. True transparent alpha outside the complete silhouette. Create the CENTRAL EMBLEM ONLY, without the rounded-square background or border. Two or three round emerald poker chips with broad alternating ivory edge marks and gold metallic rims, one face-on tilted chip leaning against small horizontal stack. Clearly casino chips not coins. Transparent canvas, silhouette 80 percent of frame.",
+      "referenced_image_paths": [
+        "D:/GitHubRepos/Poker/Assets/Sprites/UITheme/settings-button.png"
+      ],
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-a81e52ec-515e-41fd-9576-5e465f00a71c.png",
+      "asset": "Assets/Sprites/UITheme/chips.png",
+      "validation": "Visually inspected; RGBA PNG and transparent exterior corner verified."
+    },
+    {
+      "name": "ExchangeButton-v1",
+      "prompt": "Create one square UI navigation button icon for the same Unity poker game as the supplied reference. Match EXACTLY its rounded-square dark emerald enamel plate, champagne-gold beveled rim, single large gold relief emblem, top-left light, framing and visual weight. Complete silhouette within frame, 3 percent true transparent alpha margin. No checkerboard or colored outer background, no letters, digits, text or watermark. Simplified clear forms readable at 64px. Only change the central gear symbol to: two bold curved arrows around a small rectangular banknote and a single round poker chip, representing bidirectional currency exchange.",
+      "referenced_image_paths": [
+        "D:/GitHubRepos/Poker/Assets/Sprites/UITheme/settings-button.png"
+      ],
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-eb051901-def5-4032-805f-6c7e5f43d59e.png",
+      "asset": "Assets/Sprites/UITheme/exchange-button.png",
+      "validation": "Visually inspected; RGBA PNG and transparent exterior corner verified."
+    },
+    {
+      "name": "TasksButton-v1",
+      "prompt": "Create one square UI navigation button icon for the same Unity poker game as the supplied reference. Match EXACTLY its rounded-square dark emerald enamel plate, champagne-gold beveled rim, single large gold relief emblem, top-left light, framing and visual weight. Complete silhouette within frame, 3 percent true transparent alpha margin. No checkerboard or colored outer background, no letters, digits, text or watermark. Simplified clear forms readable at 64px. Only change the central gear symbol to: one checklist clipboard with three thick short lines and a clear checkmark, representing daily tasks.",
+      "referenced_image_paths": [
+        "D:/GitHubRepos/Poker/Assets/Sprites/UITheme/settings-button.png"
+      ],
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-5ef1516f-bdde-43d2-9268-057b87e5e5e4.png",
+      "asset": "Assets/Sprites/UITheme/tasks-button.png",
+      "validation": "Visually inspected; RGBA PNG and transparent exterior corner verified."
+    },
+    {
+      "name": "HistoryButton-v1",
+      "prompt": "Create one square UI navigation button icon for the same Unity poker game as the supplied reference. Match EXACTLY its rounded-square dark emerald enamel plate, champagne-gold beveled rim, single large gold relief emblem, top-left light, framing and visual weight. Complete silhouette within frame, 3 percent true transparent alpha margin. No checkerboard or colored outer background, no letters, digits, text or watermark. Simplified clear forms readable at 64px. Only change the central gear symbol to: a simple clock with a backward circular arrow, representing review of the previous hand.",
+      "referenced_image_paths": [
+        "D:/GitHubRepos/Poker/Assets/Sprites/UITheme/settings-button.png"
+      ],
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-e2ad3a33-2d35-49a8-874b-b5d45372883c.png",
+      "asset": "Assets/Sprites/UITheme/history-button.png",
+      "backgroundRepair": {
+        "originalSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-1015e92c-f664-4ab0-b0e1-8a3d9112a716.png",
+        "prompt": "Extract this rounded-square emerald-and-gold icon button from its background. Preserve the complete gold border, dark-green interior, emblem and exact image composition unchanged. Set ALL exterior pixels beyond the gold rim to TRUE TRANSPARENT ALPHA and remove exterior speckled/white/black edge debris. Antialias the smooth outside contour. Output RGBA PNG, not RGB. The dark emerald INSIDE the rim must remain opaque. No simulated checkerboard, no opaque background.",
+        "result": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-e2ad3a33-2d35-49a8-874b-b5d45372883c.png"
+      },
+      "validation": "Visually inspected; RGBA PNG and transparent exterior corner verified."
+    },
+    {
+      "name": "RoomsButton-v1",
+      "prompt": "Create one square UI navigation button icon for the same Unity poker game as the supplied reference. Match EXACTLY its rounded-square dark emerald enamel plate, champagne-gold beveled rim, single large gold relief emblem, top-left light, framing and visual weight. Complete silhouette within frame, 3 percent true transparent alpha margin. No checkerboard or colored outer background, no letters, digits, text or watermark. Simplified clear forms readable at 64px. Only change the central gear symbol to: an oval poker table viewed slightly from above, two ivory playing cards in its center, representing the room list.",
+      "referenced_image_paths": [
+        "D:/GitHubRepos/Poker/Assets/Sprites/UITheme/settings-button.png"
+      ],
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-0c5ab026-99c4-4bd0-8ff9-7c49340f4ded.png",
+      "asset": "Assets/Sprites/UITheme/rooms-button.png",
+      "backgroundRepair": {
+        "originalSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-b5594c52-eaf8-4583-a7c0-540d31d40a87.png",
+        "prompt": "Extract this rounded-square emerald-and-gold icon button from its background. Preserve the complete gold border, dark-green interior, emblem and exact image composition unchanged. Set ALL exterior pixels beyond the gold rim to TRUE TRANSPARENT ALPHA and remove exterior speckled/white/black edge debris. Antialias the smooth outside contour. Output RGBA PNG, not RGB. The dark emerald INSIDE the rim must remain opaque. No simulated checkerboard, no opaque background.",
+        "secondPrompt": "BACKGROUND EXTRACTION ONLY. Preserve the entire green-and-gold rounded-square poker table button, exact emblem, colors and geometry. Remove ALL grey-white checkerboard outside the outer gold rim and replace with REAL TRANSPARENT ALPHA pixels. This checkerboard is unwanted baked background, NOT a texture to retain. Export true RGBA PNG with fully transparent exterior and smoothly antialiased rim. Do not redraw the button. No opaque background, no visible checkerboard.",
+        "result": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-0c5ab026-99c4-4bd0-8ff9-7c49340f4ded.png"
+      },
+      "validation": "Visually inspected; RGBA PNG and transparent exterior corner verified."
+    },
+    {
+      "name": "LeaderboardButton-v1",
+      "prompt": "Create one square UI navigation button icon for the same Unity poker game as the supplied reference. Match EXACTLY its rounded-square dark emerald enamel plate, champagne-gold beveled rim, single large gold relief emblem, top-left light, framing and visual weight. Complete silhouette within frame, 3 percent true transparent alpha margin. No checkerboard or colored outer background, no letters, digits, text or watermark. Simplified clear forms readable at 64px. Only change the central gear symbol to: a three-column winners podium with a small crown above the tallest center column, representing leaderboard.",
+      "referenced_image_paths": [
+        "D:/GitHubRepos/Poker/Assets/Sprites/UITheme/settings-button.png"
+      ],
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-a5b74ed7-bd75-43ca-9f40-166ae14a32c8.png",
+      "asset": "Assets/Sprites/UITheme/leaderboard-button.png",
+      "backgroundRepair": {
+        "originalSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-83afd007-afa1-478e-a720-b11eb49f50cd.png",
+        "prompt": "Extract this rounded-square emerald-and-gold icon button from its background. Preserve the complete gold border, dark-green interior, emblem and exact image composition unchanged. Set ALL exterior pixels beyond the gold rim to TRUE TRANSPARENT ALPHA and remove exterior speckled/white/black edge debris. Antialias the smooth outside contour. Output RGBA PNG, not RGB. The dark emerald INSIDE the rim must remain opaque. No simulated checkerboard, no opaque background.",
+        "result": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-a5b74ed7-bd75-43ca-9f40-166ae14a32c8.png"
+      },
+      "validation": "Visually inspected; RGBA PNG and transparent exterior corner verified."
+    },
+    {
+      "name": "SpectateButton-v1",
+      "prompt": "Create one square UI navigation button icon for the same Unity poker game as the supplied reference. Match EXACTLY its rounded-square dark emerald enamel plate, champagne-gold beveled rim, single large gold relief emblem, top-left light, framing and visual weight. Complete silhouette within frame, 3 percent true transparent alpha margin. No checkerboard or colored outer background, no letters, digits, text or watermark. Simplified clear forms readable at 64px. Only change the central gear symbol to: one open eye shape with an emerald pupil surrounded by golden upper and lower lids, representing spectators watching.",
+      "referenced_image_paths": [
+        "D:/GitHubRepos/Poker/Assets/Sprites/UITheme/settings-button.png"
+      ],
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a08c1c-3337-7f30-afae-89531b2b19de\\exec-e2b3b003-bd8b-45df-90fb-63aac25e0a11.png",
+      "asset": "Assets/Sprites/UITheme/spectate-button.png",
+      "validation": "Visually inspected; RGBA PNG and transparent exterior corner verified."
+    }
+  ]
+}

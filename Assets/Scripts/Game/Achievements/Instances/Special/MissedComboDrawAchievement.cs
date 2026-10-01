@@ -12,7 +12,7 @@ namespace Game.Achievements
         public override string Name => "大三喜小二元";
         public override string Description => "摊牌时，听顺又听花，双双落空且一池未得。";
         public override string Category => AchievementCategories.Special;
-        public override string IconPath => "UI/Achievements/FullHouse";
+        public override string IconPath => "UI/Achievements/full-house";
         public override int SortOrder => 305;
         public override Reward Reward => new Reward(5000);
 

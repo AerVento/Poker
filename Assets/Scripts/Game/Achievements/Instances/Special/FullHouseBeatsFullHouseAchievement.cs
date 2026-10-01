@@ -11,7 +11,7 @@ namespace Game.Achievements
         public override string Name => "葫芦之上";
         public override string Description => "摊牌时，用葫芦击败同一奖池中另一位持有葫芦的玩家。";
         public override string Category => AchievementCategories.Special;
-        public override string IconPath => "UI/Achievements/FullHouse";
+        public override string IconPath => "UI/Achievements/full-house";
         public override Reward Reward => new Reward(1000);
 
         public override void Evaluate(AchievementContext context, string accountId, AchievementProgress progress)

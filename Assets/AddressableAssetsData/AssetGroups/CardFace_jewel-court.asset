@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: CardFace_jewel-court
+  m_EditorClassIdentifier: 
+  m_GroupName: CardFace_jewel-court
+  m_Data:
+    m_SerializedData: []
+  m_GUID: d5dbd7e3dd8db85488ac636ccc8d1ac8
+  m_SerializeEntries:
+  - m_GUID: e0f814e1a0f31804d89e9d4fe42645b3
+    m_Address: cardfaces/jewel-court
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 8d0b2af6b70451145a85efb7d3a9fece, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 0cd3f77fb255b0e40a27ee03f197e852, type: 2}
+    - {fileID: 11400000, guid: f86d51ed03150014293dbd3b25fbf0b9, type: 2}

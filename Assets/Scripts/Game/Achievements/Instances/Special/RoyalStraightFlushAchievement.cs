@@ -11,7 +11,7 @@ namespace Game.Achievements
         public override string Name => "皇家同花顺";
         public override string Description => "弃牌前组成同花色的 A、K、Q、J、10。";
         public override string Category => AchievementCategories.Special;
-        public override string IconPath => "UI/Achievements/Champion-v1";
+        public override string IconPath => "UI/Achievements/champion";
         public override int SortOrder => 302;
         public override Reward Reward => new Reward(50000, new[] { new ItemStack("namecard-royal-straight-flush", 1) });
 

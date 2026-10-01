@@ -240,7 +240,7 @@ namespace Game.Editor
 
         internal static TaskCatalog ValidateWithItems(string[] texts)
         {
-            var items = Game.Network.ItemCatalogLoader.LoadServer().Products;
+            var items = Game.Network.ShopConfiguration.Load().Items;
             return TaskCatalog.Load(texts[0], texts[1], texts[2], id => items.FirstOrDefault(i => i.Id == id)?.MaxQuantity);
         }
 

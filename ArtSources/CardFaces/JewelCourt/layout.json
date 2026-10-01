@@ -16,26 +16,15 @@
       276,
       470
     ],
-    "rankBoxOverrides": {
-      "10": [
-        66,
-        70,
-        534,
-        310
-      ]
-    },
-    "jewelBox": [
-      398,
-      626,
+    "rankArea": 40000,
+    "artBox": [
+      314,
+      648,
       744,
       1068
     ],
-    "portraitBox": [
-      346,
-      600,
-      754,
-      1070
-    ],
+    "artHeight": 420,
+    "artAlphaThreshold": 128,
     "bottomRightIndex": false,
     "frontOnly": true
   },

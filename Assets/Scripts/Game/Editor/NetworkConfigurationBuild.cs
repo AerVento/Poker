@@ -23,7 +23,12 @@ namespace Game.Editor
                 : Path.GetDirectoryName(report.summary.outputPath);
             var directory = Path.Combine(outputRoot, "Configs", "Network");
             Directory.CreateDirectory(directory);
-            CopyIfMissing(NetworkConfigurationLoader.ClientFileName, directory);
+            // A dedicated server never reads the client file; a Windows build can run as either and needs both.
+            // Only standalone builds have a subtarget; reading it on WebGL throws.
+            var dedicatedServer = report.summary.platformGroup == BuildTargetGroup.Standalone &&
+                report.summary.GetSubtarget<StandaloneBuildSubtarget>() == StandaloneBuildSubtarget.Server;
+            if (!dedicatedServer)
+                CopyIfMissing(NetworkConfigurationLoader.ClientFileName, directory);
             if (report.summary.platform != BuildTarget.WebGL)
                 CopyIfMissing(NetworkConfigurationLoader.ServerFileName, directory);
         }

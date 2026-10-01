@@ -45,9 +45,17 @@ namespace Game.UI
             else room?.LoadCollection();
         }
 
-        private void OnEnable() => Draw();
+        private void OnEnable()
+        {
+            ClientShopCatalog.Changed += Draw;
+            Game.Content.ProductArt.Changed += Draw;
+            Draw();
+        }
+
         private void OnDisable()
         {
+            ClientShopCatalog.Changed -= Draw;
+            Game.Content.ProductArt.Changed -= Draw;
             CloseConfirmation();
             _online = false;
             _accountId = null;
@@ -153,17 +161,22 @@ namespace Game.UI
             Draw();
         }
 
-        private void Select(CardFaceProductSO product, CardFaceOfferMessage offer, bool owned)
+        private void Select(CardFaceDefinition product, CardFaceOfferMessage offer, bool owned)
         {
             if (!_online || !_snapshot.CanAct || _pending.RequestId != 0) return;
-            if (owned) { StartRequest(ShopAction.Equip, product.Id); return; }
+            if (owned)
+            {
+                if (_snapshot.CanEquip && Game.Content.RemoteAssets.IsDownloaded(product.Cards))
+                    StartRequest(ShopAction.Equip, product.Id);
+                return;
+            }
             CloseConfirmation();
             var generation = _generation;
             var revision = _snapshot.CatalogRevision;
             _confirmation = MsgBox.Create("BuyCardFace");
             _confirmation.Type = MsgboxType.ConfirmAndCancel;
             _confirmation.Title = "收藏牌面";
-            _confirmation.Message = $"花费 ${offer.Price:N0} 购买「{product.DisplayName}」？";
+            _confirmation.Message = $"花费 ${offer.Price:N0} 购买「{product.Name}」？";
             _confirmation.ConfirmButtonText = "确认购买";
             _confirmation.CancelButtonText = "取消";
             _confirmation.PreferCancel = true;
@@ -186,9 +199,8 @@ namespace Game.UI
             _drawn.Clear();
             var offers = (_snapshot.Offers ?? Array.Empty<CardFaceOfferMessage>()).ToDictionary(o => o.Id);
             var ownedIds = new HashSet<string>(_snapshot.OwnedIds ?? Array.Empty<string>());
-            var products = CardFaceAppearance.Catalog?.Products.Where(p => p != null && p.Cards != null &&
-                (CardFaceItemId.IsDefaultOwned(p.Id) || ownedIds.Contains(p.Id) || offers.TryGetValue(p.Id, out var offer) && offer.Listed)).ToArray()
-                ?? Array.Empty<CardFaceProductSO>();
+            var products = (ClientShopCatalog.Current?.CardFaces ?? Array.Empty<CardFaceDefinition>()).Where(p =>
+                CardFaceItemId.IsDefaultOwned(p.Id) || ownedIds.Contains(p.Id) || offers.TryGetValue(p.Id, out var offer) && offer.Listed).ToArray();
             var pages = Mathf.Max(1, (products.Length + PageSize - 1) / PageSize);
             _page = Mathf.Clamp(_page, 0, pages - 1);
             var first = _page * PageSize;

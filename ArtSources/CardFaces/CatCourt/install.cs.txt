@@ -10,7 +10,7 @@ AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
 var paths = new System.Collections.Generic.List<string>();
 foreach (var suit in suits)
     foreach (var rank in ranks) paths.Add(sprites + "/" + suit + "_" + rank + ".png");
-paths.Add(sprites + "/Back.png");
+paths.Add(sprites + "/back.png");
 foreach (var path in paths)
 {
     var importer = AssetImporter.GetAtPath(path) as TextureImporter;
@@ -55,7 +55,7 @@ for (int s = 0; s < 4; s++)
             AssetDatabase.LoadAssetAtPath<Sprite>(sprites + "/" + suits[s] + "_" + ranks[r] + ".png");
     }
 }
-cardsData.FindProperty("_back").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>(sprites + "/Back.png");
+cardsData.FindProperty("_back").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>(sprites + "/back.png");
 cardsData.ApplyModifiedPropertiesWithoutUndo();
 EditorUtility.SetDirty(cards);
 if (AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath) == null)

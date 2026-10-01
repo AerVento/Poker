@@ -17,7 +17,7 @@ namespace Game.Achievements
     {
         public const string Name = "隐藏成就";
         public const string Description = "继续游戏以解锁";
-        public const string IconPath = "UI/Achievements/Hidden-v1";
+        public const string IconPath = "UI/Achievements/hidden";
     }
 
     // Definitions are shared and stateless. All player-specific work belongs in progress.
@@ -28,7 +28,7 @@ namespace Game.Achievements
         public abstract string Name { get; }
         public abstract string Description { get; }
         public virtual string Category => AchievementCategories.General;
-        public virtual string IconPath => "UI/Achievements/Default";
+        public virtual string IconPath => "UI/Achievements/default";
         public virtual bool Hidden => false;
         public virtual int SortOrder => 0;
         public virtual int Target => 1;

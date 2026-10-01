@@ -10,7 +10,7 @@ namespace Game.Achievements
         public override string Name => "与魔为契";
         public override string Description => "与任意恶魔签订契约。";
         public override int SortOrder => 12;
-        public override string IconPath => "UI/Achievements/Champion-v1";
+        public override string IconPath => "UI/Achievements/champion";
         public override Reward Reward => new Reward(2000);
 
         public void Evaluate(ItemPurchasedEvent playerEvent, string accountId, AchievementProgress progress)

@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 
@@ -31,9 +32,10 @@ LAYOUT = {
     "cardSize": list(SIZE),
     "rankBox": [66, 70, 354, 310],
     "suitBox": [144, 338, 276, 470],
-    "rankBoxOverrides": {"10": [66, 70, 534, 310]},
-    "jewelBox": [398, 626, 744, 1068],
-    "portraitBox": [346, 600, 754, 1070],
+    "rankArea": 40000,
+    "artBox": [314, 648, 744, 1068],
+    "artHeight": 420,
+    "artAlphaThreshold": 128,
     "bottomRightIndex": False,
     "frontOnly": True,
 }
@@ -187,21 +189,47 @@ def create_base() -> Image.Image:
     return base.resize(SIZE, Image.Resampling.LANCZOS)
 
 
+def place_rank(card: Image.Image, art: Image.Image) -> tuple:
+    """Give every complete rank the same bounding area inside one centered slot."""
+    art = trim(art, 0)
+    scale = math.sqrt(LAYOUT["rankArea"] / (art.width * art.height))
+    width, height = round(art.width * scale), round(art.height * scale)
+    left, top, right, bottom = LAYOUT["rankBox"]
+    if width > right - left or height > bottom - top:
+        raise ValueError("Rank does not fit the shared slot; revise the shared layout.")
+    art = art.resize((width, height), Image.Resampling.LANCZOS)
+    x, y = left + (right - left - width) // 2, top + (bottom - top - height) // 2
+    card.alpha_composite(art, (x, y))
+    return x, y, x + width, y + height
+
+
+def place_art(card: Image.Image, art: Image.Image) -> tuple:
+    """Measure the opaque subject, excluding faint extraction residue below busts."""
+    bounds = art.getchannel("A").point(
+        lambda value: 255 if value > LAYOUT["artAlphaThreshold"] else 0).getbbox()
+    if bounds is None:
+        raise ValueError("Empty artwork")
+    art = art.crop(bounds)
+    height = LAYOUT["artHeight"]
+    width = round(art.width * height / art.height)
+    left, top, right, bottom = LAYOUT["artBox"]
+    if width > right - left or height > bottom - top:
+        raise ValueError("Artwork does not fit at the shared height; revise the shared layout.")
+    art = art.resize((width, height), Image.Resampling.LANCZOS)
+    x, y = right - width, bottom - height
+    card.alpha_composite(art, (x, y))
+    return x, y, right, bottom
+
+
 def compose(suit: str, rank: str, base: Image.Image) -> tuple:
     card = base.copy()
     rank_art = tint(Image.open(ELEMENTS / "Ranks" / f"{rank}.png"), INK[suit])
-    rank_box = LAYOUT["rankBoxOverrides"].get(rank, LAYOUT["rankBox"])
-    rank_bounds = place(card, rank_art, rank_box, "top-center")
+    rank_bounds = place_rank(card, rank_art)
     suit_art = tint(Image.open(ELEMENTS / "Suits" / f"{suit}.png"), INK[suit])
-    # Suit is aligned to the same index center as the rank, including two-digit 10.
-    suit_box = LAYOUT["suitBox"].copy()
-    center = (rank_box[0] + rank_box[2]) // 2
-    suit_box[0], suit_box[2] = center - 66, center + 66
-    suit_bounds = place(card, suit_art, suit_box, "top-center")
+    suit_bounds = place(card, suit_art, LAYOUT["suitBox"], "top-center")
     is_court = rank in COURTS
     path = ELEMENTS / "Court" / f"{suit}_{rank}.png" if is_court else ELEMENTS / "Jewels" / f"{suit}.png"
-    art_bounds = place(card, Image.open(path),
-                       LAYOUT["portraitBox" if is_court else "jewelBox"], "bottom-right")
+    art_bounds = place_art(card, Image.open(path))
     return card, {"rank": rank_bounds, "suit": suit_bounds, "art": art_bounds}
 
 
@@ -241,8 +269,11 @@ def main() -> None:
             cards[suit, rank] = card
             checks[f"{suit}_{rank}"] = bounds
             assert bounds["rank"][3] < bounds["suit"][1], (suit, rank, "index overlap")
-            assert bounds["rank"][3] - bounds["rank"][1] >= 220, (suit, rank, "rank too small")
-            assert bounds["art"][0] > SIZE[0] * 0.4, (suit, rank, "art too far left")
+            rank_width = bounds["rank"][2] - bounds["rank"][0]
+            rank_height = bounds["rank"][3] - bounds["rank"][1]
+            assert abs(rank_width * rank_height / LAYOUT["rankArea"] - 1) < 0.01
+            assert bounds["art"][3] - bounds["art"][1] == LAYOUT["artHeight"]
+            assert bounds["art"][0] >= LAYOUT["artBox"][0]
             assert bounds["art"][1] >= SIZE[1] / 2, (suit, rank, "art too high")
             assert card.getpixel((0, 0))[3] == 0
             if args.export_cards:

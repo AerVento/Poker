@@ -10,7 +10,7 @@ namespace Game.Achievements
         public override string Name => "还债之路";
         public override string Description => "使用一份恶魔契约，偿还债务。";
         public override int SortOrder => 13;
-        public override string IconPath => "UI/Achievements/Wealth-v1";
+        public override string IconPath => "UI/Achievements/wealth";
         public override Reward Reward => new Reward(2000);
 
         public void Evaluate(ItemUsedEvent playerEvent, string accountId, AchievementProgress progress)

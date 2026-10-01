@@ -37,6 +37,6 @@ namespace Game.Network
     public struct RoundResultUpdate : NetworkMessage
     {
         public int RoomId;
-        public string RawData;
+        public RoundResult RoundResult;
     }
 }

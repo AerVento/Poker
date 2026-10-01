@@ -1,0 +1,4 @@
+interface:
+  display_name: "Poker 资源放置与清理"
+  short_description: "决定文件位置与命名，安全移动、重命名和删除资源并保留引用"
+  default_prompt: "请使用 $poker-assets，按项目约定处理下面的资源；移动或删除前确认引用，完成后检查 Missing Reference。"

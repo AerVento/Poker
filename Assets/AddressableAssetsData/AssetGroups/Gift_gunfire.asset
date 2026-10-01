@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Gift_gunfire
+  m_EditorClassIdentifier: 
+  m_GroupName: Gift_gunfire
+  m_Data:
+    m_SerializedData: []
+  m_GUID: f2f0de1fd6ed70647a1dcd5c97623063
+  m_SerializeEntries:
+  - m_GUID: bdef51c3ac7a005488339c95cd0071a6
+    m_Address: gifts/gunfire
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 8d0b2af6b70451145a85efb7d3a9fece, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 1c6ec4a8986683f4294873a0407a95c1, type: 2}
+    - {fileID: 11400000, guid: 061a5825e99e87f4ead5822755335ee6, type: 2}

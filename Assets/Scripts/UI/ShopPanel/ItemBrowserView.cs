@@ -2,8 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Framework.UI;
-using Game.SO;
+using Game.Network;
 using Game.Network.Accounts;
+using Game.SO;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,7 +14,6 @@ namespace Game.UI
     // Shared by the shop and collection. Emits requests; never deducts chips or consumes inventory locally.
     public sealed class ItemBrowserView : MonoBehaviour
     {
-        [SerializeField] private ItemShopCatalogSO _catalog;
         [SerializeField] private InventoryItemCard[] _cards;
         [SerializeField] private GameObject _empty;
         [SerializeField] private TextMeshProUGUI _emptyTitle;
@@ -28,6 +28,8 @@ namespace Game.UI
         [SerializeField] private TextMeshProUGUI _countLabel;
         [SerializeField] private TextMeshProUGUI _feedback;
         [SerializeField] private Image _detailIcon;
+        [Tooltip("Drawn placeholder shown while the selected item's icon is unavailable.")]
+        [SerializeField] private GameObject _detailPlaceholder;
         [SerializeField] private Button _action;
         [SerializeField] private Button _previous;
         [SerializeField] private Button _next;
@@ -61,12 +63,16 @@ namespace Game.UI
             _previous.onClick.AddListener(Previous);
             _next.onClick.AddListener(Next);
             _goToShop.onClick.AddListener(GoToShop);
+            ClientShopCatalog.Changed += Rebuild;
+            Game.Content.ProductArt.Changed += Redraw;
             Redraw();
         }
 
         private void OnDisable()
         {
             CancelConfirmation();
+            ClientShopCatalog.Changed -= Rebuild;
+            Game.Content.ProductArt.Changed -= Redraw;
             _action.onClick.RemoveListener(ConfirmAction);
             _previous.onClick.RemoveListener(Previous);
             _next.onClick.RemoveListener(Next);
@@ -150,8 +156,8 @@ namespace Game.UI
             SetSnapshot(ItemInventorySnapshot.Empty);
         }
 
-        private ItemDefinitionSO Definition(string id) => _catalog != null ? _catalog.Find(id) : null;
-        private string NameOf(string id) => Definition(id)?.DisplayName ?? id;
+        private static ItemDefinition Definition(string id) => ClientShopCatalog.FindItem(id);
+        private string NameOf(string id) => Definition(id)?.Name ?? id;
         private string KindOf(string id) => Definition(id) == null ? "物品信息待更新" :
             Definition(id).Kind == ItemKind.Consumable ? "消耗品" : "非消耗品";
 
@@ -240,7 +246,7 @@ namespace Game.UI
                 _cards[i].gameObject.SetActive(index < _visible.Count);
                 if (index >= _visible.Count) continue;
                 var id = _visible[index];
-                _cards[i].Present(NameOf(id), KindOf(id), Definition(id)?.Icon,
+                _cards[i].Present(NameOf(id), KindOf(id), Game.Content.ProductArt.ItemIcon(Definition(id)?.Icon),
                     shop ? _snapshot.OfferFor(id).Price == 0 ? string.Empty : $"${_snapshot.OfferFor(id).Price:N0}" : $"× {_snapshot.QuantityOf(id):N0}",
                     id == _selectedId, () => SelectItem(id));
             }
@@ -256,8 +262,9 @@ namespace Game.UI
             }
             _detailQuantity.gameObject.SetActive(Mode == ShopPageMode.Collection);
             _detailQuantity.text = _selectedId == null ? string.Empty : $"当前拥有  × {_snapshot.QuantityOf(_selectedId):N0}";
-            _detailIcon.sprite = selected?.Icon;
-            _detailIcon.enabled = selected != null && selected.Icon != null;
+            _detailIcon.sprite = Game.Content.ProductArt.ItemIcon(selected?.Icon);
+            _detailIcon.enabled = _detailIcon.sprite != null;
+            if (_detailPlaceholder != null) _detailPlaceholder.SetActive(!_detailIcon.enabled);
             _actionLabel.text = ActionLabel();
             _action.interactable = CanAct();
         }

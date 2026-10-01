@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Framework.UI;
-using Game.SO;
+using Game.Network;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -12,7 +13,6 @@ namespace Game.UI
     {
         public const int PageSize = 4;
 
-        [SerializeField] private NamecardCatalogSO _catalog;
         [SerializeField] private RectTransform _content;
         [SerializeField] private ShopItemCard[] _cards;
         [SerializeField] private Button _back;
@@ -25,7 +25,7 @@ namespace Game.UI
         [SerializeField] private TextMeshProUGUI _countLabel;
         [SerializeField] private TextMeshProUGUI _feedback;
 
-        private List<NamecardProductSO> _products = new List<NamecardProductSO>();
+        private List<NamecardDefinition> _products = new List<NamecardDefinition>();
         private readonly HashSet<string> _owned = new HashSet<string>(StringComparer.Ordinal);
         private string _equippedId;
         private string _playerName;
@@ -39,12 +39,11 @@ namespace Game.UI
         private int _revision;
         private MsgBox _confirmation;
 
-        public event Action<NamecardProductSO> PurchaseRequested;
+        public event Action<NamecardDefinition> PurchaseRequested;
         public event Action<string> EquipRequested;
 
         public int CurrentPage => _page;
         public int PageCount => Mathf.Max(1, (_products.Count + PageSize - 1) / PageSize);
-        public NamecardCatalogSO Catalog => _catalog;
 
         private void OnEnable()
         {
@@ -52,6 +51,7 @@ namespace Game.UI
             _previous.onClick.AddListener(PreviousPage);
             _next.onClick.AddListener(NextPage);
             _page = 0;
+            ClientShopCatalog.Changed += RefreshCatalog;
             RefreshCatalog();
             FitContent();
             EnableTabs();
@@ -60,6 +60,7 @@ namespace Game.UI
         private void OnDisable()
         {
             CloseConfirmation();
+            ClientShopCatalog.Changed -= RefreshCatalog;
             DisableTabs();
             _back.onClick.RemoveListener(Back);
             _previous.onClick.RemoveListener(PreviousPage);
@@ -92,7 +93,7 @@ namespace Game.UI
         public void RefreshCatalog()
         {
             CloseConfirmation();
-            _products = _catalog == null ? new List<NamecardProductSO>() : _catalog.GetListedProducts();
+            _products = (ClientShopCatalog.Current?.Namecards ?? Array.Empty<NamecardDefinition>()).ToList();
             _products.RemoveAll(product => !IsVisible(product));
             _page = Mathf.Clamp(_page, 0, PageCount - 1);
             Redraw();
@@ -167,7 +168,7 @@ namespace Game.UI
             return CurrencySystem.CanAfford(amount, _dollars, _availableChips, _canExchange);
         }
 
-        private void SelectProduct(NamecardProductSO product)
+        private void SelectProduct(NamecardDefinition product)
         {
             if (product == null || ActiveTab != ShopTab.Namecards || !_hasAccount || !_products.Contains(product))
                 return;
@@ -191,7 +192,9 @@ namespace Game.UI
             _confirmation = MsgBox.Create("NamecardPurchase");
             _confirmation.Type = MsgboxType.ConfirmAndCancel;
             _confirmation.Title = "收藏这张名片";
-            _confirmation.Message = $"「{product.DisplayName}」\n价格：${price:N0}\n当前美金：${_dollars:N0}";
+            _confirmation.Message = $"「{product.Name}」\n价格：${price:N0}\n当前美金：${_dollars:N0}";
+            if (!Game.Content.RemoteAssets.IsReady(product.Artwork))
+                _confirmation.Message += "\n外观尚未加载完成，购买后可能暂时无法显示。";
             _confirmation.ConfirmButtonText = "确认购买";
             _confirmation.CancelButtonText = "再看看";
             _confirmation.PreferCancel = true;

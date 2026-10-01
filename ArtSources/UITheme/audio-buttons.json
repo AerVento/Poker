@@ -1,0 +1,17 @@
+{
+  "date": "2026-09-30",
+  "tool": "built-in image_gen",
+  "reference": "Assets/Sprites/UITheme/settings-button.png",
+  "assets": [
+    {
+      "path": "Assets/Sprites/UITheme/audio-on-button.png",
+      "source": "ArtSources/UITheme/audio-on-button-source.png",
+      "prompt": "Use case: precise-object-edit. Edit target: the supplied SettingsButton-v1.png. Create a matching production UI button for AUDIO ON / UNMUTED in a Unity poker game. Change ONLY the central gear emblem into a single large recognizable warm champagne-gold loudspeaker facing right with two curved sound-wave strokes. Keep the exact square canvas, same softly rounded emerald satin-enamel face, same champagne-gold beveled border, same gold material and restrained highlights, same orthographic straight-on view, and same outside transparent alpha. The central loudspeaker and two arcs must have thick clean silhouettes legible at 56 pixels. No text, letters, numbers, watermark, checkerboard, additional icons or ornament. Deliver one square button, genuine transparent pixels outside the existing rounded button. Do not alter frame or background."
+    },
+    {
+      "path": "Assets/Sprites/UITheme/audio-muted-button.png",
+      "source": "ArtSources/UITheme/audio-muted-button-source.png",
+      "prompt": "Use case: precise-object-edit. Edit target: supplied audio-on button. Create AUDIO MUTED state for the exact same Unity poker-game UI button. Change ONLY the central icon: remove both curved sound-wave strokes and add one thick clean diagonal champagne-gold slash from upper-left to lower-right across the central loudspeaker. Retain the loudspeaker's silhouette, material, position and scale. The slash clearly communicates muted audio and must remain inside the button face, not cross the gold outer border. Keep the exact original square canvas, emerald satin-enamel face, rounded champagne-gold beveled frame, original lighting and shadows, and identical transparent alpha outside the rounded button. Straight-on game UI icon. Readable at 56px. No text, watermark, checkerboard, extra glyphs, red colors or ornament. One button only."
+    }
+  ]
+}

@@ -35,6 +35,14 @@ namespace Game.UI
         private TextMeshProUGUI _soundVolumeLabel;
         [SerializeField]
         private Button _audioCredits;
+        [SerializeField]
+        private Button _musicMute;
+        [SerializeField]
+        private Button _soundMute;
+        [SerializeField]
+        private Sprite _audioOnIcon;
+        [SerializeField]
+        private Sprite _audioMutedIcon;
 
         protected virtual bool AllowLogout => false;
 
@@ -93,6 +101,9 @@ namespace Game.UI
             }
             if (_audioCredits != null)
                 _audioCredits.onClick.AddListener(ShowAudioCredits);
+            if (_musicMute != null) _musicMute.onClick.AddListener(ToggleMusicMute);
+            if (_soundMute != null) _soundMute.onClick.AddListener(ToggleSoundMute);
+            AudioPreferences.Changed += RefreshAudioLabels;
             RefreshAudioLabels();
             if (_logout != null && AllowLogout)
                 _logout.onClick.AddListener(Logout);
@@ -123,7 +134,11 @@ namespace Game.UI
                 _soundVolume.onValueChanged.RemoveListener(ChangeSoundVolume);
             if (_audioCredits != null)
                 _audioCredits.onClick.RemoveListener(ShowAudioCredits);
-            GameAudioManager.Existing?.SaveVolumes();
+            if (_musicMute != null) _musicMute.onClick.RemoveListener(ToggleMusicMute);
+            if (_soundMute != null) _soundMute.onClick.RemoveListener(ToggleSoundMute);
+            AudioPreferences.Changed -= RefreshAudioLabels;
+            if (GameAudioManager.Existing != null) GameAudioManager.Existing.SaveVolumes();
+            else AudioPreferences.Save();
             if (_logout != null)
                 _logout.onClick.RemoveListener(Logout);
             _resolution.onValueChanged.RemoveListener(ChangeResolution);
@@ -132,6 +147,10 @@ namespace Game.UI
 
         private void RefreshAudioLabels()
         {
+            if (_musicVolume != null) _musicVolume.SetValueWithoutNotify(AudioPreferences.MusicVolume);
+            if (_soundVolume != null) _soundVolume.SetValueWithoutNotify(AudioPreferences.SoundVolume);
+            if (_musicMute != null) _musicMute.image.sprite = AudioPreferences.MusicMuted ? _audioMutedIcon : _audioOnIcon;
+            if (_soundMute != null) _soundMute.image.sprite = AudioPreferences.SoundMuted ? _audioMutedIcon : _audioOnIcon;
             if (_musicVolumeLabel != null)
                 _musicVolumeLabel.text = $"{Mathf.RoundToInt(AudioPreferences.MusicVolume * 100)}%";
             if (_soundVolumeLabel != null)
@@ -156,6 +175,20 @@ namespace Game.UI
             else
                 AudioPreferences.SetSoundVolume(value);
             RefreshAudioLabels();
+        }
+
+        private void ToggleMusicMute()
+        {
+            var audio = GameAudioManager.EnsureClient();
+            if (audio != null) audio.SetMusicMuted(!AudioPreferences.MusicMuted);
+            else AudioPreferences.SetMusicMuted(!AudioPreferences.MusicMuted);
+        }
+
+        private void ToggleSoundMute()
+        {
+            var audio = GameAudioManager.EnsureClient();
+            if (audio != null) audio.SetSoundMuted(!AudioPreferences.SoundMuted);
+            else AudioPreferences.SetSoundMuted(!AudioPreferences.SoundMuted);
         }
 
         private void ShowAudioCredits()

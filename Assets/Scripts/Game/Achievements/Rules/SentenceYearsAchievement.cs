@@ -6,7 +6,7 @@ namespace Game.Achievements
     /// <summary>Tracks the highest observed active contract sentence for a threshold achievement.</summary>
     public abstract class SentenceYearsAchievement : Achievement, IAchievementHandler<InventoryChangedEvent>
     {
-        public override string IconPath => "UI/Achievements/Champion-v1";
+        public override string IconPath => "UI/Achievements/champion";
 
         public void Evaluate(InventoryChangedEvent playerEvent, string accountId, AchievementProgress progress)
         {

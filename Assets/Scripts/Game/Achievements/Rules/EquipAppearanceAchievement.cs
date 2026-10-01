@@ -9,7 +9,7 @@ namespace Game.Achievements
         protected abstract string Slot { get; }
         public override string Category => AchievementCategories.General;
         public override Reward Reward => new Reward(1000);
-        public override string IconPath => "UI/Achievements/Cards-v1";
+        public override string IconPath => "UI/Achievements/cards";
 
         public void Evaluate(EquipmentChangedEvent playerEvent, string accountId, AchievementProgress progress)
         {

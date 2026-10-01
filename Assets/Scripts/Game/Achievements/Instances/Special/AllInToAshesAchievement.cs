@@ -13,7 +13,7 @@ namespace Game.Achievements
         public override string Name => "一掷成灰";
         public override string Description => "全下前持有至少 $50,000 筹码，且全下净投入至少 $50,000，最终未赢得任何奖池。";
         public override string Category => AchievementCategories.Special;
-        public override string IconPath => "UI/Achievements/Ashes-v1";
+        public override string IconPath => "UI/Achievements/ashes";
         public override bool Hidden => true;
         public override int SortOrder => 309;
         public override Reward Reward => new Reward(10000);

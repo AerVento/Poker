@@ -1,4 +1,6 @@
+using Cysharp.Threading.Tasks;
 using Framework.UI;
+using Game.Content;
 using Game.Network;
 using Mirror;
 using TMPro;
@@ -43,6 +45,18 @@ namespace Game.UI
             _settings.onClick.AddListener(OpenSettings);
             _exchange.onClick.AddListener(OpenExchange);
             RefreshControls();
+            CheckForUpdates().Forget();
+        }
+
+        // Each lobby entry: an outdated page only asks for a refresh; otherwise newer remote content updates in the background.
+        private async UniTaskVoid CheckForUpdates()
+        {
+            try
+            {
+                if (await PageUpdatePrompt.EnsureCurrentAsync(this.GetCancellationTokenOnDestroy()))
+                    await RemoteAssets.CheckForUpdatesAsync();
+            }
+            catch (System.OperationCanceledException) { }
         }
 
         private void OnDisable()

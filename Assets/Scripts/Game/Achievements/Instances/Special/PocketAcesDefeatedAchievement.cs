@@ -11,7 +11,7 @@ namespace Game.Achievements
         public override string Name => "AA的一万种死法";
         public override string Description => "手持 AA，翻牌前投入至少 $2,000，最终弃牌或一池未得。";
         public override string Category => AchievementCategories.Special;
-        public override string IconPath => "UI/Achievements/Cards-v1";
+        public override string IconPath => "UI/Achievements/cards";
         public override int SortOrder => 304;
         public override Reward Reward => new Reward(2000);
 

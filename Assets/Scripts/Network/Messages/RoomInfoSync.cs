@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Game.Network
@@ -20,12 +19,7 @@ namespace Game.Network
     /// </summary>
     public struct RoomInfoSync : NetworkMessage
     {
-        public string RawData;
         public RoomTransitionReason TransitionReason;
-        public RoomInfo RoomInfo
-        {
-            get => JsonSerializer.Deserialize<RoomInfo>(RawData);
-            set => RawData = JsonSerializer.Serialize(value);
-        }
+        public RoomInfo RoomInfo;
     }
 }

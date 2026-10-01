@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Gift_swiss-bank-note
+  m_EditorClassIdentifier: 
+  m_GroupName: Gift_swiss-bank-note
+  m_Data:
+    m_SerializedData: []
+  m_GUID: c78c198771e5ed4428302e8aab41a910
+  m_SerializeEntries:
+  - m_GUID: c0959aedcd670df40a05eb962819a9d2
+    m_Address: gifts/swiss-bank-note
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 8d0b2af6b70451145a85efb7d3a9fece, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 34bc0c38a6336b240be5aa5ad45decf1, type: 2}
+    - {fileID: 11400000, guid: 6113bb92f159d844eb2a6d090ccc7be2, type: 2}

@@ -2,5 +2,6 @@
   "serverHost": "127.0.0.1",
   "serverPort": 7777,
   "useSsl": false,
-  "connectTimeoutSeconds": 10
+  "connectTimeoutSeconds": 10,
+  "resourceBaseUrl": ""
 }

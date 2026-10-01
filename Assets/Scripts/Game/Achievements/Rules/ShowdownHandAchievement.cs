@@ -8,7 +8,7 @@ namespace Game.Achievements
     public abstract class ShowdownHandAchievement : HandAchievement, IAchievementHandler<HandCardsRevealedEvent>
     {
         public override string Category => AchievementCategories.Hand;
-        public override string IconPath => "UI/Achievements/Cards-v1";
+        public override string IconPath => "UI/Achievements/cards";
         protected abstract PokerHandRank Rank { get; }
 
         public override void Evaluate(AchievementContext context, string accountId, AchievementProgress progress)

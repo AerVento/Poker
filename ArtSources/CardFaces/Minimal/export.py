@@ -53,11 +53,11 @@ for row, suit in enumerate(['Club', 'Heart', 'Spade', 'Diamond']):
         scale = min(148/(right-left),148/(bottom-top))
         placed_path(face, pip.get('d'), pen.bounds, 368-(right-left)*scale,
                     536-(bottom-top)*scale, 148,148,color)
-        (OUTPUT / f'{suit}_{label}.png').write_bytes(resvg_py.svg_to_bytes(svg_string=ET.tostring(face,encoding='unicode')))
+        (OUTPUT / f'{suit.lower()}-{label.lower()}.png').write_bytes(resvg_py.svg_to_bytes(svg_string=ET.tostring(face,encoding='unicode')))
 
 # Third original back: red geometric linework. Crop its SVG viewport, preserving artwork.
 back = ET.parse(SOURCE / 'CardBacks.svg').getroot()
 back.set('viewBox', '135.46 0 67.73 94.19')
 back.set('width','408'); back.set('height','576'); back.set('preserveAspectRatio','none')
-(OUTPUT / 'Back.png').write_bytes(resvg_py.svg_to_bytes(svg_string=ET.tostring(back,encoding='unicode')))
+(OUTPUT / 'back.png').write_bytes(resvg_py.svg_to_bytes(svg_string=ET.tostring(back,encoding='unicode')))
 print('Exported 52 card fronts and the selected original back to', OUTPUT)

@@ -12,7 +12,7 @@ namespace Game.Achievements
         public override string Name => "AK不梭是棒槌";
         public override string Description => "手持 AK，在翻牌前全押。";
         public override string Category => AchievementCategories.Special;
-        public override string IconPath => "UI/Achievements/Cards-v1";
+        public override string IconPath => "UI/Achievements/cards";
         public override int SortOrder => 303;
         public override Reward Reward => new Reward(5000);
 

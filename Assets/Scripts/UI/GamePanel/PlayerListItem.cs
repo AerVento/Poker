@@ -19,7 +19,6 @@ namespace Game.UI.GamePanelElement
 
         [SerializeField] private NamecardAppearance _namecard;
         public void SetNamecard(string id, ulong serviceYears = 0) => _namecard?.Present(id, serviceYears, _name);
-        public void SetNamecard(Game.SO.NamecardProductSO product) => SetNamecard(product != null ? product.Id : null);
 
         [Tooltip("Spacing between instances of this layout prefab.")]
         [SerializeField] private Vector2 _listSpacing = new Vector2(14, 14);

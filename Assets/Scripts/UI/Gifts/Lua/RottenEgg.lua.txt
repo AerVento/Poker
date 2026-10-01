@@ -1,0 +1,115 @@
+-- Rotten egg: pops up at the screen center, arcs onto the target card, bursts and slides down in green goo.
+local motion = require('GiftMotion')
+local SMOOTH = motion.SMOOTH
+
+local T = { appear = 0.32, flight = 0.72, slide = 2, fade = 0.65 }
+local SIZE = { egg = 180, scale = 0.5, arc = 200, slide = 52 }
+local hit = T.appear + T.flight
+local finish = hit + T.slide + T.fade
+
+local M = {
+  apiVersion = 1,
+  duration = finish,
+  resources = { 'egg', 'splat', 'throw', 'impact' },
+}
+
+local GOO = { { 0.63, 0.76, 0.22 }, { 0.77, 0.87, 0.35 } }
+local FLECK = { { 0.98, 0.91, 0.70 }, { 0.7, 0.83, 0.29 } }
+
+function M.build(g)
+  local ox, oy = g.screen(0.5, 0.5)
+  local ex, ey = g.target()
+  local s = SIZE.scale
+
+  g.fade(g.layer, hit + T.slide, T.fade, 1, 0, SMOOTH)
+
+  -- Pop: glow and egg appear at the origin.
+  local halo = g.set(g.shape(g.layer, 'Pop glow', 'disc', 230 * s, 230 * s, { 0.75, 1, 0.4 }),
+    { position = { ox, oy }, scale = 0.4, alpha = 0.3 })
+  g.scale(halo, 0, T.appear, 0.4, 1.6, 'Linear')
+  g.fade(halo, 0, T.appear, 0.3, 0, 'Linear')
+  g.hide(halo, T.appear)
+
+  -- A trail of dots follows the egg's arc a little behind it.
+  for i = 0, 6 do
+    local lag = 0.027 * (i + 1) * T.flight
+    local dot = g.set(g.shape(g.layer, 'Trail ' .. i, 'disc', 25 * s, 25 * s, { 0.78, 0.93, 0.40 }),
+      { position = { ox, oy }, scale = 1 - i * 0.10, alpha = 0.30 * (1 - i / 7), visible = false })
+    g.show(dot, T.appear + lag)
+    g.move(dot, T.appear + lag, T.flight, { ox, oy }, { ex, ey }, 'Linear')
+    motion.arc(g, dot, T.appear + lag, T.flight, SIZE.arc, 1)
+    g.hide(dot, hit)
+  end
+
+  local egg = g.set(g.image(g.layer, 'Intact egg', 'egg', SIZE.egg * s, SIZE.egg * s),
+    { position = { ox, oy }, scale = 0, preserveAspect = true })
+  g.scale(egg, 0, T.appear, 0, 1, 'OutBack')
+  motion.bump(g.rotate, egg, 0, T.appear, 0, -12)
+  g.move(egg, T.appear, T.flight, { ox, oy }, { ex, ey }, 'Linear')
+  motion.arc(g, egg, T.appear, T.flight, SIZE.arc, 1)
+  g.scale(egg, T.appear, T.flight, 1, 0.73, 'Linear')
+  g.rotate(egg, T.appear, T.flight, 0, -420, 'Linear')
+  g.hide(egg, hit)
+
+  -- Impact: everything below is in the splat's scaled space.
+  local impact = g.set(g.node(g.layer, 'Impact'), { position = { ex, ey }, scale = s, alpha = 0, visible = false })
+  g.show(impact, hit)
+  g.fade(impact, hit, 0.045, 0, 1, 'Linear')
+
+  local ring = g.set(g.shape(impact, 'Impact ring', 'ring', 230, 180, { 0.88, 1, 0.55 }), { scale = 0.2, alpha = 0.85 })
+  g.scale(ring, hit, 0.32, 0.2, 1.65, 'Linear')
+  g.fade(ring, hit, 0.32, 0.85, 0, 'Linear')
+
+  for i = 0, 6 do
+    local start = hit + i * 0.08
+    local width = 9 + i % 3 * 3
+    local length = 30 + i % 3 * 18
+    local x = (i - 3) * 19
+    local drop = g.set(g.shape(impact, 'Sliding goo ' .. i, 'drop', width, 1, GOO[i % 2 + 1]),
+      { position = { x, -24 }, alpha = 0 })
+    g.resize(drop, start, T.slide, { width, 1 }, { width, length }, 'Linear')
+    g.move(drop, start, T.slide, { x, -24 }, { x, -24 - length * 0.5 }, 'Linear')
+    g.move(drop, hit, T.slide, { 0, 0 }, { 0, -SIZE.slide }, 'InQuad', 1)
+    g.fade(drop, hit, 0.2, 0, 1, 'Linear')
+  end
+
+  local splat = g.set(g.image(impact, 'Broken egg', 'splat', 254, 254), { preserveAspect = true })
+  -- Damped squash and stretch, then the slow slide down the card.
+  g.scale(splat, hit, 0.08, { 1, 1 }, { 1.099, 0.91 }, 'OutSine')
+  g.scale(splat, hit + 0.08, 0.16, { 1.099, 0.91 }, { 0.962, 1.04 }, SMOOTH)
+  g.scale(splat, hit + 0.24, 0.08, { 0.962, 1.04 }, { 1, 1 }, 'InSine')
+  g.move(splat, hit, T.slide, { 0, 0 }, { 0, -SIZE.slide }, 'InQuad')
+  g.rotate(splat, hit, T.slide, 0, -6, 'Linear')
+
+  for i = 0, 9 do
+    local angle = i * math.pi * 2 / 10
+    local speed = 95 + i % 3 * 32
+    local fleck = g.set(g.shape(impact, 'Flying fragment ' .. i, 'drop', 10 + i % 3 * 3, 16, FLECK[i % 2 + 1]),
+      { rotation = i * 37 })
+    g.move(fleck, hit, 0.65, { 0, 0 }, { math.cos(angle) * speed * 0.65, math.sin(angle) * speed * 0.65 }, 'Linear')
+    g.move(fleck, hit, 0.65, { 0, 0 }, { 0, -150 * 0.65 * 0.65 }, 'InQuad', 1)
+    g.rotate(fleck, hit, 0.65, i * 37, i * 37 + 0.65 * 230, 'Linear')
+    g.fade(fleck, hit + 0.22, 0.4, 1, 0, 'Linear')
+  end
+
+  -- Stink wisps rise in a loop and sway.
+  local rise = 1 / 0.56
+  for i = 0, 2 do
+    local wisp = g.set(g.shape(impact, 'Stink wisp ' .. i, 'wisp', 40, 85, { 0.66, 0.84, 0.27 }),
+      { position = { (i - 1) * 52, 32 }, alpha = 0 })
+    local phase = (i * 0.30) % 1
+    motion.cycle(g.move, wisp, hit, finish, rise, phase, { { 0, { (i - 1) * 52, 32 } }, { 1, { (i - 1) * 52, 117 } } })
+    motion.cycle(g.scale, wisp, hit, finish, rise, phase, { { 0, { 1, 0.7 } }, { 1, { 1.4, 1.2 } } })
+    motion.cycle(g.fade, wisp, hit, finish, rise, phase, { { 0, 0 }, { 0.5, 0.7, 'OutSine' }, { 1, 0, 'InSine' } })
+    g.fade(wisp, hit, 0.2, 0, 1, 'Linear', 1)
+    -- sin(hit * 3 + i) * 9 sideways, and the goo's slide pulls the wisps down a little.
+    motion.cycle(g.move, wisp, hit, finish, 2 * math.pi / 3, i / (2 * math.pi),
+      { { 0, { 0, 0 } }, { 0.25, { 9, 0 }, 'OutSine' }, { 0.5, { 0, 0 }, 'InSine' }, { 0.75, { -9, 0 }, 'OutSine' }, { 1, { 0, 0 }, 'InSine' } }, 1)
+    g.move(wisp, hit, T.slide, { 0, 0 }, { 0, -14 }, 'Linear', 2)
+  end
+
+  g.sound(T.appear, 'throw', 0.60)
+  g.sound(hit, 'impact')
+end
+
+return M

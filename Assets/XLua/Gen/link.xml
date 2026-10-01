@@ -1,0 +1,10 @@
+﻿
+
+<linker>
+
+	<assembly fullname="Assembly-CSharp">
+	    <type fullname="Game.UI.Gifts.GiftScriptHost" preserve="all"/>
+		
+	</assembly>
+
+</linker>

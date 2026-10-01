@@ -1,0 +1,25 @@
+{
+  "status": "Superseded by uniform 52-card composition; historical prompts only, not consumed by export.py.",
+  "tool": "image_gen (built-in)",
+  "date": "2026-09-30",
+  "request": "Reduce oversized two-digit rank on four Jewel Court tens.",
+  "normalization": "Resize to 816x1152 and retain original rounded-corner alpha mask. Generated edits are stored in EditedTens and used by export.py.",
+  "prompts": [
+    {
+      "suit": "Spade",
+      "prompt": "Use case: precise-object-edit. Edit target Image 1, a Jewel Court playing card ten of spades. Image 2 is reference only for corner index alignment and visual weight. Reduce the oversized upper-left \"10\" drastically: entire two-digit group should occupy about x=105..315 y=100..285 on the original 816x1152 canvas, centered x=210, keeping the same bold serif font and near-black ink. Move the existing small plain spade horizontally to center x=210 while retaining its original size and y=338..470. Restore the vacated areas with exactly matching white fine paper texture and faint embossed scrollwork. Keep the full card, 17:24 portrait, original rounded transparent corners, champagne gold ornate frame and blue sapphire jewel at lower right identical in position, scale, color, detail. No new decorations, no lower-right index, no changes outside upper-left index. Exact text \"10\". Return only one full edited card at 816x1152 if possible."
+    },
+    {
+      "suit": "Heart",
+      "prompt": "Use case: precise-object-edit. Edit target Image 1, a Jewel Court playing card ten of hearts. Image 2 is reference only for corner index alignment and visual weight. Reduce the oversized upper-left \"10\" drastically: entire two-digit group should occupy about x=105..315 y=100..285 on the original 816x1152 canvas, centered x=210, keeping the same bold serif font and original deep red ink. Move the existing small plain heart horizontally to center x=210 while retaining its original size and y=338..470. Restore the vacated areas with exactly matching white fine paper texture and faint embossed scrollwork. Keep the full card, 17:24 portrait, original rounded transparent corners, champagne gold ornate frame and red ruby jewel at lower right identical in position, scale, color, detail. No new decorations, no lower-right index, no changes outside upper-left index. Exact text \"10\". Return only one full edited card at 816x1152 if possible."
+    },
+    {
+      "suit": "Diamond",
+      "prompt": "Use case: precise-object-edit. Edit target Image 1, a Jewel Court playing card ten of diamonds. Image 2 is reference only for corner index alignment and visual weight. Reduce the oversized upper-left \"10\" drastically: entire two-digit group should occupy about x=105..315 y=100..285 on the original 816x1152 canvas, centered x=210, keeping the same bold serif font and original deep red ink. Move the existing small plain diamond horizontally to center x=210 while retaining its original size and y=338..470. Restore the vacated areas with exactly matching white fine paper texture and faint embossed scrollwork. Keep the full card, 17:24 portrait, original rounded transparent corners, champagne gold ornate frame and orange-red diamond jewel at lower right identical in position, scale, color, detail. No new decorations, no lower-right index, no changes outside upper-left index. Exact text \"10\". Return only one full edited card at 816x1152 if possible."
+    },
+    {
+      "suit": "Club",
+      "prompt": "Use case: precise-object-edit. Edit target Image 1, a Jewel Court playing card ten of clubs. Image 2 is reference only for corner index alignment and visual weight. Reduce the oversized upper-left \"10\" drastically: entire two-digit group should occupy about x=105..315 y=100..285 on the original 816x1152 canvas, centered x=210, keeping the same bold serif font and near-black ink. Move the existing small plain club horizontally to center x=210 while retaining its original size and y=338..470. Restore the vacated areas with exactly matching white fine paper texture and faint embossed scrollwork. Keep the full card, 17:24 portrait, original rounded transparent corners, champagne gold ornate frame and green emerald jewel at lower right identical in position, scale, color, detail. No new decorations, no lower-right index, no changes outside upper-left index. Exact text \"10\". Return only one full edited card at 816x1152 if possible."
+    }
+  ]
+}

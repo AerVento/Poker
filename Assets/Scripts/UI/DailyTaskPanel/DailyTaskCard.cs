@@ -8,7 +8,6 @@ namespace Game.UI
 {
     public sealed class DailyTaskCard : MonoBehaviour
     {
-        [SerializeField] private DailyTaskId _taskId;
         [SerializeField] private TextMeshProUGUI _title;
         [SerializeField] private TextMeshProUGUI _description;
         [SerializeField] private TextMeshProUGUI _reward;
@@ -18,8 +17,6 @@ namespace Game.UI
         [SerializeField] private Button _claim;
         [SerializeField] private TextMeshProUGUI _claimLabel;
 
-        public DailyTaskId TaskId => _taskId;
-        public event Action<DailyTaskId> ClaimClicked;
         public event Action<string, int> InstanceClaimClicked;
         public event Action<string> DeleteClicked;
         private Button _delete;
@@ -45,7 +42,6 @@ namespace Game.UI
         private void Claim()
         {
             InstanceClaimClicked?.Invoke(_state.InstanceId, _state.ClaimOrdinal);
-            ClaimClicked?.Invoke(_taskId);
         }
 
         public void SetLoading()
@@ -59,7 +55,6 @@ namespace Game.UI
         public void Display(DailyTaskState state, bool busy, bool canClaim = true)
         {
             _state = state;
-            _taskId = state.Id;
             _title.text = state.Name;
             _description.text = state.Description;
             _reward.text = $"+ ${state.Reward:N0}" + (state.RewardItems != null && state.RewardItems.Length > 0 ? " + 道具" : "");

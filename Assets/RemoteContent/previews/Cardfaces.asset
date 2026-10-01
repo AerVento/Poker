@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06b53aed6dc4f8e4a8a14ed1cf38e08f, type: 3}
+  m_Name: Cardfaces
+  m_EditorClassIdentifier: 
+  _sprites:
+  - _name: cat-court
+    _sprite: {fileID: 21300000, guid: 49f8bfaff9406bb4daff8a4f4e23006f, type: 3}
+  - _name: jewel-court
+    _sprite: {fileID: 21300000, guid: 8925aa76dffb3d3479a4a0485a53c549, type: 3}
+  - _name: minimal
+    _sprite: {fileID: 21300000, guid: e62ae3b1aa312dd40a42ba6528fd6356, type: 3}

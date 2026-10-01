@@ -1,0 +1,4 @@
+interface:
+  display_name: "Poker 动态商品与内容发布"
+  short_description: "修改 Configs/Shop 商品配置，打包并发布远程内容，处理页面与内容版本"
+  default_prompt: "请使用 $poker-dynamic-content，判断这次改动只需改配置、要发布远程内容，还是必须发布新页面，并按顺序完成校验、打包、上传与重启。"

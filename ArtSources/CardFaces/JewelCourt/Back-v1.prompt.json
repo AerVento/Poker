@@ -1,6 +1,6 @@
 {
   "tool": "built-in image_gen",
-  "reference": "Assets/Sprites/CardFaces/JewelCourt/Club_2.png",
+  "reference": "Assets/Sprites/CardFaces/JewelCourt/club-2.png",
   "prompt": "Use case: stylized-concept. Create a production playing-card BACK for Jewel Court, matching the reference playing-card FACE in white textured paper, champagne gold interwoven filigree border, pale embossed acanthus scrollwork, finely detailed faceted jewels with gold settings and small diamonds. Reference image is style only; remove all rank numerals, text and face layout. Flat straight-on full card, portrait 17:24 aspect ratio, ideally 816x1152 pixels, rounded corners with transparent outside, card fills canvas edge to edge, no shadows outside, no mockup. Back design must be rotationally symmetric by 180 degrees: centered luxurious oval jeweled medallion with emerald green, sapphire blue and ruby red gems in a balanced gold filigree rosette, mirrored botanical ornaments above and below. Match restrained white and champagne gold palette, crisp fine jewelry detail, uncluttered refined palace feeling. No text, numbers, people, watermark or directional marks. Preserve a thin white outer margin and delicate gold frame consistent with reference.",
-  "output": "Assets/Sprites/CardFaces/JewelCourt/Back.png"
+  "output": "Assets/Sprites/CardFaces/JewelCourt/back.png"
 }

@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: CardFace_minimal
+  m_EditorClassIdentifier: 
+  m_GroupName: CardFace_minimal
+  m_Data:
+    m_SerializedData: []
+  m_GUID: e19c1a141537d3643bcbec953f218d20
+  m_SerializeEntries:
+  - m_GUID: a7bee6097dade3042a7800d2d0d0a8d5
+    m_Address: cardfaces/minimal
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 8d0b2af6b70451145a85efb7d3a9fece, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 89dfabc0923186d4598b14a38d64c0c3, type: 2}
+    - {fileID: 11400000, guid: efa4f781603a0d24e8474bbecc39ce43, type: 2}

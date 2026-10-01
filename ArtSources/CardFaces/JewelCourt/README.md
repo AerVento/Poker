@@ -19,17 +19,22 @@
 
 ## 再次导出和安装
 
+2026-09-30 统一拼装：全部 52 张共用底板、点数区域和普通花色位置；点数整组外接矩形面积约 40,000 平方像素，居中于 288×240 区域。所有珠宝与人物按可见主体统一高度 420，贴齐右侧 x=744、底部 y=1068，并保持宽高比。人物底部低透明度残留不再参与尺寸计算。`EditedTens/` 与 `ten-refinement.json` 仅为已停用的历史生图稿，导出流程不再引用。
+
+本次实际导出 52 张；`validate_export.py` 检查通过：主体实际高度全部 420，点数面积 39,820～40,112 平方像素，同花色 A～10 右下逐像素相同，底板、透明圆角、花色位置一致，52 个 GUID／哈希唯一。Unity 2022.3.52f1c1 中真实 `CardFaceView` 的 52 组正反面切换、图片引用、保持比例和 Raycast 检查通过；`Game.unity` 无 Missing Script，编译已结束，最终 Console error 为 0。查看了三种分辨率截图（`Logs/JewelCourtUnified-1920x1080.png`、`1366x768`、`1440x1080`）。完整连接、入房、开局、断线流程未验证；未重建或发布远程美术包。
+
 依赖 Python 3.10+、Pillow、numpy。在仓库根目录运行：
 
 ```powershell
 python ArtSources/CardFaces/JewelCourt/export.py
+python ArtSources/CardFaces/JewelCourt/validate_export.py
 ```
 
 目标目录须先通过 Unity Editor 创建。`export.py` 读取现有透明元素与 `Sources/Base-v2.png`，导出正式牌面与核对图。`compose.py` 用于重新分离原始图集和调整字形布局，其默认预览仍使用早期素白底板；重建元素后须再次执行 `export.py` 才会得到正式 v2 输出。Windows 字体路径可通过该脚本的 `--font`、`--suit-font` 参数指定。
 
 在 Unity 2022.3.52f1c1 中重新安装时，先复制 `ClassicCardFace.prefab` 为上述 JewelCourt prefab（已有则直接复用），打开 JewelCourt prefab stage，再通过 Unity MCP `execute_code` 执行 `install.cs.txt` 方法体。脚本设置 Sprite 导入参数、52 个映射、商品和目录引用，并保存关闭 prefab stage。所有导入资源保留配套 `.meta`。
 
-`validate.cs.txt` 检查映射、导入参数和全部正反面；`validate-commerce.cs.txt` 使用隔离数据库检查两款牌面的购买与装备；`validate-shop-preview.cs.txt` 渲染真实商店卡片组件并检查价格和按钮回调。它们位于 Assets 外，不参与游戏编译。实际检查及限制见 [设计与接入说明](../../../../Docs/JewelCourtCardFaces.md)。
+`validate.cs.txt` 检查映射、导入参数和全部正反面；`validate-commerce.cs.txt` 使用隔离数据库检查两款牌面的购买与装备；`validate-shop-preview.cs.txt` 渲染真实商店卡片组件并检查价格和按钮回调。它们位于 Assets 外，不参与游戏编译。设计规则见 [Design.md](Design.md)。
 
 ## 上架配置
 

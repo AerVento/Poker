@@ -11,7 +11,7 @@ namespace Game.Achievements
         public override string Name => "史上最强vs现代最强";
         public override string Description => "摊牌时，双方以葫芦或更强牌型平分奖池。";
         public override string Category => AchievementCategories.Special;
-        public override string IconPath => "UI/Achievements/Champion-v1";
+        public override string IconPath => "UI/Achievements/champion";
         public override int SortOrder => 306;
         public override Reward Reward => new Reward(5000);
 

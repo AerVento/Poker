@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab2819ee38119fb4392d229fff82d624, type: 3}
+  m_Name: Gunfire
+  m_EditorClassIdentifier: 
+  _prefab: {fileID: 0}
+  _script: {fileID: 4900000, guid: 4d03f0e00fd68024eb6fb242b3d9d12b, type: 3}
+  _modules:
+  - {fileID: 4900000, guid: 0945563e0840eeb45b98bfe530051e8d, type: 3}
+  _resources:
+  - _name: frame
+    _asset: {fileID: -4341425983264385216, guid: 037f3616486201149aa6497b0182bc72, type: 3}
+  - _name: slide
+    _asset: {fileID: 5821112031358558390, guid: 037f3616486201149aa6497b0182bc72, type: 3}
+  - _name: rack
+    _asset: {fileID: 8300000, guid: deac21945b7d2c7428dc001a05859613, type: 3}
+  - _name: shot
+    _asset: {fileID: 8300000, guid: b3ae0869367528e4ab823f567e0d2859, type: 3}

@@ -1,0 +1,200 @@
+[
+  {
+    "id": "galaxy",
+    "name": "星河",
+    "asset": "Assets/Sprites/Namecards/galaxy-4x3.png",
+    "source_size": [
+      1448,
+      1086
+    ],
+    "mode": "RGB",
+    "unity_texture_size": [
+      1024,
+      768
+    ],
+    "sha256": "ed7360992e81c46f327a67f3e97aae31bd123a1d9f46fcfa6912340c5cd794cc",
+      "product": "Assets/Resources/SO/Shop/Namecards/Products/Galaxy.asset",
+    "serialized_field": "_artwork4x3",
+    "prompt_record": "prompts-v5-galaxy-4x3.json"
+  },
+  {
+    "id": "ember",
+    "name": "赤焰",
+    "asset": "Assets/Sprites/Namecards/ember-4x3.png",
+    "source_size": [
+      1448,
+      1086
+    ],
+    "mode": "RGB",
+    "unity_texture_size": [
+      1024,
+      768
+    ],
+    "sha256": "5fbfd8bfb3e0afdb5f04d8901474c20f667416a63f663b74bd2c8169eadeeb41",
+      "product": "Assets/Resources/SO/Shop/Namecards/Products/Ember.asset",
+    "serialized_field": "_artwork4x3",
+    "prompt_record": "prompts-v6-4x3-collection.json"
+  },
+  {
+    "id": "neon",
+    "name": "霓虹",
+    "asset": "Assets/Sprites/Namecards/neon-4x3.png",
+    "source_size": [
+      1448,
+      1086
+    ],
+    "mode": "RGB",
+    "unity_texture_size": [
+      1024,
+      768
+    ],
+    "sha256": "b0a7ea37c291daa120810d50c1e5e0cdf86a90b88ce630fa008635b71926dcad",
+      "product": "Assets/Resources/SO/Shop/Namecards/Products/Neon.asset",
+    "serialized_field": "_artwork4x3",
+    "prompt_record": "prompts-v6-4x3-collection.json"
+  },
+  {
+    "id": "gilded",
+    "name": "鎏金",
+    "asset": "Assets/Sprites/Namecards/gilded-4x3.png",
+    "source_size": [
+      1448,
+      1086
+    ],
+    "mode": "RGB",
+    "unity_texture_size": [
+      1024,
+      768
+    ],
+    "sha256": "c631e60c2ce3ff8966297392a4c80c1e062be244f0fc4aa9aa8b431ec224b2ec",
+      "product": "Assets/Resources/SO/Shop/Namecards/Products/Gilded.asset",
+    "serialized_field": "_artwork4x3",
+    "prompt_record": "prompts-v6-4x3-collection.json"
+  },
+  {
+    "id": "frost",
+    "name": "极霜",
+    "asset": "Assets/Sprites/Namecards/frost-4x3.png",
+    "source_size": [
+      1448,
+      1086
+    ],
+    "mode": "RGB",
+    "unity_texture_size": [
+      1024,
+      768
+    ],
+    "sha256": "8812be932a8606598d46c5f8ac03ef9ae4ba027e8c9f899c52296f589e087364",
+      "product": "Assets/Resources/SO/Shop/Namecards/Products/Frost.asset",
+    "serialized_field": "_artwork4x3",
+    "prompt_record": "prompts-v6-4x3-collection.json"
+  },
+  {
+    "id": "abyss",
+    "name": "幽海",
+    "asset": "Assets/Sprites/Namecards/abyss-4x3.png",
+    "source_size": [
+      1448,
+      1086
+    ],
+    "mode": "RGB",
+    "unity_texture_size": [
+      1024,
+      768
+    ],
+    "sha256": "a6f09f93e243057a6574293765915d884ed2c4f08bfb0a36194fea0f4fc9ab5c",
+      "product": "Assets/Resources/SO/Shop/Namecards/Products/Abyss.asset",
+    "serialized_field": "_artwork4x3",
+    "prompt_record": "prompts-v6-4x3-collection.json"
+  },
+  {
+    "id": "jade",
+    "name": "龙珀",
+    "asset": "Assets/Sprites/Namecards/jade-4x3.png",
+    "source_size": [
+      1448,
+      1086
+    ],
+    "mode": "RGB",
+    "unity_texture_size": [
+      1024,
+      768
+    ],
+    "sha256": "5286a80bf987373d7eef1f45a90e36f5a9b7ccea8fb7985b477d49f2cfaa0efd",
+      "product": "Assets/Resources/SO/Shop/Namecards/Products/Jade.asset",
+    "serialized_field": "_artwork4x3",
+    "prompt_record": "prompts-v6-4x3-collection.json"
+  },
+  {
+    "id": "sakura",
+    "name": "绯樱",
+    "asset": "Assets/Sprites/Namecards/sakura-4x3.png",
+    "source_size": [
+      1448,
+      1086
+    ],
+    "mode": "RGB",
+    "unity_texture_size": [
+      1024,
+      768
+    ],
+    "sha256": "f15d487828b458512dab1e83e98252a4748a02b2856235352108798f8c38ac17",
+      "product": "Assets/Resources/SO/Shop/Namecards/Products/Sakura.asset",
+    "serialized_field": "_artwork4x3",
+    "prompt_record": "prompts-v6-4x3-collection.json"
+  },
+  {
+    "id": "clockwork",
+    "name": "时轮",
+    "asset": "Assets/Sprites/Namecards/clockwork-4x3.png",
+    "source_size": [
+      1448,
+      1086
+    ],
+    "mode": "RGB",
+    "unity_texture_size": [
+      1024,
+      768
+    ],
+    "sha256": "f69b767e1fcac4cdbd3b6716c7a0b84dcffec2789f674107d1c9abeefdb57eeb",
+      "product": "Assets/Resources/SO/Shop/Namecards/Products/Clockwork.asset",
+    "serialized_field": "_artwork4x3",
+    "prompt_record": "prompts-v6-4x3-collection.json"
+  },
+  {
+    "id": "eclipse",
+    "name": "蚀日",
+    "asset": "Assets/Sprites/Namecards/eclipse-4x3.png",
+    "source_size": [
+      1448,
+      1086
+    ],
+    "mode": "RGB",
+    "unity_texture_size": [
+      1024,
+      768
+    ],
+    "sha256": "908b222cb04d5460fea3a43cb3c2608ed08390588beb3d6fe5a2de24e464df53",
+      "product": "Assets/Resources/SO/Shop/Namecards/Products/Eclipse.asset",
+    "serialized_field": "_artwork4x3",
+    "prompt_record": "prompts-v6-4x3-collection.json"
+  },
+  {
+    "id": "prism",
+    "name": "幻晶",
+    "asset": "Assets/Sprites/Namecards/prism-4x3.png",
+    "source_size": [
+      1448,
+      1086
+    ],
+    "mode": "RGB",
+    "unity_texture_size": [
+      1024,
+      768
+    ],
+    "sha256": "0c102e4008f9c0657520cca351d59013b53cc80cfdb53c1c2de2699fbcce7f6b",
+      "product": "Assets/Resources/SO/Shop/Namecards/Products/Prism.asset",
+    "serialized_field": "_artwork4x3",
+    "prompt_record": "prompts-v6-4x3-collection.json"
+  }
+]

@@ -1,0 +1,77 @@
+-- Shared timing and geometry helpers. Copied into every gift bundle that requires it.
+local motion = {}
+
+-- Stands in for the former SmoothStep curves.
+motion.SMOOTH = 'InOutSine'
+
+function motion.clamp(value, low, high)
+  if value < low then return low end
+  if value > high then return high end
+  return value
+end
+
+function motion.lerp(a, b, t)
+  return a + (b - a) * t
+end
+
+-- Interpolates numbers or { x, y } pairs.
+function motion.mix(a, b, t)
+  if type(a) == 'table' then
+    return { a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t }
+  end
+  return a + (b - a) * t
+end
+
+-- Rotates (x, y) counter-clockwise by degrees.
+function motion.rotate(x, y, degrees)
+  local r = math.rad(degrees)
+  local c, s = math.cos(r), math.sin(r)
+  return x * c - y * s, x * s + y * c
+end
+
+-- Goes from `rest` to `peak` over [a, b] and back over [b, c] with any tween function (move, rotate, scale, fade).
+function motion.pulse(tween, node, a, b, c, rest, peak, channel, rise, fall)
+  tween(node, a, b - a, rest, peak, rise or motion.SMOOTH, channel)
+  tween(node, b, c - b, peak, rest, fall or motion.SMOOTH, channel)
+end
+
+-- A half sine bump: 0 -> peak -> 0 over [at, at + duration], matching sin(t * pi).
+function motion.bump(tween, node, at, duration, rest, peak, channel)
+  tween(node, at, duration / 2, rest, peak, 'OutSine', channel)
+  tween(node, at + duration / 2, duration / 2, peak, rest, 'InSine', channel)
+end
+
+-- A parabolic lift 0 -> height -> 0 on an additive position channel, matching 4h * t * (1 - t).
+function motion.arc(g, node, at, duration, height, channel)
+  g.move(node, at, duration / 2, { 0, 0 }, { 0, height }, 'OutQuad', channel)
+  g.move(node, at + duration / 2, duration / 2, { 0, height }, { 0, 0 }, 'InQuad', channel)
+end
+
+-- A periodic value over [start, finish]. keys = { { c, value }, { c, value, ease }, ... } for c from 0 to 1 within one
+-- period; each key's ease shapes the segment ending at it. `phase` (0-1) is where the cycle starts at `start`.
+-- Partial segments at either end interpolate linearly between keys.
+function motion.cycle(tween, node, start, finish, period, phase, keys, channel)
+  local function valueAt(c)
+    for k = 2, #keys do
+      local a, b = keys[k - 1], keys[k]
+      if c <= b[1] then return motion.mix(a[2], b[2], (c - a[1]) / (b[1] - a[1])) end
+    end
+    return keys[#keys][2]
+  end
+  local t, c = start, phase % 1
+  while t < finish - 1e-4 do
+    for k = 2, #keys do
+      local key = keys[k]
+      if c < key[1] - 1e-6 and t < finish - 1e-4 then
+        local stop = math.min(t + (key[1] - c) * period, finish)
+        local c1 = c + (stop - t) / period
+        local exact = c1 >= key[1] - 1e-6 and math.abs(c - keys[k - 1][1]) < 1e-6
+        tween(node, t, stop - t, valueAt(c), exact and key[2] or valueAt(c1), exact and (key[3] or 'Linear') or 'Linear', channel)
+        t, c = stop, c1
+      end
+    end
+    c = 0
+  end
+end
+
+return motion

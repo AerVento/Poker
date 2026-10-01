@@ -23,8 +23,8 @@ namespace Game
 
         public static GameAudioManager Existing => _instance;
         internal event System.Action<SoundCue> SoundRequested;
-        public float MusicVolume { get; private set; }
-        public float SoundVolume { get; private set; }
+        public float MusicVolume => AudioPreferences.MusicVolume;
+        public float SoundVolume => AudioPreferences.SoundVolume;
         public MusicCue CurrentMusic => _playingMusic;
         public MusicCue RequestedMusic => _requestedMusic;
 
@@ -55,9 +55,8 @@ namespace Game
                 Debug.LogError("Poker audio library is missing: " + LibraryResourcePath);
             _musicSource = CreateSource("Music", true);
             _soundSource = CreateSource("SoundEffects", false);
-            MusicVolume = AudioPreferences.MusicVolume;
-            SoundVolume = AudioPreferences.SoundVolume;
-            _soundSource.volume = SoundVolume;
+            AudioPreferences.Changed += ApplyPreferences;
+            ApplyPreferences();
         }
 
         private AudioSource CreateSource(string objectName, bool loop)
@@ -118,19 +117,28 @@ namespace Game
                 _duckUntil = Time.unscaledTime + clip.length;
         }
 
-        public void SetMusicVolume(float value)
-        {
-            MusicVolume = AudioPreferences.Sanitize(value);
-            AudioPreferences.SetMusicVolume(MusicVolume);
-            _musicSource.volume = MusicVolume * _musicEnvelope * _duckEnvelope;
-            ScheduleSave();
-        }
+        public void SetMusicVolume(float value) => AudioPreferences.SetMusicVolume(value);
+        public void SetSoundVolume(float value) => AudioPreferences.SetSoundVolume(value);
+        public void SetMusicMuted(bool muted) => AudioPreferences.SetMusicMuted(muted);
+        public void SetSoundMuted(bool muted) => AudioPreferences.SetSoundMuted(muted);
 
-        public void SetSoundVolume(float value)
+        private void ApplyPreferences()
         {
-            SoundVolume = AudioPreferences.Sanitize(value);
-            AudioPreferences.SetSoundVolume(SoundVolume);
+            _musicSource.mute = AudioPreferences.MusicMuted;
+            _soundSource.mute = AudioPreferences.SoundMuted;
+            _musicSource.volume = MusicVolume * _musicEnvelope * _duckEnvelope;
             _soundSource.volume = SoundVolume;
+            if (MusicVolume <= 0f)
+            {
+                _musicSource.Stop();
+                _playingMusic = MusicCue.None;
+                _musicEnvelope = 0f;
+            }
+            if (SoundVolume <= 0f)
+            {
+                _soundSource.Stop();
+                _duckUntil = 0f;
+            }
             ScheduleSave();
         }
 
@@ -151,7 +159,13 @@ namespace Game
         private void Update()
         {
             float delta = Time.unscaledDeltaTime;
-            if (_playingMusic != _requestedMusic)
+            if (MusicVolume <= 0f)
+            {
+                if (_musicSource.isPlaying) _musicSource.Stop();
+                _playingMusic = MusicCue.None;
+                _musicEnvelope = 0f;
+            }
+            else if (_playingMusic != _requestedMusic)
             {
                 _musicEnvelope = Mathf.MoveTowards(_musicEnvelope, 0f, delta / 0.2f);
                 if (_musicEnvelope <= 0f)
@@ -192,6 +206,7 @@ namespace Game
         {
             if (_instance != this)
                 return;
+            AudioPreferences.Changed -= ApplyPreferences;
             SaveVolumes();
             _instance = null;
         }

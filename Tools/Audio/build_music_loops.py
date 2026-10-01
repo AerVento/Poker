@@ -78,7 +78,7 @@ def main():
         rms = np.sqrt(np.mean(loop ** 2))
         gain = min(10 ** (-22 / 20) / rms, 10 ** (-3 / 20) / np.max(np.abs(loop)))
         loop *= gain
-        output = ROOT / f"Assets/Audio/Music/BGM_{event}_Loop_v1.ogg"
+        output = ROOT / f"Assets/Audio/Music/bgm-{''.join('-' + c.lower() if c.isupper() and i else c.lower() for i, c in enumerate(event))}.ogg"
         output.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run([ffmpeg, "-v", "error", "-y", "-f", "f32le", "-ar", str(RATE), "-ac", "2",
                         "-i", "pipe:0", "-c:a", "libvorbis", "-q:a", "6", str(output)],

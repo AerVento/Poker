@@ -9,6 +9,8 @@ namespace Game.UI
     {
         [SerializeField] private Button _select;
         [SerializeField] private Image _icon;
+        [Tooltip("Drawn placeholder shown until the item's remote icon is available.")]
+        [SerializeField] private GameObject[] _placeholder = Array.Empty<GameObject>();
         [SerializeField] private Image _background;
         [SerializeField] private TextMeshProUGUI _name;
         [SerializeField] private TextMeshProUGUI _kind;
@@ -28,6 +30,7 @@ namespace Game.UI
             _kind.text = kind;
             _icon.sprite = icon;
             _icon.enabled = icon != null;
+            foreach (var part in _placeholder) if (part != null) part.SetActive(icon == null);
             _quantity.text = quantity;
             _background.color = selected ? new Color(0.20f, 0.31f, 0.25f) : new Color(0.065f, 0.14f, 0.115f);
             _onSelect = onSelect;

@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a607efe727a78749a14312deb6495f4, type: 3}
+  m_Name: ShopLocalArt
+  m_EditorClassIdentifier: 
+  _defaultNamecard: {fileID: 21300000, guid: c433da679c9508c44bda81a6fc3f7e06, type: 3}
+  _classicCards: {fileID: 11400000, guid: a72b0be5b39d1964cabf83c7ce8130d8, type: 2}
+  _classicPreview: {fileID: 21300000, guid: 71e6301d7605b9242b77d1aa74222488, type: 3}
+  _defaultItemIcon: {fileID: 21300000, guid: a6188bec4ec69ff43b2fd741cecc99e1, type: 3}
+  _cardFaceView: {fileID: 7077383069781481365, guid: ab5f55ac0e98a134f9f4c2e986bc4db4, type: 3}

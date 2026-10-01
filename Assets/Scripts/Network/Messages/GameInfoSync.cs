@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Game.Network
@@ -18,7 +17,8 @@ namespace Game.Network
 
     public struct GameInfoSync : NetworkMessage
     {
-        public string RawData;
+        // Serialized by Serialization.WriteClientGameInfo, so receivers decode it once per message.
+        public ClientGameInfo Info;
         public uint AccountChips;
         public bool CanClaimDailyTaskRewards;
         public uint BigBlind;
@@ -29,11 +29,6 @@ namespace Game.Network
         public bool JoinNextHand;
         public bool CanJoinNextHand;
         public uint ParticipationRevision;
-        public ClientGameInfo Info
-        {
-            get => JsonSerializer.Deserialize<ClientGameInfo>(RawData);
-            set => RawData = JsonSerializer.Serialize(value);
-        }
     }
 
     public struct InterHandCountdownSync : NetworkMessage

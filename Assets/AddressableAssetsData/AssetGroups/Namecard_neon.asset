@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Namecard_neon
+  m_EditorClassIdentifier: 
+  m_GroupName: Namecard_neon
+  m_Data:
+    m_SerializedData: []
+  m_GUID: 67678c366a0dc604fb844cf5186cfe99
+  m_SerializeEntries:
+  - m_GUID: c6b9604fc3d151c46bef52e9f957c45b
+    m_Address: namecards/neon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 8d0b2af6b70451145a85efb7d3a9fece, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 11672be2d3147ee4eb55cfd6484fbe78, type: 2}
+    - {fileID: 11400000, guid: 8a53002e5c5af2040b46f2a5d68354e1, type: 2}

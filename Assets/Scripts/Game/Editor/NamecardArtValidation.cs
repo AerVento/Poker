@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
-using Game.SO;
+using Game.Content;
+using Game.Network;
 using Game.UI;
 using UnityEditor;
 using UnityEngine;
@@ -9,13 +10,16 @@ namespace Game.Editor
 {
     public static class NamecardArtValidation
     {
-        public static IEnumerable<string> GetIssues(NamecardProductSO product)
+        public static IEnumerable<string> GetIssues(NamecardArtworkSO artwork)
         {
-            if (product == null || product.IsDefault)
+            if (artwork == null)
+            {
+                yield return "Missing remote artwork asset.";
                 yield break;
-            foreach (var issue in GetSpriteIssues(product.Artwork, false))
+            }
+            foreach (var issue in GetSpriteIssues(artwork.Wide, false))
                 yield return "8:3: " + issue;
-            foreach (var issue in GetSpriteIssues(product.Artwork4x3, true))
+            foreach (var issue in GetSpriteIssues(artwork.Compact, true))
                 yield return "4:3: " + issue;
         }
 
@@ -64,30 +68,24 @@ namespace Game.Editor
         [MenuItem("Poker/Shop/Validate Namecard Artwork")]
         public static void ValidateAll()
         {
-            var catalog = Resources.Load<NamecardCatalogSO>(NamecardCatalogSO.ResourcePath);
-            if (catalog == null)
-            {
-                Debug.LogError("Missing namecard catalog.");
-                return;
-            }
-            var issues = catalog.Products.SelectMany(p => GetIssues(p).Select(issue => p.Id + ": " + issue)).ToArray();
+            var issues = ShopConfiguration.Load().Namecards.Where(card => !card.IsDefault).SelectMany(card =>
+                GetIssues(AssetDatabase.LoadAssetAtPath<NamecardArtworkSO>(RemoteAssets.SourcePath(card.Artwork)))
+                    .Select(issue => card.Id + ": " + issue)).ToArray();
             if (issues.Length > 0)
                 Debug.LogError(string.Join("\n", issues));
             else
-                Debug.Log("Namecard texture settings passed. Inspect ornaments against the yellow frame guide in each product Inspector.");
+                Debug.Log("Namecard texture settings passed. Inspect ornaments against the yellow frame guide in each artwork Inspector.");
         }
 
-        public static void DrawPreview(NamecardProductSO product)
+        public static void DrawPreview(NamecardArtworkSO artwork)
         {
-            if (product.IsDefault)
-                return;
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("名片留白检查", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox("黄线：64 px 边框上限；青线：96 px 文字安全区。宽版按 2048 × 768、4:3 按 1024 × 768 换算；亮色装饰和明显光晕留在黄线外。", MessageType.Info);
-            foreach (var issue in GetIssues(product))
+            foreach (var issue in GetIssues(artwork))
                 EditorGUILayout.HelpBox(issue, MessageType.Warning);
-            DrawSpritePreview(product.Artwork, false);
-            DrawSpritePreview(product.Artwork4x3, true);
+            DrawSpritePreview(artwork.Wide, false);
+            DrawSpritePreview(artwork.Compact, true);
         }
 
         private static void DrawSpritePreview(Sprite artwork, bool compact)

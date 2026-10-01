@@ -1,0 +1,16 @@
+{
+  "id": "galaxy",
+  "variant": "4x3",
+  "file": "Assets/Sprites/Namecards/galaxy-4x3.png",
+  "source_size": [
+    1448,
+    1086
+  ],
+  "unity_import_size": [
+    1024,
+    768
+  ],
+  "mode": "RGB",
+  "sha256": "ed7360992e81c46f327a67f3e97aae31bd123a1d9f46fcfa6912340c5cd794cc",
+  "processing": "Original generated PNG preserved; proportional reduction by Unity TextureImporter only."
+}

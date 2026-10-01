@@ -375,6 +375,14 @@
             companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
             productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
             productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+            cacheControl: function (url)
+            {
+                // Content-hashed bundles are immutable. Version files, catalogs and configuration are fetched fresh
+                // and kept out of Unity's IndexedDB cache; build files revalidate.
+                if (/\.bundle(?:[?#]|$)/.test(url)) return "immutable";
+                if (/\.(?:json|txt)(?:[?#]|$)/.test(url)) return "no-store";
+                return "must-revalidate";
+            },
             showBanner: unityShowBanner
         };
 

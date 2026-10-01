@@ -1,0 +1,39 @@
+{
+  "recipe_revision": 1,
+  "source": "AudioSources/Gifts/SwissBankNote/UserRecording.m4a",
+  "source_sha256": "cb60b67ab98ec6ef9b086615e48c93dd411a669a7c3a3344b00a672f91050673",
+  "source_description": "Music recorded on a phone and supplied by the user; original musical authorship unspecified.",
+  "selected_start_seconds": 2.55,
+  "selected_end_seconds": 4.95,
+  "selection_reason": "Stable, stronger middle phrase; excludes quiet room noise at both ends.",
+  "filters": "highpass=f=95,lowpass=f=7500,afftdn=nr=8:nf=-50:tn=1,equalizer=f=280:t=q:w=0.8:g=-2,equalizer=f=2500:t=q:w=0.8:g=1.5,acompressor=threshold=0.025:ratio=3:attack=2:release=90",
+  "reveal_fades_seconds": [
+    0.045,
+    0.24
+  ],
+  "sample_rate": 44100,
+  "foley_origin": "Original local synthesis, no external samples",
+  "clips": [
+    {
+      "file": "Assets/Audio/SFX/Gifts/gift-bank-note-reveal.wav",
+      "seconds": 2.399909297052154,
+      "peak_dbfs": -9,
+      "rms_dbfs": -23.84568525978168,
+      "sha256": "fba72f34a66b9c00d714bcda3d938e624d384cda9f5fc77950af821bef18c280"
+    },
+    {
+      "file": "Assets/Audio/SFX/Gifts/gift-bank-note-impact.wav",
+      "seconds": 0.34,
+      "peak_dbfs": -9,
+      "rms_dbfs": -30.957191438934927,
+      "sha256": "7c2a6e08b0bb100b6197bf1c1ff9d3a8985489b480d99b158a0a012c6fa00115"
+    },
+    {
+      "file": "Assets/Audio/SFX/Gifts/gift-bank-note-throw.wav",
+      "seconds": 0.25,
+      "peak_dbfs": -16,
+      "rms_dbfs": -32.90611993427583,
+      "sha256": "afc86c30f133a7746ea522be353e36490d8513214d8879aee0e09c86b473ef43"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Poker 名片与牌面"
+  short_description: "新增、替换或调整名片与牌面：美术、远程数据和 Configs/Shop 配置"
+  default_prompt: "请使用 $poker-cosmetics，按项目约定完成下面的名片或牌面工作；先确认商品 ID、价格和上架方式，再完成美术接入、配置和校验。"

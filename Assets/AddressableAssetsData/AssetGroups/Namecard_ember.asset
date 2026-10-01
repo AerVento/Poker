@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Namecard_ember
+  m_EditorClassIdentifier: 
+  m_GroupName: Namecard_ember
+  m_Data:
+    m_SerializedData: []
+  m_GUID: 057c78d3faf808f4a9e648050ccfdd0d
+  m_SerializeEntries:
+  - m_GUID: ee7b0c274e80dd14fbcedf5763f77a48
+    m_Address: namecards/ember
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 8d0b2af6b70451145a85efb7d3a9fece, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: ed6803d70bf5a4847bf5b03a0466acac, type: 2}
+    - {fileID: 11400000, guid: 282e00bd329dd574383c90ec7b21f946, type: 2}

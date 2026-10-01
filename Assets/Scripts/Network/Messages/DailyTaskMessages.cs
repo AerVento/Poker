@@ -39,8 +39,6 @@ namespace Game.Network
     public struct DailyTaskClaimRequest : NetworkMessage
     {
         public ulong RequestId;
-        public DailyTaskId TaskId;
-        public int Period;
         public string InstanceId;
         public int CompletionOrdinal;
     }
@@ -49,7 +47,6 @@ namespace Game.Network
     {
         public ulong RequestId;
         public string AccountId;
-        public DailyTaskId TaskId;
         public DailyTaskResult Result;
         public uint GrantedAmount;
         public string InstanceId;

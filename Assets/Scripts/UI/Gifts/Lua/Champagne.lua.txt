@@ -1,0 +1,92 @@
+-- Champagne: a bottle tips in and pours a glass beside the target card, then a second glass clinks it.
+local motion = require('GiftMotion')
+local SMOOTH = motion.SMOOTH
+
+local T = { pour = 1.05, pourDuration = 1 }
+T.pourEnd = T.pour + T.pourDuration
+T.clink = T.pourEnd + 0.95
+T.finish = 3.1 + T.pourDuration
+local SCALE = 0.85
+
+local M = {
+  apiVersion = 1,
+  duration = T.finish,
+  resources = { 'bottle', 'stream', 'pour', 'clink' },
+}
+
+function M.build(g)
+  -- The receiving glass stands on the target card's center.
+  local ax, ay = g.target()
+  local xMin, yMin, xMax, yMax = g.bounds()
+  ax = motion.clamp(ax, xMin + 135 * SCALE, xMax - 250 * SCALE)
+  ay = motion.clamp(ay, yMin + 100 * SCALE, yMax - 230 * SCALE)
+
+  local stage = g.set(g.node(g.layer, 'Stage'), { position = { ax, ay }, scale = SCALE, alpha = 0 })
+  g.fade(stage, 0, 0.3, 0, 1, SMOOTH)
+  g.fade(stage, T.finish - 0.55, 0.55, 1, 0, SMOOTH, 1)
+
+  local partner = g.set(g.shape(stage, 'Partner glass', 'glass', 70, 170),
+    { position = { -150, 0 }, alpha = 0, fill = 1, clockOffset = 0.7 })
+  local stream = g.set(g.image(stage, 'Wine stream', 'stream', 3.8, 124),
+    { color = { 1, 0.84, 0.37, 0.86 }, position = { 0, 47 }, scale = { 0, 1 }, visible = false })
+  local glass = g.set(g.shape(stage, 'Receiving glass', 'glass', 70, 170), { position = { 0, -16 } })
+  local mouth = g.set(g.node(stage, 'Bottle mouth pivot'), { position = { 122, 155 }, alpha = 0 })
+  g.set(g.image(mouth, 'Bottle', 'bottle', 180, 270), { position = { 0, -120 }, preserveAspect = true })
+  local glow = g.set(g.shape(stage, 'Clink glow', 'disc', 35, 35, { 0.851, 0.737, 0.478 }),
+    { position = { -60, 80 }, scale = 0.2, alpha = 0.85, visible = false })
+
+  -- The bottle tips over the glass, pours, then leaves.
+  local leave = T.pourEnd + 0.05
+  g.fade(mouth, 0.25, 0.35, 0, 1, SMOOTH)
+  g.move(mouth, 0.4, T.pour - 0.4, { 122, 155 }, { 0, 109 }, SMOOTH)
+  g.rotate(mouth, 0.4, T.pour - 0.4, 0, 112, SMOOTH)
+  g.fade(mouth, leave, 0.4, 1, 0, SMOOTH, 1)
+  g.move(mouth, leave, 0.4, { 0, 0 }, { 25, 25 }, SMOOTH, 1)
+  g.rotate(mouth, leave, 0.4, 0, -20, SMOOTH, 1)
+
+  -- The stream shortens as the wine rises and wobbles slightly while it flows.
+  g.show(stream, T.pour)
+  g.hide(stream, T.pourEnd)
+  g.move(stream, T.pour, T.pourDuration, { 0, 47 }, { 0, 86 }, SMOOTH)
+  g.resize(stream, T.pour, T.pourDuration, { 3.8, 124 }, { 3.8, 46 }, SMOOTH)
+  g.scale(stream, T.pour, 0.13, { 0, 1 }, { 1, 1 }, SMOOTH)
+  g.scale(stream, T.pourEnd - 0.16, 0.16, { 1, 1 }, { 0, 1 }, SMOOTH)
+  local wobble = { { 0, 0 }, { 0.25, 1, 'OutSine' }, { 0.5, 0, 'InSine' }, { 0.75, -1, 'OutSine' }, { 1, 0, 'InSine' } }
+  local function scaled(keys, amount, axis)
+    local result = {}
+    for i, key in ipairs(keys) do
+      local v = key[2] * amount
+      result[i] = { key[1], axis == 'x' and { v, 0 } or { 1 + v, 1 }, key[3] }
+    end
+    return result
+  end
+  motion.cycle(g.move, stream, T.pour, T.pourEnd, 2 * math.pi / 25, (25 * T.pour) / (2 * math.pi), scaled(wobble, 0.6, 'x'), 1)
+  motion.cycle(g.scale, stream, T.pour, T.pourEnd, 2 * math.pi / 32, (32 * T.pour) / (2 * math.pi), scaled(wobble, 0.5 / 3.8), 1)
+
+  -- The glass rises in, fills, then toasts (channel 1) and rebounds (channel 2).
+  local toast, rebound = T.pourEnd + 0.5, T.clink
+  g.move(glass, 0, 0.4, { 0, -16 }, { 0, 0 }, SMOOTH)
+  g.fill(glass, T.pour, T.pourDuration, 0, 1, SMOOTH)
+  g.move(glass, toast, rebound - toast, { 0, 0 }, { -16, 6 }, SMOOTH, 1)
+  g.move(glass, rebound, 0.28, { 0, 0 }, { 3, 0 }, SMOOTH, 2)
+  g.rotate(glass, toast, rebound - toast, 0, 12, SMOOTH, 1)
+  g.rotate(glass, rebound, 0.28, 0, -5, SMOOTH, 2)
+
+  local arrive = T.pourEnd + 0.35
+  g.fade(partner, arrive, T.clink - arrive, 0, 1, SMOOTH)
+  g.move(partner, arrive, T.clink - arrive, { -150, 0 }, { -98, 0 }, SMOOTH)
+  g.move(partner, toast, rebound - toast, { 0, 0 }, { 0, 6 }, SMOOTH, 1)
+  g.move(partner, rebound, 0.28, { 0, 0 }, { -3, 0 }, SMOOTH, 2)
+  g.rotate(partner, toast, rebound - toast, 0, -12, SMOOTH, 1)
+  g.rotate(partner, rebound, 0.28, 0, 5, SMOOTH, 2)
+
+  g.show(glow, T.clink)
+  g.scale(glow, T.clink, 0.38, 0.2, 1.4, 'Linear')
+  g.fade(glow, T.clink, 0.38, 0.85, 0, 'Linear')
+  g.hide(glow, T.clink + 0.38)
+
+  g.sound(T.pour, 'pour')
+  g.sound(T.clink, 'clink')
+end
+
+return M

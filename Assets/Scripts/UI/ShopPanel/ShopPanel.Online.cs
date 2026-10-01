@@ -50,15 +50,15 @@ namespace Game.UI
             _catalogRevision = null;
         }
 
-        private uint PriceOf(NamecardProductSO product) => _online && _offers.TryGetValue(product.Id, out var offer)
+        private uint PriceOf(NamecardDefinition product) => _online && _offers.TryGetValue(product.Id, out var offer)
             ? offer.Price : product.Price;
 
-        private bool IsVisible(NamecardProductSO product) => (product.IsListed && !product.CanPurchase) || product.IsDefault || _owned.Contains(product.Id) ||
-            (_online ? _offers.TryGetValue(product.Id, out var offer) && offer.Listed : product.IsListed);
+        private bool IsVisible(NamecardDefinition product) => (product.Listed && !product.CanPurchase) || product.IsDefault || _owned.Contains(product.Id) ||
+            (_online ? _offers.TryGetValue(product.Id, out var offer) && offer.Listed : product.Listed);
 
-        private bool HasOffer(NamecardProductSO product) => !_online || _offers.ContainsKey(product.Id);
+        private bool HasOffer(NamecardDefinition product) => !_online || _offers.ContainsKey(product.Id);
 
-        private void BuyOnline(NamecardProductSO product) => StartRequest(ShopAction.Purchase, product.Id);
+        private void BuyOnline(NamecardDefinition product) => StartRequest(ShopAction.Purchase, product.Id);
         private void EquipOnline(string id) => StartRequest(ShopAction.Equip, string.IsNullOrEmpty(id) ? "default" : id);
 
         private void StartRequest(ShopAction action, string productId, bool authorizeChipConversion = false,

@@ -1,0 +1,43 @@
+{
+  "recipe_revision": 4,
+  "sample_rate": 44100,
+  "seed": 9362,
+  "clips": [
+    {
+      "file": "Assets/Audio/SFX/Gifts/gift-egg-throw.wav",
+      "seconds": 0.38,
+      "peak_dbfs": -10,
+      "origin": "Original local synthesis; no external samples"
+    },
+    {
+      "file": "Assets/Audio/SFX/Gifts/gift-egg-splat.wav",
+      "seconds": 0.4,
+      "peak_dbfs": -8,
+      "origin": "Original local synthesis; no external samples"
+    },
+    {
+      "file": "Assets/Audio/SFX/Gifts/gift-champagne-pour.wav",
+      "seconds": 1.0,
+      "peak_dbfs": -15,
+      "origin": "Original local synthesis; no external samples"
+    },
+    {
+      "file": "Assets/Audio/SFX/Gifts/gift-champagne-clink.wav",
+      "seconds": 1.05,
+      "peak_dbfs": -12,
+      "origin": "Original local synthesis; no external samples"
+    },
+    {
+      "file": "Assets/Audio/SFX/Gifts/gift-gun-rack.wav",
+      "seconds": 0.44,
+      "peak_dbfs": -9,
+      "origin": "Original local synthesis; no external samples"
+    },
+    {
+      "file": "Assets/Audio/SFX/Gifts/gift-gunshot.wav",
+      "seconds": 0.55,
+      "peak_dbfs": -5.5,
+      "origin": "Original local synthesis; no external samples"
+    }
+  ]
+}

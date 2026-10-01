@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab2819ee38119fb4392d229fff82d624, type: 3}
+  m_Name: RottenEgg
+  m_EditorClassIdentifier: 
+  _prefab: {fileID: 0}
+  _script: {fileID: 4900000, guid: 3020750a6f0de4340ad1b275e5f8091a, type: 3}
+  _modules:
+  - {fileID: 4900000, guid: 0945563e0840eeb45b98bfe530051e8d, type: 3}
+  _resources:
+  - _name: egg
+    _asset: {fileID: 21300000, guid: 0bf88d9cc657e904cbb39d174e28e89e, type: 3}
+  - _name: splat
+    _asset: {fileID: 21300000, guid: e7a1da05829282a44b0de0cd11c9c164, type: 3}
+  - _name: throw
+    _asset: {fileID: 8300000, guid: 89ff928e12d0d6746a8501a6636dc660, type: 3}
+  - _name: impact
+    _asset: {fileID: 8300000, guid: a446d8488a8e5b543aa2c2ee4ef289d5, type: 3}

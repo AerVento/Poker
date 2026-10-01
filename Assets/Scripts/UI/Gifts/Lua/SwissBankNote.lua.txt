@@ -1,0 +1,117 @@
+-- Swiss bank note: a banker flicks a note at the target, smiles, and reveals the traditional ace of spades.
+local motion = require('GiftMotion')
+local SMOOTH = motion.SMOOTH
+
+local T = {
+  arrive = 0.35,     -- banker fades and rises in
+  windup = 0.5,      -- wind-up starts
+  cock = 0.82,       -- hand fully drawn back
+  release = 0.95,    -- note leaves the hand
+  settle = 1.22,     -- follow-through ends
+  impact = 1.42,     -- note hits the target card
+  smile = 1.5,       -- portrait starts to smile
+  smiled = 1.85,
+  draw = 1.8,        -- card is drawn
+  flipStart = 2.15,
+  flipEnd = 3.7,
+  noteFade = 3.55,
+  noteGone = 4.2,
+  fadeOut = 4.35,
+  finish = 4.9,
+}
+-- The banker is drawn at 75 % so he leaves room for the note's flight.
+local SIZE = 0.75
+
+local M = {
+  apiVersion = 1,
+  duration = T.finish,
+  resources = { 'portrait', 'smile', 'note', 'cardBack', 'ace', 'throw', 'impact', 'reveal' },
+}
+
+function M.build(g)
+  local sx, sy = g.sender()
+  local tx, ty = g.target()
+  local xMin, yMin, xMax, yMax = g.bounds()
+  local ax = motion.clamp(sx, xMin + 170, xMax - 150)
+  local ay = motion.clamp(sy + 85, yMin + 125, yMax - 200)
+  local dir = tx < sx and -1 or 1
+
+  -- Whole effect fades in with the banker and out at the end.
+  g.set(g.layer, { alpha = 0 })
+  g.fade(g.layer, 0, T.arrive, 0, 1, SMOOTH)
+  g.fade(g.layer, T.fadeOut, T.finish - T.fadeOut, 1, 0, SMOOTH, 1)
+
+  -- The flying note passes behind the banker so it never covers his face.
+  local note = g.set(g.image(g.layer, 'Flying note', 'note', 73, 158), { visible = false })
+  local actor = g.set(g.node(g.layer, 'Character'), { position = { ax, ay - 18 }, scale = 0.85 * SIZE })
+  -- Props behind the character let the painted fingers hold their edges.
+  local held = g.set(g.image(actor, 'Held note', 'note', 73, 158), { position = { -90, 100 }, rotation = 16 })
+  local glint = g.set(g.shape(actor, 'Ace glint', 'ring', 80, 112, { 0.95, 0.8, 0.42 }),
+    { position = { -92, 95 }, scale = 0.85, alpha = 0, visible = false })
+  local card = g.set(g.image(actor, 'Reveal card', 'cardBack', 70, 99),
+    { position = { -92, 15 }, rotation = 14, alpha = 0, visible = false })
+  local portrait = g.image(actor, 'Portrait', 'portrait', 250, 265)
+  -- The smile fades in over the opaque portrait, so the banker never turns see-through.
+  local smile = g.set(g.image(actor, 'Smile', 'smile', 250, 265), { alpha = 0 })
+  local ring = g.set(g.shape(g.layer, 'Paper impact', 'ring', 130, 90, { 0.94, 0.90, 0.77 }),
+    { position = { tx, ty }, scale = 0.5, alpha = 0.55, visible = false })
+
+  -- Banker arrives, winds up (channel 1) and follows through (channel 2).
+  g.move(actor, 0, T.arrive, { ax, ay - 18 }, { ax, ay }, SMOOTH)
+  g.scale(actor, 0, T.arrive, 0.85 * SIZE, SIZE, SMOOTH)
+  motion.pulse(g.move, actor, T.windup, T.cock, T.release, { 0, 0 }, { -6 * dir, 0 }, 1)
+  motion.pulse(g.move, actor, T.cock, T.release, T.settle, { 0, 0 }, { 15 * dir, 0 }, 2)
+  motion.pulse(g.rotate, actor, T.windup, T.cock, T.release, 0, 6 * dir, 1)
+  motion.pulse(g.rotate, actor, T.cock, T.release, T.settle, 0, -9 * dir, 2)
+  g.fade(smile, T.smile, T.smiled - T.smile, 0, 1, SMOOTH)
+  g.hide(portrait, T.smiled)
+
+  -- The held note follows the wind-up until release.
+  motion.pulse(g.move, held, T.windup, T.cock, T.release, { 0, 0 }, { 0, 10 }, 1)
+  motion.pulse(g.rotate, held, T.windup, T.cock, T.release, 0, 10, 1)
+  g.hide(held, T.release)
+
+  -- Released from the last wind-up pose, the note arcs to the target and squashes on impact.
+  local lx, ly = motion.rotate(-90 * SIZE, 100 * SIZE, -dir * 9)
+  lx, ly = ax + 15 * dir + lx, ay + ly
+  local flight = T.impact - T.release
+  g.set(note, { position = { lx, ly }, rotation = 16 - dir * 9, scale = SIZE })
+  g.show(note, T.release)
+  g.move(note, T.release, flight, { lx, ly }, { tx, ty }, 'Linear')
+  motion.bump(g.move, note, T.release, flight, { 0, 0 }, { 0, 65 }, 1)
+  g.move(note, T.impact + 0.2, 3.5 - T.impact - 0.2, { 0, 0 }, { 0, -20 }, SMOOTH, 2)
+  g.rotate(note, T.release, flight, 16 - dir * 9, -11, 'Linear')
+  motion.bump(g.rotate, note, T.impact, 0.22, 0, 8, 1)
+  g.scale(note, T.release, flight, SIZE, 0.8, 'Linear')
+  motion.bump(g.scale, note, T.impact, 0.22, { 1, 1 }, { 1.18, 0.75 }, 1)
+  g.fade(note, T.noteFade, T.noteGone - T.noteFade, 1, 0, SMOOTH)
+  g.hide(note, T.noteGone)
+
+  g.show(ring, T.impact)
+  g.scale(ring, T.impact, 0.28, 0.5, 1.5, 'Linear')
+  g.fade(ring, T.impact, 0.28, 0.55, 0, 'Linear')
+  g.hide(ring, T.impact + 0.28)
+
+  -- Draw the card and flip it to the ace.
+  g.show(card, T.draw)
+  g.move(card, T.draw, T.flipStart - T.draw, { -92, 15 }, { -92, 95 }, SMOOTH)
+  g.fade(card, T.draw, T.flipStart - T.draw, 0, 1, SMOOTH)
+  local half = (T.flipStart + T.flipEnd) / 2
+  g.scale(card, T.flipStart, half - T.flipStart, { 1, 1 }, { 0.025, 1 }, SMOOTH)
+  g.swap(card, half, 'ace')
+  g.scale(card, half, T.flipEnd - half, { 0.025, 1 }, { 1, 1 }, SMOOTH)
+  g.rotate(card, T.flipStart, T.flipEnd - T.flipStart, 14, -8, SMOOTH)
+
+  local shine = T.flipEnd + 0.08
+  g.show(glint, T.flipEnd - 0.15)
+  g.fade(glint, T.flipEnd - 0.15, 0.23, 0, 0.65, SMOOTH)
+  g.fade(glint, shine, T.noteGone - shine, 1, 0, SMOOTH, 1)
+  g.scale(glint, T.flipEnd, T.noteGone - T.flipEnd, 0.85, 1.15, SMOOTH)
+  g.hide(glint, T.noteGone)
+
+  g.sound(T.release, 'throw')
+  g.sound(T.impact, 'impact')
+  g.sound(T.flipStart, 'reveal')
+end
+
+return M

@@ -122,17 +122,21 @@ namespace Game.UI
             _claim.onClick.AddListener(() => claim(view.Id));
         }
 
-        public static Sprite LoadIcon(string path) => Resources.Load<Sprite>(path ?? "") ?? Resources.Load<Sprite>("UI/Achievements/Default");
+        public static Sprite LoadIcon(string path) => Resources.Load<Sprite>(path ?? "") ?? Resources.Load<Sprite>("UI/Achievements/default");
 
         private static string ItemName(string id)
         {
             if (NamecardItemId.TryToNamecardId(id, out var namecardId))
             {
-                var namecard = Resources.Load<Game.SO.NamecardCatalogSO>(Game.SO.NamecardCatalogSO.ResourcePath)?.GetProduct(namecardId);
-                return namecard != null ? namecard.DisplayName + "名片" : id;
+                var namecard = Game.Network.ClientShopCatalog.FindNamecard(namecardId);
+                return namecard != null ? namecard.Name + "名片" : id;
             }
-            var item = Resources.LoadAll<Game.SO.ItemDefinitionSO>(Game.SO.ItemDefinitionSO.ResourceFolder).FirstOrDefault(i => i.Id == id);
-            return item != null ? item.DisplayName : id;
+            if (CardFaceItemId.TryToCardFaceId(id, out var cardFaceId))
+            {
+                var face = Game.Network.ClientShopCatalog.FindCardFace(cardFaceId);
+                return face != null ? face.Name + "牌面" : id;
+            }
+            return Game.Network.ClientShopCatalog.FindItem(id)?.Name ?? id;
         }
     }
 }

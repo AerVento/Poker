@@ -6,19 +6,19 @@ MUSIC — attribution required when used in a released game
 Licensed under Creative Commons: By Attribution 4.0
 https://creativecommons.org/licenses/by/4.0/
 Track: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1600054
-Project file: Music/BGM_Lobby_Loop_v1.ogg
+Project file: Music/bgm-lobby.ogg
 
 "Covert Affair" Kevin MacLeod (incompetech.com)
 Licensed under Creative Commons: By Attribution 4.0
 https://creativecommons.org/licenses/by/4.0/
 Track: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100795
-Project file: Music/BGM_Game_Loop_v1.ogg
+Project file: Music/bgm-game.ogg
 
 "Crypto" Kevin MacLeod (incompetech.com)
 Licensed under Creative Commons: By Attribution 4.0
 https://creativecommons.org/licenses/by/4.0/
 Track: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1600013
-Project file: Music/BGM_AllIn_Loop_v1.ogg
+Project file: Music/bgm-all-in.ogg
 
 Music has been excerpted into full-bar loops, blended at the loop boundary,
 adjusted in level and encoded as Ogg Vorbis. Original MP3 files are retained
@@ -46,3 +46,17 @@ SFX_YourTurn, SFX_Check and SFX_Lose were synthesized locally for Poker,
 using mathematical oscillators and deterministic noise; no external
 recordings, paid generators or third-party voice samples were used.
 The generation recipe is Tools/Audio/prepare_audio_review.py.
+
+gift-egg-throw, gift-egg-splat, gift-champagne-pour and
+gift-champagne-clink, gift-gun-rack and gift-gunshot are original local
+synthesis, without external samples.
+Recipe: Tools/Audio/build_gift_sfx.py; manifest: AudioSources/Gifts/manifest.json.
+
+gift-bank-note-throw and gift-bank-note-impact are original local paper
+foley synthesis, without external samples.
+gift-bank-note-reveal is an edited excerpt (2.55-4.95 seconds) of a phone
+recording supplied by the user. Original musical authorship is unspecified.
+The original recording is preserved in AudioSources/Gifts/SwissBankNote/.
+Edits: light noise reduction, EQ, compression, level adjustment and fades.
+Recipe: Tools/Audio/build_bank_note_audio.py; parameters and source hash:
+AudioSources/Gifts/SwissBankNote/manifest.json.

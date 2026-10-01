@@ -1,0 +1,4 @@
+interface:
+  display_name: "Poker 网络消息"
+  short_description: "新增或修改 Mirror 消息，完成序列化、处理器注册、身份校验与联机验证"
+  default_prompt: "请使用 $poker-network-messages，按项目约定完成下面的网络消息改动；保持服务端权威，并同步检查发送端、接收端、序列化和界面使用处。"

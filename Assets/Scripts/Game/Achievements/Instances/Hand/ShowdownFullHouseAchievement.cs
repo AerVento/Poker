@@ -10,7 +10,7 @@ namespace Game.Achievements
         public override string Description => "摊牌时，最佳牌型为葫芦。";
         public override int SortOrder => 205;
         public override Reward Reward => new Reward(5000);
-        public override string IconPath => "UI/Achievements/FullHouse";
+        public override string IconPath => "UI/Achievements/full-house";
         protected override PokerHandRank Rank => PokerHandRank.Full_House;
     }
 }

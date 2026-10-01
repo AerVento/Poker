@@ -133,7 +133,7 @@ def main():
     entries = []
     for number, event, title, note, signal, materials, peak_db in specs:
         signal = normalize(fade(signal), peak_db)
-        relative = f"Assets/Audio/SFX/SFX_{event}_v1.wav"
+        relative = f"Assets/Audio/SFX/sfx-{''.join('-' + c.lower() if c.isupper() and i else c.lower() for i, c in enumerate(event))}.wav"
         path = ROOT / relative
         write_wav(path, signal)
         entry = dict(number=number, event=event, title=title, description=note,

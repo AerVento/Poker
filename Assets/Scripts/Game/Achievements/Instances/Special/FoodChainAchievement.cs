@@ -11,7 +11,7 @@ namespace Game.Achievements
         public override string Name => "大鱼吃小鱼，小鱼吃虾米";
         public override string Description => "摊牌时，以同花或更强牌型赢得同一奖池，并击败至少两位牌型类别不同的对手。";
         public override string Category => AchievementCategories.Special;
-        public override string IconPath => "UI/Achievements/FoodChain-v1";
+        public override string IconPath => "UI/Achievements/food-chain";
         public override int SortOrder => 300;
         public override Reward Reward => new Reward(5000);
 

@@ -9,7 +9,7 @@ namespace Game.Achievements
     public abstract class NetAssetsAchievement : Achievement, IAchievementHandler<AccountAssetsChangedEvent>
     {
         public override string Category => AchievementCategories.Wealth;
-        public override string IconPath => "UI/Achievements/Wealth-v1";
+        public override string IconPath => "UI/Achievements/wealth";
 
         public void Evaluate(AccountAssetsChangedEvent playerEvent, string accountId, AchievementProgress progress)
         {

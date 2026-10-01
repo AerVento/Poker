@@ -11,7 +11,7 @@ namespace Game.Achievements
         public override string Name => "兵不厌诈";
         public override string Description => "翻牌后，靠对手弃牌赢池，且弃牌者中有人牌型高出自己至少两级。";
         public override string Category => AchievementCategories.Special;
-        public override string IconPath => "UI/Achievements/Bluff-v1";
+        public override string IconPath => "UI/Achievements/bluff";
         public override int SortOrder => 307;
         public override Reward Reward => new Reward(10000);
 

@@ -2,6 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using Cysharp.Threading.Tasks;
+using Game.Content;
 using Game.Network;
 using Game.SO;
 using Game.Network.Accounts;
@@ -34,7 +37,7 @@ namespace Game.UI.Gifts
         private uint _availableChips;
         private bool _canExchange;
         private readonly Dictionary<string, GiftOfferMessage> _offers = new Dictionary<string, GiftOfferMessage>(StringComparer.Ordinal);
-        private readonly List<GiftCatalogSO.Entry> _gifts = new List<GiftCatalogSO.Entry>();
+        private readonly List<GiftDefinition> _gifts = new List<GiftDefinition>();
         private static string _selectedGiftId;
         private int _selectedIndex;
         private GiftMenuView _view;
@@ -57,7 +60,18 @@ namespace Game.UI.Gifts
         private Button _menuBlockerButton;
         private GameObject _previousSelection;
         private Coroutine _captureRoutine;
-        private Coroutine _playbackRoutine;
+        private readonly List<PlaybackUnit> _pendingTargets = new List<PlaybackUnit>();
+        private readonly Dictionary<string, OutgoingResource> _outgoingResources = new Dictionary<string, OutgoingResource>();
+        private CancellationTokenSource _outgoingCancellation;
+
+        private sealed class OutgoingResource
+        {
+            public bool Finished;
+            public RemoteAssets.Lease<GiftEffectSO> Lease;
+        }
+        private CancellationTokenSource _playbackCancellation;
+        private bool _playingQueue;
+        private int _playbackVersion;
         private int _targetSeat = -1;
         private ulong _lastInventoryRequest;
         private readonly List<GiftEffect> _activeEffects = new List<GiftEffect>();
@@ -85,9 +99,7 @@ namespace Game.UI.Gifts
             _panel = GetComponent<GamePanel>();
             var view = Instantiate(_menuViewPrefab, transform, false);
             _view = view;
-            if (GiftCatalogSO.Instance != null)
-                _gifts.AddRange(GiftCatalogSO.Instance.Gifts.Where(g => g != null && g.Item != null && g.EffectPrefab != null));
-            _selectedIndex = Mathf.Max(0, _gifts.FindIndex(g => g.Id == _selectedGiftId));
+            ReloadGifts();
             _overlay = (RectTransform)view.transform;
             _restrictedOverlay = view.RestrictedOverlay;
             _menuBlocker = view.MenuBlocker;
@@ -100,9 +112,26 @@ namespace Game.UI.Gifts
             _menuBlockerButton = view.MenuBlockerButton;
         }
 
+        // The gift menu lists Configs/Shop/Gifts.json in order, as received from the server.
+        private void ReloadGifts()
+        {
+            _gifts.Clear();
+            foreach (var gift in ClientShopCatalog.Current?.Gifts ?? Array.Empty<GiftDefinition>())
+                if (!string.IsNullOrWhiteSpace(gift.Effect) && ClientShopCatalog.FindItem(gift.ItemId) != null) _gifts.Add(gift);
+            _selectedIndex = Mathf.Max(0, _gifts.FindIndex(g => g.ItemId == _selectedGiftId));
+        }
+
+        private void OnCatalogChanged()
+        {
+            ReloadGifts();
+            RefreshMenu();
+        }
+
         private void OnEnable()
         {
             Active = this;
+            ClientShopCatalog.Changed += OnCatalogChanged;
+            Game.Content.ProductArt.Changed += RefreshMenu;
             _menuBlockerButton.onClick.AddListener(CloseMenu);
             _giftButton.onClick.AddListener(QueueSelectedGift);
             _view.Previous.onClick.AddListener(PreviousGift);
@@ -112,6 +141,8 @@ namespace Game.UI.Gifts
 
         private void OnDisable()
         {
+            ClientShopCatalog.Changed -= OnCatalogChanged;
+            Game.Content.ProductArt.Changed -= RefreshMenu;
             _menuBlockerButton.onClick.RemoveListener(CloseMenu);
             _giftButton.onClick.RemoveListener(QueueSelectedGift);
             _view.Previous.onClick.RemoveListener(PreviousGift);
@@ -120,7 +151,8 @@ namespace Game.UI.Gifts
                 Active = null;
             StopAllCoroutines();
             _captureRoutine = null;
-            _playbackRoutine = null;
+            CancelPlayback();
+            CancelOutgoing();
             _pending.Clear();
             _inFlight.Clear();
             _playback.Clear();
@@ -132,6 +164,7 @@ namespace Game.UI.Gifts
 
         private void Update()
         {
+            PruneOutgoing();
             if (_menu != null && _menu.gameObject.activeSelf && _restrictedOverlay != null &&
                 _restrictedOverlay.activeSelf != IsRestricted)
                 RefreshMenu();
@@ -193,6 +226,7 @@ namespace Game.UI.Gifts
 
         public void ReceivePlayback(GiftPlaybackBatchMessage message)
         {
+            if (!isActiveAndEnabled || _panel?.Info.RoomInfo == null) return;
             if (string.IsNullOrEmpty(message.EventId) || message.Commands == null || !_seenEvents.Add(message.EventId))
                 return;
             _seenEventOrder.Enqueue(message.EventId);
@@ -202,17 +236,26 @@ namespace Game.UI.Gifts
             {
                 var quantity = Math.Min(command.Quantity, GiftBatchLimits.MaxEffects);
                 for (uint index = 0; index < quantity; index++)
-                    _playback.Enqueue(new PlaybackUnit(command.ItemId, command.TargetSeatIndex));
+                    _playback.Enqueue(new PlaybackUnit(command.ItemId, command.SenderSeatIndex, command.TargetSeatIndex,
+                        _panel.Info.RoomInfo.Id,
+                        _panel.Info.RoomInfo.FindSeat(command.SenderSeatIndex)?.PlayerName,
+                        _panel.Info.RoomInfo.FindSeat(command.TargetSeatIndex)?.PlayerName));
             }
-            if (_playbackRoutine == null)
-                _playbackRoutine = StartCoroutine(PlayQueue());
+            if (!_playingQueue)
+            {
+                _playbackCancellation?.Dispose();
+                _playbackCancellation = new CancellationTokenSource();
+                _playingQueue = true;
+                PlayQueue(_playbackVersion, _playbackCancellation.Token).Forget();
+            }
         }
 
         public void ResetSession()
         {
             StopAllCoroutines();
             _captureRoutine = null;
-            _playbackRoutine = null;
+            CancelPlayback();
+            CancelOutgoing();
             _owned.Clear();
             _offers.Clear();
             _hasInventory = false;
@@ -244,7 +287,7 @@ namespace Game.UI.Gifts
 
         private void QueueSelectedGift()
         {
-            if (_gifts.Count > 0) QueueGift(_gifts[_selectedIndex].Id, _targetSeat);
+            if (_gifts.Count > 0) QueueGift(_gifts[_selectedIndex].ItemId, _targetSeat);
         }
 
         private void PreviousGift() => SelectGift(_selectedIndex - 1);
@@ -254,14 +297,16 @@ namespace Game.UI.Gifts
         {
             if (index < 0 || index >= _gifts.Count) return;
             _selectedIndex = index;
-            _selectedGiftId = _gifts[index].Id;
+            _selectedGiftId = _gifts[index].ItemId;
             _feedback.text = string.Empty;
             RefreshMenu();
         }
 
         public bool QueueGift(string itemId, int targetSeatIndex)
         {
-            if (GiftCatalogSO.Instance?.Find(itemId)?.EffectPrefab == null)
+            if (!isActiveAndEnabled) return false;
+            PruneOutgoing();
+            if (string.IsNullOrWhiteSpace(ClientShopCatalog.FindGift(itemId)?.Effect))
             {
                 _feedback.text = "当前礼物暂不支持播放";
                 return false;
@@ -285,6 +330,11 @@ namespace Game.UI.Gifts
                 _feedback.text = "不能给自己发送礼物";
                 return false;
             }
+            var roomInfo = _panel.Info.RoomInfo;
+            var sender = roomInfo.FindSeat(self);
+            var target = roomInfo.FindSeat(targetSeatIndex);
+            if (sender == null || sender.State == RoomSeatState.Leaving || target.State == RoomSeatState.Leaving)
+                return false;
             var index = _pending.Count - 1;
             if (index >= 0 && _pending[index].ItemId == itemId &&
                 _pending[index].TargetSeatIndex == targetSeatIndex)
@@ -306,6 +356,15 @@ namespace Game.UI.Gifts
                     TargetSeatIndex = targetSeatIndex,
                     Quantity = 1,
                 });
+                _pendingTargets.Add(new PlaybackUnit(itemId, sender.SeatIndex, targetSeatIndex,
+                    roomInfo.Id, self, target.PlayerName));
+            }
+            if (!_outgoingResources.ContainsKey(itemId))
+            {
+                var resource = new OutgoingResource();
+                _outgoingResources.Add(itemId, resource);
+                if (_outgoingCancellation == null) _outgoingCancellation = new CancellationTokenSource();
+                PrepareOutgoing(itemId, resource, _outgoingCancellation.Token).Forget();
             }
             _feedback.text = "";
             RefreshMenu();
@@ -317,13 +376,21 @@ namespace Game.UI.Gifts
         private IEnumerator FlushAfterCaptureWindow()
         {
             yield return new WaitForSecondsRealtime(CaptureWindowSeconds);
-            while (_inFlight.Count > 0)
+            while (true)
+            {
+                PruneOutgoing();
+                if (_pending.Count == 0) break;
+                if (_inFlight.Count == 0 && _pending.All(command =>
+                    _outgoingResources.TryGetValue(command.ItemId, out var resource) &&
+                    resource.Finished && resource.Lease != null)) break;
                 yield return null;
+            }
             _captureRoutine = null;
             if (_pending.Count == 0)
                 yield break;
             var commands = _pending.ToArray();
             _pending.Clear();
+            _pendingTargets.Clear();
             var room = Mirror.NetworkManager.singleton as NetworkRoom;
             var operationId = room?.RequestGiftUseBatch(commands);
             if (string.IsNullOrEmpty(operationId))
@@ -337,39 +404,134 @@ namespace Game.UI.Gifts
             RefreshMenu();
         }
 
-        private IEnumerator PlayQueue()
+        private async UniTaskVoid PrepareOutgoing(string itemId, OutgoingResource resource, CancellationToken token)
         {
+            RemoteAssets.Lease<GiftEffectSO> lease = null;
+            try
+            {
+                lease = await GiftEffectLoader.LoadAsync(ClientShopCatalog.FindGift(itemId)?.Effect, token);
+                token.ThrowIfCancellationRequested();
+                resource.Lease = lease;
+                lease = null;
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+            catch (Exception exception) { Debug.LogException(exception); }
+            finally
+            {
+                lease?.Dispose();
+                resource.Finished = true;
+            }
+        }
+
+        private void PruneOutgoing()
+        {
+            if (_pending.Count == 0 && _outgoingResources.Count == 0) return;
+            var changed = false;
+            for (var i = _pending.Count - 1; i >= 0; i--)
+            {
+                var command = _pending[i];
+                var failed = _outgoingResources.TryGetValue(command.ItemId, out var resource) &&
+                    resource.Finished && resource.Lease == null;
+                if (!failed && !IsRestricted && IsCurrent(_pendingTargets[i])) continue;
+                _pending.RemoveAt(i);
+                _pendingTargets.RemoveAt(i);
+                _feedback.text = failed ? "下载失败，请重试" : "待发送礼物已取消";
+                changed = true;
+            }
+            foreach (var item in _outgoingResources.Where(pair => pair.Value.Finished &&
+                !_pending.Any(command => command.ItemId == pair.Key) &&
+                !_inFlight.Values.Any(batch => batch.Any(command => command.ItemId == pair.Key))).ToArray())
+            {
+                item.Value.Lease?.Dispose();
+                _outgoingResources.Remove(item.Key);
+            }
+            if (changed) RefreshMenu();
+        }
+
+        private void CancelOutgoing()
+        {
+            _outgoingCancellation?.Cancel();
+            _outgoingCancellation?.Dispose();
+            _outgoingCancellation = null;
+            foreach (var resource in _outgoingResources.Values) resource.Lease?.Dispose();
+            _outgoingResources.Clear();
+            _pendingTargets.Clear();
+        }
+
+        private void CancelPlayback()
+        {
+            _playbackVersion++;
+            _playbackCancellation?.Cancel();
+            _playbackCancellation?.Dispose();
+            _playbackCancellation = null;
+            _playingQueue = false;
+        }
+
+        private async UniTaskVoid PlayQueue(int version, CancellationToken cancellationToken)
+        {
+            // A failed gift must not retry once for every unit in a burst.
+            var failed = new HashSet<string>(StringComparer.Ordinal);
             try
             {
                 while (_playback.Count > 0)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var unit = _playback.Dequeue();
-                    var duration = PlayOne(unit);
-                    yield return duration > 0f ? new WaitForSecondsRealtime(PlaybackInterval(duration)) : null;
+                    var entry = ClientShopCatalog.FindGift(unit.ItemId);
+                    if (string.IsNullOrWhiteSpace(entry?.Effect) || failed.Contains(unit.ItemId) || !IsCurrent(unit)) continue;
+                    var lease = await GiftEffectLoader.LoadAsync(entry.Effect, cancellationToken);
+                    try
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        if (lease == null)
+                        {
+                            failed.Add(unit.ItemId);
+                            continue;
+                        }
+                        if (!IsCurrent(unit)) continue;
+                        var duration = PlayOne(unit, lease);
+                        if (duration <= 0f) continue;
+                        lease = null; // The instance now owns the resource until OnDestroy.
+                        await UniTask.Delay(TimeSpan.FromSeconds(PlaybackInterval(duration)),
+                            ignoreTimeScale: true, cancellationToken: cancellationToken);
+                    }
+                    finally { lease?.Dispose(); }
                 }
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+            catch (Exception exception) { Debug.LogException(exception); }
             finally
             {
-                _playbackRoutine = null;
+                if (version == _playbackVersion) _playingQueue = false;
             }
         }
 
-        private float PlayOne(PlaybackUnit unit)
+        private bool IsCurrent(PlaybackUnit unit)
         {
-            var prefab = GiftCatalogSO.Instance?.Find(unit.ItemId)?.EffectPrefab;
-            if (prefab == null)
-                return 0f;
+            var room = _panel?.Info.RoomInfo;
+            if (!isActiveAndEnabled || room == null || room.Id != unit.RoomId || room.IsWaiting) return false;
+            var target = room.FindSeat(unit.TargetSeatIndex);
+            var sender = room.FindSeat(unit.SenderSeatIndex);
+            return !string.IsNullOrEmpty(unit.TargetName) && !string.IsNullOrEmpty(unit.SenderName) &&
+                target?.PlayerName == unit.TargetName && sender?.PlayerName == unit.SenderName &&
+                target.State != RoomSeatState.Leaving && sender.State != RoomSeatState.Leaving;
+        }
+
+        private float PlayOne(PlaybackUnit unit, RemoteAssets.Lease<GiftEffectSO> resources)
+        {
             var target = ResolveSeat(unit.TargetSeatIndex);
-            if (target == null)
-                return 0f;
-            var effect = Instantiate(prefab, _effectRoot, false);
+            var sender = ResolveSeat(unit.SenderSeatIndex);
+            if (target == null || sender == null) return 0f;
+            var effect = resources.Asset.CreateEffect(_effectRoot);
+            if (effect == null) return 0f;
+            effect.RetainResources(resources);
             var rect = (RectTransform)effect.transform;
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
             _activeEffects.Add(effect);
-            effect.Play(target);
+            effect.Play(sender, target);
             StartCoroutine(DestroyAfter(effect, effect.Duration + 0.05f));
             return effect.Duration;
         }
@@ -453,15 +615,17 @@ namespace Game.UI.Gifts
             if (_quantity == null)
                 return;
             var gift = _gifts.Count > 0 ? _gifts[_selectedIndex] : null;
-            var quantity = gift != null ? Available(gift.Id) : 0;
-            var affordable = gift != null && CanAffordGift(gift.Id);
+            var item = gift != null ? ClientShopCatalog.FindItem(gift.ItemId) : null;
+            var quantity = gift != null ? Available(gift.ItemId) : 0;
+            var affordable = gift != null && CanAffordGift(gift.ItemId);
             var offer = default(GiftOfferMessage);
-            var hasOffer = gift != null && _offers.TryGetValue(gift.Id, out offer);
-            _quantity.text = gift == null ? "暂无礼物" : gift.Item.DisplayName;
+            var hasOffer = gift != null && _offers.TryGetValue(gift.ItemId, out offer);
+            _quantity.text = gift == null ? "暂无礼物" : item?.Name ?? gift.ItemId;
             _view.UseCost.text = gift == null ? string.Empty : !_hasInventory ? "加载中…" : quantity > 0
                 ? $"× {quantity:N0}" : hasOffer ? $"${offer.Price:N0}" : "暂不可用";
             _view.UseCost.color = quantity > 0 || affordable ? new Color32(238, 233, 221, 255) : new Color32(235, 91, 91, 255);
-            _view.GiftIcon.sprite = gift?.Item.Icon;
+            _view.DownloadView.Bind(gift?.Effect, false);
+            _view.GiftIcon.sprite = item != null ? ShopLocalArtSO.ItemIcon(item) : null;
             _view.GiftIcon.enabled = _view.GiftIcon.sprite != null;
             _view.Page.text = _gifts.Count == 0 ? "0 / 0" : $"{_selectedIndex + 1} / {_gifts.Count}";
             _view.Previous.interactable = _selectedIndex > 0;
@@ -525,12 +689,21 @@ namespace Game.UI.Gifts
         private readonly struct PlaybackUnit
         {
             public string ItemId { get; }
+            public int SenderSeatIndex { get; }
             public int TargetSeatIndex { get; }
+            public int RoomId { get; }
+            public string SenderName { get; }
+            public string TargetName { get; }
 
-            public PlaybackUnit(string itemId, int targetSeatIndex)
+            public PlaybackUnit(string itemId, int senderSeatIndex, int targetSeatIndex,
+                int roomId, string senderName, string targetName)
             {
                 ItemId = itemId;
+                SenderSeatIndex = senderSeatIndex;
                 TargetSeatIndex = targetSeatIndex;
+                RoomId = roomId;
+                SenderName = senderName;
+                TargetName = targetName;
             }
         }
     }

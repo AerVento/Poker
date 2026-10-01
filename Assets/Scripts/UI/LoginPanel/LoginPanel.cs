@@ -1,3 +1,5 @@
+using System;
+using Cysharp.Threading.Tasks;
 using Framework.UI;
 using Game.Network;
 using Game.Network.Accounts;
@@ -130,8 +132,24 @@ namespace Game.UI
             ResolveAuthenticator();
             if (!string.IsNullOrEmpty(sessionToken) && GameController.Available)
                 _userName.text = GameController.Instance.State.UserName;
-            if (_authenticator != null && _authenticator.LoginWithSavedCredentials(sessionToken))
-                SetStatus("正在恢复登录状态……");
+            AfterPageCheck(() =>
+            {
+                if (_authenticator != null && _authenticator.LoginWithSavedCredentials(sessionToken))
+                    SetStatus("正在恢复登录状态……");
+            }).Forget();
+        }
+
+        // An outdated WebGL page must be refreshed before it talks to a newly deployed server.
+        private async UniTaskVoid AfterPageCheck(Action login)
+        {
+            try
+            {
+                if (await PageUpdatePrompt.EnsureCurrentAsync(this.GetCancellationTokenOnDestroy()) && isActiveAndEnabled)
+                    login();
+                else
+                    _savedLoginStarted = false;
+            }
+            catch (OperationCanceledException) { }
         }
 
         private void ShowLogin() => SetMode(LoginMode.Login);
@@ -165,10 +183,15 @@ namespace Game.UI
             SetStatus(operation == AccountAuthenticationOperation.Register
                 ? "正在注册……"
                 : "正在登录……");
-            if (operation == AccountAuthenticationOperation.Register)
-                _authenticator.Register(_userName.text, _password.text);
-            else
-                _authenticator.Login(_userName.text, _password.text);
+            var userName = _userName.text;
+            var password = _password.text;
+            AfterPageCheck(() =>
+            {
+                if (operation == AccountAuthenticationOperation.Register)
+                    _authenticator.Register(userName, password);
+                else
+                    _authenticator.Login(userName, password);
+            }).Forget();
         }
 
         private void SetMode(LoginMode mode)

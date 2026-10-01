@@ -1,0 +1,7 @@
+{
+  "tool": "built-in image_gen",
+  "reference": "Assets/Sprites/UITheme/back-button.png",
+  "source": "ArtSources/UITheme/download-button-source.png",
+  "asset": "Assets/Sprites/UITheme/download-button.png",
+  "prompt": "Generate one game UI download icon button, matching the supplied reference button's visual style exactly: dark emerald green subtly textured cushion face, rounded square champagne-gold beveled rim, transparent exterior. Replace left arrow with unmistakable simple thick champagne gold downward arrow entering a shallow open tray, large and legible at 56px size. Orthographic front view, centered square, symmetrical, minimal. No text or extra symbols. The reference is style only. Save a PNG with real alpha transparency outside rounded square."
+}

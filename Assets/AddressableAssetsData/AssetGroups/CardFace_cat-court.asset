@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: CardFace_cat-court
+  m_EditorClassIdentifier: 
+  m_GroupName: CardFace_cat-court
+  m_Data:
+    m_SerializedData: []
+  m_GUID: 844b29e984ffa5c418caebc776bc70d2
+  m_SerializeEntries:
+  - m_GUID: 32191f7722e70634f972bd4c948b9cc8
+    m_Address: cardfaces/cat-court
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 8d0b2af6b70451145a85efb7d3a9fece, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 7664cc09d643cec488e0beb6ec6f53e5, type: 2}
+    - {fileID: 11400000, guid: 3800648338f9b7546a61420011ec8002, type: 2}

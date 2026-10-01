@@ -1,7 +1,6 @@
 using System.IO;
 using Framework.Configs;
 using Game.Network;
-using Game.SO;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -13,13 +12,9 @@ namespace Game.Editor
         public int callbackOrder => -100;
         public void OnPreprocessBuild(BuildReport report) => Validate();
 
+        // The same validation the server runs at startup.
         [MenuItem("Poker/Shop/Validate Catalogs")]
-        public static void Validate()
-        {
-            ItemShopCatalogSO.LoadDefault().CreateServerCatalog();
-            NamecardCatalogSO.LoadDefault().CreateServerCatalog();
-            CardFaceCatalogSO.LoadDefault().CreateServerCatalog();
-        }
+        public static void Validate() => ShopConfiguration.Load();
     }
 
     public sealed class ShopCatalogConfigurationBuild : IPostprocessBuildWithReport
@@ -34,11 +29,11 @@ namespace Game.Editor
 
             var destination = Path.Combine(Path.GetDirectoryName(report.summary.outputPath), "Configs", "Shop");
             Directory.CreateDirectory(destination);
-            foreach (var fileName in new[] { ItemCatalogLoader.FileName, NamecardCatalogLoader.FileName, CardFaceCatalogLoader.FileName })
+            foreach (var fileName in new[] { ShopConfiguration.ItemsFile, ShopConfiguration.GiftsFile,
+                ShopConfiguration.NamecardsFile, ShopConfiguration.CardFacesFile })
             {
                 var target = Path.Combine(destination, fileName);
-                if (!ConfigManager.FileExists(ShopCatalogConfigManager.ConfigurationSection, fileName) ||
-                    File.Exists(target))
+                if (!ConfigManager.FileExists(ShopCatalogConfigManager.ConfigurationSection, fileName) || File.Exists(target))
                     continue;
                 ConfigManager.CopyFileAtPath(ShopCatalogConfigManager.GetPath(fileName), target, false);
             }

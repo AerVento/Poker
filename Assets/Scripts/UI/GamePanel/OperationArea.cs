@@ -1,5 +1,4 @@
-﻿using Framework.Log;
-using Game.Network;
+﻿using Game.Network;
 using Mirror;
 using System;
 using System.Collections.Generic;
@@ -302,7 +301,6 @@ namespace Game.UI.GamePanelElement
             };
             NetworkClient.Send(request);
             GameAudioManager.EnsureClient()?.PlayOperation(type, _info, number);
-            Log.Write($"Send player operation request to the server: Type = {type}, Num = {number}");
         }
     }
 }

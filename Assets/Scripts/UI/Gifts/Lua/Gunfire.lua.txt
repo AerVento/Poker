@@ -1,0 +1,107 @@
+-- Gunfire: a pistol appears at the sender, racks, and fires three shots into random spots on the target card.
+local motion = require('GiftMotion')
+local SMOOTH = motion.SMOOTH
+
+local SHOTS = 3
+local function shotTime(i) return 0.85 + i * 0.35 end
+local T = { arrive = 0.32, rack = 0.18, hold = 0.9, fade = 0.85 }
+T.fadeStart = shotTime(SHOTS - 1) + T.hold
+T.finish = T.fadeStart + T.fade
+local JUMP = 0.0001
+
+local M = {
+  apiVersion = 1,
+  duration = T.finish,
+  resources = { 'frame', 'slide', 'rack', 'shot' },
+}
+
+function M.build(g)
+  local sx, sy = g.sender()
+  local width, height = g.targetSize()
+  -- Holes land anywhere inside the card, kept fully inside including their brief impact growth.
+  local extentX = motion.clamp(0.5 - 20 / math.max(1, width), 0, 0.4)
+  local extentY = motion.clamp(0.5 - 20 / math.max(1, height), 0, 0.32)
+  local aims = {}
+  for i = 1, SHOTS do
+    local ox, oy = (g.random() * 2 - 1) * extentX, (g.random() * 2 - 1) * extentY
+    local x, y = g.target(ox, oy)
+    local dx, dy = x - sx, y - sy
+    local length = math.sqrt(dx * dx + dy * dy)
+    if length < 1e-3 then dx, dy, length = 1, 0, 1 end
+    dx, dy = dx / length, dy / length
+    local flip = dx < 0 and -1 or 1
+    aims[i] = { x = x, y = y, dx = dx, dy = dy, flip = flip, angle = math.deg(math.atan(dy, dx)) }
+  end
+
+  g.fade(g.layer, 0, T.arrive, 0, 1, SMOOTH)
+  g.fade(g.layer, T.fadeStart, T.fade, 1, 0, SMOOTH, 1)
+
+  local first = aims[1]
+  local gun = g.set(g.node(g.layer, 'Pistol'), { position = { sx, sy - 16 }, rotation = first.angle, scale = 0.8 })
+  -- Channel 2 mirrors the pistol when it points left and holds the lowered starting aim.
+  g.set(gun, { scale = { 1, first.flip }, rotation = -20 * first.flip }, 2)
+  g.set(g.image(gun, 'Frame', 'frame', 190, 90.3), { position = { 45, -54.18 } })
+  local slide = g.set(g.image(gun, 'Slide', 'slide', 190, 36.37), { position = { 45, 8.91 } })
+  local flash = g.set(g.shape(gun, 'Muzzle flash', 'flash', 52, 33), { position = { 150, 1 }, visible = false })
+
+  -- Arrival: rise, grow, and swing up from a lowered aim.
+  g.move(gun, 0, T.arrive, { sx, sy - 16 }, { sx, sy }, SMOOTH)
+  g.scale(gun, 0, T.arrive, 0.8, 1, SMOOTH)
+  g.rotate(gun, 0, 0.65, -20 * first.flip, 0, SMOOTH, 2)
+  -- Rack the slide.
+  g.move(slide, T.rack, 0.2, { 0, 0 }, { -17, 0 }, SMOOTH, 1)
+  g.move(slide, 0.46, 0.14, { -17, 0 }, { 0, 0 }, SMOOTH, 1)
+
+  for i = 1, SHOTS do
+    local aim, at = aims[i], shotTime(i - 1)
+    if i > 1 then
+      -- Re-aim at the next hole the moment it fires.
+      local previous = aims[i - 1]
+      g.rotate(gun, at, JUMP, previous.angle, aim.angle, 'Linear')
+      g.scale(gun, at, JUMP, { 1, previous.flip }, { 1, aim.flip }, 'Linear', 2)
+    end
+    -- Recoil back along the shot and kick up, settling over 0.19 s.
+    g.move(gun, at, 0.19, { -aim.dx * 9, -aim.dy * 9 }, { 0, 0 }, SMOOTH, 1)
+    g.rotate(gun, at, 0.19, 8 * aim.flip, 0, SMOOTH, 1)
+    g.move(slide, at, 0.10, { -8, 0 }, { 0, 0 }, SMOOTH, 2)
+
+    -- Muzzle point (132, 1) in the gun's pose at the shot.
+    local mx, my = motion.rotate(132, aim.flip, aim.angle + 8 * aim.flip)
+    mx, my = sx - aim.dx * 9 + mx, sy - aim.dy * 9 + my
+
+    g.show(flash, at)
+    g.scale(flash, at, 0.085, 1.1, 0.35, 'Linear')
+    g.hide(flash, at + 0.085)
+
+    local rx, ry = aim.x - mx, aim.y - my
+    local tracer = g.set(g.image(g.layer, 'Shot trail ' .. i, nil, math.sqrt(rx * rx + ry * ry), 1.4), {
+      color = { 1, 0.85, 0.48, 0.46 }, position = { (aim.x + mx) / 2, (aim.y + my) / 2 },
+      rotation = math.deg(math.atan(ry, rx)), visible = false })
+    g.show(tracer, at)
+    g.hide(tracer, at + 0.045)
+
+    local hole = g.set(g.shape(g.layer, 'Bullet hole ' .. i, 'hole', 28, 28),
+      { position = { aim.x, aim.y }, rotation = (i - 1) * 71, scale = 1.32, visible = false })
+    g.show(hole, at + 0.035)
+    g.scale(hole, at + 0.035, 0.13, 1.32, 1, SMOOTH)
+
+    for k = 0, 1 do
+      local index = (i - 1) * 2 + k
+      local start = at + 0.045 + k * 0.1
+      local smoke = g.set(g.shape(g.layer, 'Muzzle smoke ' .. index, 'wisp', 30, 57, { 0.78, 0.8, 0.77 }),
+        { position = { mx, my + 12 }, scale = { 0.7, 0.55 }, alpha = 0, visible = false })
+      g.show(smoke, start)
+      g.move(smoke, start, 1.25, { mx, my + 12 }, { mx, my + 12 + 31 * 1.25 }, 'Linear')
+      motion.cycle(g.move, smoke, start, start + 1.25, 2 * math.pi / 3, index / (2 * math.pi),
+        { { 0, { 0, 0 } }, { 0.25, { 9, 0 }, 'OutSine' }, { 0.5, { 0, 0 }, 'InSine' }, { 0.75, { -9, 0 }, 'OutSine' }, { 1, { 0, 0 }, 'InSine' } }, 1)
+      g.scale(smoke, start, 1.25, { 0.7, 0.55 }, { 0.7 + 0.6 * 1.25, 0.55 + 0.5 * 1.25 }, 'Linear')
+      g.fade(smoke, start, 0.08, 0, 0.32, SMOOTH)
+      g.fade(smoke, start + 0.5, 0.75, 1, 0, SMOOTH, 1)
+      g.hide(smoke, start + 1.25)
+    end
+    g.sound(at, 'shot', 0.75)
+  end
+  g.sound(T.rack, 'rack', 0.8)
+end
+
+return M

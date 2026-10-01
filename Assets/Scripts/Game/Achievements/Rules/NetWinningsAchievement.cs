@@ -11,7 +11,7 @@ namespace Game.Achievements
     {
         public override string Category => AchievementCategories.Wealth;
         protected abstract bool Cumulative { get; }
-        public override string IconPath => Cumulative ? "UI/Achievements/Wealth-v1" : "UI/Achievements/Champion-v1";
+        public override string IconPath => Cumulative ? "UI/Achievements/wealth" : "UI/Achievements/champion";
 
         public override void Evaluate(AchievementContext context, string accountId, AchievementProgress progress)
         {

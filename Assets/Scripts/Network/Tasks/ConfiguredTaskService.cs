@@ -62,26 +62,14 @@ namespace Game.Network.Tasks
         private void Refresh(TaskAccountTransaction tx, DateTimeOffset now, bool fillRandom)
         {
             var document = tx.Document;
-            var period = DailyTaskService.GetPeriod(now);
+            var period = TaskPeriod.GetPeriod(now);
             var timestamp = now.ToUnixTimeMilliseconds();
             if (document.FixedPeriod != period)
             {
                 CleanFinished(tx, now, false);
                 foreach (var entry in _catalog.Fixed.Where(e => e.Enabled).OrderBy(e => e.SortOrder).ThenBy(e => e.TaskId))
                 {
-                    var instance = Create(entry, false, now);
-                    var legacyId = LegacyId(instance.DefinitionId);
-                    if (legacyId != 0 && tx.HasLegacyClaim(DailyTaskService.ClaimKey(tx.Account.AccountId, legacyId, period)))
-                    {
-                        instance.State.CompletedCount = 1;
-                        instance.State.ClaimedCount = 1;
-                        tx.Document.Receipts.Add(new TaskClaimReceipt
-                        {
-                            InstanceId = instance.InstanceId, Ordinal = 1,
-                            Chip = Definition(instance).Rule.GetReward().Chip, Items = Array.Empty<TaskRewardItem>()
-                        });
-                    }
-                    document.Instances.Add(instance);
+                    document.Instances.Add(Create(entry, false, now));
                 }
                 document.FixedPeriod = period;
                 tx.Changed = true;
@@ -190,10 +178,10 @@ namespace Game.Network.Tasks
             return new PlayerTaskInstance
             {
                 InstanceId = Guid.NewGuid().ToString("N"), DefinitionId = definition.Id, DefinitionJson = definition.RawJson,
-                Revision = _catalog.Revision, IsRandom = random, DisplayOrder = entry.SortOrder, Period = DailyTaskService.GetPeriod(now),
+                Revision = _catalog.Revision, IsRandom = random, DisplayOrder = entry.SortOrder, Period = TaskPeriod.GetPeriod(now),
                 AssignedAt = now.ToUnixTimeMilliseconds(),
-                ExpiresAt = new DateTimeOffset(now.ToOffset(DailyTaskService.ResetOffset).Date.AddDays(random ? entry.ValidityDays : 1),
-                    DailyTaskService.ResetOffset).ToUnixTimeMilliseconds(),
+                ExpiresAt = new DateTimeOffset(now.ToOffset(TaskPeriod.ResetOffset).Date.AddDays(random ? entry.ValidityDays : 1),
+                    TaskPeriod.ResetOffset).ToUnixTimeMilliseconds(),
                 State = new TaskState { MaxCompletions = definition.MaxCompletions, Progress = new int[definition.Rule.Objectives.Count] },
                 ItemLimits = definition.Rule.GetReward().Items.ToDictionary(i => i.ItemId, i => _catalog.ItemLimits[i.ItemId])
             };
@@ -247,10 +235,10 @@ namespace Game.Network.Tasks
                 var page = visible.Skip(offset).Take(PageSize).Select(i => Project(i, tx, now)).ToArray();
                 return new DailyTasksSnapshot
                 {
-                    Period = DailyTaskService.GetPeriod(now), Revision = tx.Document.Revision, Balance = tx.Account.Dollars,
+                    Period = TaskPeriod.GetPeriod(now), Revision = tx.Document.Revision, Balance = tx.Account.Dollars,
                     ServerUnixSeconds = now.ToUnixTimeSeconds(),
-                    NextResetUnixSeconds = new DateTimeOffset(now.ToOffset(DailyTaskService.ResetOffset).Date.AddDays(1),
-                        DailyTaskService.ResetOffset).ToUnixTimeSeconds(),
+                    NextResetUnixSeconds = new DateTimeOffset(now.ToOffset(TaskPeriod.ResetOffset).Date.AddDays(1),
+                        TaskPeriod.ResetOffset).ToUnixTimeSeconds(),
                     Tasks = page, Offset = offset, TotalCount = visible.Length,
                     NextOffset = offset + page.Length < visible.Length ? offset + page.Length : -1
                 };
@@ -276,7 +264,7 @@ namespace Game.Network.Tasks
             }
             return new DailyTaskState
             {
-                Id = LegacyId(definition.Id), InstanceId = instance.InstanceId, DefinitionId = definition.Id,
+                InstanceId = instance.InstanceId, DefinitionId = definition.Id,
                 Name = definition.Name, Description = definition.Description, Reward = reward.Chip,
                 RewardItems = reward.Items.Select(i => new TaskRewardItemState { ItemId = i.ItemId, Count = i.Quantity }).ToArray(),
                 IsRandom = instance.IsRandom, IsDirectClaim = rule.IsDirectClaim, Availability = availability,
@@ -324,9 +312,6 @@ namespace Game.Network.Tasks
                 return outcome;
             });
         }
-
-        internal static DailyTaskId LegacyId(string id) => id == "daily_supply" ? DailyTaskId.DailySupply :
-            id == "comeback" ? DailyTaskId.Comeback : 0;
 
         private static DailyTaskResult GrantRound(TaskAccountTransaction tx, PlayerTaskInstance instance, GameTask rule,
             bool valid, out TaskClaimReceipt receipt)

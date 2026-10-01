@@ -96,6 +96,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _select: {fileID: 627074434872030136}
   _icon: {fileID: 3834586032347840121}
+  _placeholder:
+  - {fileID: 6162949554635034660}
   _background: {fileID: 4302789716628937995}
   _name: {fileID: 8451199148355981459}
   _kind: {fileID: 4688835724540069271}
@@ -1787,6 +1789,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _select: {fileID: 6512613569548709810}
   _icon: {fileID: 1897048075745073368}
+  _placeholder:
+  - {fileID: 2877996456602883722}
   _background: {fileID: 4038361820101080777}
   _name: {fileID: 2232986964159454933}
   _kind: {fileID: 2853974978000666984}
@@ -2062,7 +2066,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 07ace4226330498da23b4257ca488b27, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _catalog: {fileID: 11400000, guid: 931eab188b5784343aa71144e0a2f1b9, type: 2}
   _content: {fileID: 334335963647968905}
   _cards:
   - {fileID: 649009219800468277}
@@ -3587,6 +3590,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _select: {fileID: 8399841207219482234}
   _icon: {fileID: 4333466472945225703}
+  _placeholder:
+  - {fileID: 1915213004232750688}
   _background: {fileID: 2251218733721559704}
   _name: {fileID: 7704049428032227828}
   _kind: {fileID: 7755482941229321694}
@@ -4891,6 +4896,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _select: {fileID: 4102515185290574291}
   _icon: {fileID: 8429590558103737225}
+  _placeholder:
+  - {fileID: 6056171876047870838}
   _background: {fileID: 8851960794295547368}
   _name: {fileID: 1736160517543720987}
   _kind: {fileID: 1330473949429340305}
@@ -5932,6 +5939,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _select: {fileID: 5244388497573431325}
   _icon: {fileID: 2282023960391426346}
+  _placeholder:
+  - {fileID: 8178587966128685536}
   _background: {fileID: 279577750507134461}
   _name: {fileID: 5110326147956127898}
   _kind: {fileID: 7974525407081152457}
@@ -11816,7 +11825,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3db66d0c12d54db47a0ce50a4f4c73fe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _catalog: {fileID: 11400000, guid: dda7a34a8f906cc4493244b372e1be82, type: 2}
   _cards:
   - {fileID: 9098936510247106109}
   - {fileID: 6587514857086299979}
@@ -11837,6 +11845,7 @@ MonoBehaviour:
   _countLabel: {fileID: 1484507926903944680}
   _feedback: {fileID: 5748816451978086926}
   _detailIcon: {fileID: 580707815643601484}
+  _detailPlaceholder: {fileID: 6266960518529488091}
   _action: {fileID: 176561971479382384}
   _previous: {fileID: 8119421927579769563}
   _next: {fileID: 5057227699705959411}
@@ -12075,6 +12084,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _select: {fileID: 2884410259566363277}
   _icon: {fileID: 3908513799434956307}
+  _placeholder:
+  - {fileID: 1887730576941887504}
   _background: {fileID: 8609771987151297214}
   _name: {fileID: 3172744243146504952}
   _kind: {fileID: 2635807011548370582}
@@ -14891,10 +14902,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: Product4
       objectReference: {fileID: 0}
-    - target: {fileID: 3854144048873799054, guid: 1593941defb499a4b9977b53cf3e006b, type: 3}
-      propertyPath: m_Sprite
-      value: 
-      objectReference: {fileID: 21300000, guid: 2718ce4d64a63a14699e05fda17f194b, type: 3}
     - target: {fileID: 5624650786590490924, guid: 1593941defb499a4b9977b53cf3e006b, type: 3}
       propertyPath: m_text
       value: $18,000
@@ -15024,10 +15031,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: Product3
       objectReference: {fileID: 0}
-    - target: {fileID: 3854144048873799054, guid: 1593941defb499a4b9977b53cf3e006b, type: 3}
-      propertyPath: m_Sprite
-      value: 
-      objectReference: {fileID: 21300000, guid: e445c166a612f1a46ac3b9a068adcbf6, type: 3}
     - target: {fileID: 5624650786590490924, guid: 1593941defb499a4b9977b53cf3e006b, type: 3}
       propertyPath: m_text
       value: $12,000
@@ -15157,10 +15160,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: Product2
       objectReference: {fileID: 0}
-    - target: {fileID: 3854144048873799054, guid: 1593941defb499a4b9977b53cf3e006b, type: 3}
-      propertyPath: m_Sprite
-      value: 
-      objectReference: {fileID: 21300000, guid: 694887dfb58b4344589356e11ea2dc28, type: 3}
     - target: {fileID: 8717748647934948069, guid: 1593941defb499a4b9977b53cf3e006b, type: 3}
       propertyPath: m_text
       value: "\u628A\u7480\u74A8\u661F\u6CB3\uFF0C\u7559\u5728\u4F60\u7684\u5EA7\u4F4D\u3002"

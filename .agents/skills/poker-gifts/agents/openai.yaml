@@ -1,0 +1,4 @@
+interface:
+  display_name: "Poker 礼物"
+  short_description: "新增或调整礼物的配置、Lua 特效脚本、美术音效与礼物包"
+  default_prompt: "请使用 $poker-gifts，按项目约定完成下面的礼物工作；先确认物品 ID、价格和动画时长，再完成配置、Lua 脚本、礼物包和预览检查。"

@@ -1,4 +1,5 @@
-using Game.SO;
+using Game.Content;
+using Game.Network;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -11,30 +12,61 @@ namespace Game.UI
         [SerializeField] private Image _background;
         [SerializeField] private Image _artwork;
         [SerializeField] private Image _outline;
-        [SerializeField] private NamecardCatalogSO _catalog;
         [Tooltip("Content aligned to the selected artwork's safe area, without resizing the player slot.")]
         [SerializeField] private RectTransform _content;
         private bool _highlighted;
         private bool _hasPresented;
-        private NamecardProductSO _product;
+        private NamecardDefinition _product;
+        private string _requestedId;
         private Vector2 _lastArtworkSize;
+        private NamecardArtworkSO _loadedArtwork;
+        private readonly RemoteAssetBinding<NamecardArtworkSO> _binding = new RemoteAssetBinding<NamecardArtworkSO>();
 
         private readonly InfernalNameStyle _nameStyle = new InfernalNameStyle();
 
         public void Present(string id, ulong serviceYears = 0, TMP_Text playerName = null)
         {
             _nameStyle.Present(playerName, serviceYears);
-            _product = _catalog != null ? _catalog.GetProduct(InfernalNamecard.Resolve(id, serviceYears)) : null;
+            _requestedId = InfernalNamecard.Resolve(id, serviceYears);
+            _product = ClientShopCatalog.FindNamecard(_requestedId);
             _hasPresented = true;
+            BindArtwork();
+        }
+
+        // Rooms can be drawn before the product catalog arrives; resolve the card again once it does.
+        private void OnCatalogChanged()
+        {
+            if (!_hasPresented) return;
+            _product = ClientShopCatalog.FindNamecard(_requestedId);
+            BindArtwork();
+        }
+
+        private void OnDestroy() { _binding.Dispose(); _nameStyle.Dispose(); }
+
+        private void OnDisable()
+        {
+            ClientShopCatalog.Changed -= OnCatalogChanged;
+            _loadedArtwork = null;
+            if (_artwork != null) _artwork.sprite = null;
+            _binding.Dispose();
+        }
+
+        private void BindArtwork()
+        {
+            if (Application.isPlaying && !isActiveAndEnabled) return;
+            _binding.Bind(_product != null ? _product.Artwork : null, artwork =>
+            {
+                _loadedArtwork = artwork;
+                RefreshArtwork();
+            });
             RefreshArtwork();
         }
 
-        private void OnDestroy() => _nameStyle.Dispose();
-
         private void OnEnable()
         {
+            ClientShopCatalog.Changed += OnCatalogChanged;
             if (_hasPresented)
-                RefreshArtwork();
+                BindArtwork();
         }
 
         private void LateUpdate()
@@ -50,7 +82,7 @@ namespace Game.UI
                 return;
             _lastArtworkSize = _artwork.rectTransform.rect.size;
             float aspect = _lastArtworkSize.y > 0f ? _lastArtworkSize.x / _lastArtworkSize.y : NamecardLayout.Aspect;
-            var sprite = _product != null && !_product.IsDefault ? _product.GetArtwork(aspect) : null;
+            var sprite = _product != null && !_product.IsDefault && _loadedArtwork != null ? _loadedArtwork.Select(aspect) : null;
             bool custom = sprite != null;
             _artwork.sprite = sprite;
             _artwork.type = Image.Type.Simple;
@@ -83,7 +115,7 @@ namespace Game.UI
                 size.x = size.y * aspect;
             else
                 size.y = size.x / aspect;
-            var inset = sprite == _product.Artwork4x3 ? NamecardLayout.CompactSafeMin : NamecardLayout.SafeMin;
+            var inset = _loadedArtwork != null && sprite == _loadedArtwork.Compact ? NamecardLayout.CompactSafeMin : NamecardLayout.SafeMin;
             var halfContent = Vector2.Scale(size, Vector2.one * 0.5f - inset);
             var artworkRect = _artwork.rectTransform;
             Vector2 min = parent.InverseTransformPoint(artworkRect.TransformPoint(artworkRect.rect.center - halfContent));

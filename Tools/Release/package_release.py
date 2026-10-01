@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import re
 import tarfile
+import time
 import zipfile
 
 
@@ -22,8 +23,16 @@ def tar_metadata(info):
     return info
 
 
+def zip_add(archive, name, data):
+    # Web servers read the unpacked files as another user; ZipFile.writestr would default to 0600.
+    info = zipfile.ZipInfo(name, date_time=time.localtime()[:6])
+    info.compress_type = zipfile.ZIP_DEFLATED
+    info.external_attr = (0o100644 << 16)
+    archive.writestr(info, data)
+
+
 def package_webgl(web, destination):
-    for required in (web / "index.html", web / "StreamingAssets/client-network.json"):
+    for required in (web / "index.html", web / "Configs/Network/client-network.json"):
         if not required.is_file():
             raise FileNotFoundError(required)
     for extension in ("*.wasm", "*.data", "*.loader.js", "*.framework.js"):
@@ -44,12 +53,12 @@ def package_webgl(web, destination):
         for path in files:
             relative = path.relative_to(web).as_posix()
             if relative == "index.html":
-                archive.writestr(relative, index)
+                zip_add(archive, relative, index)
             elif relative.startswith("Build/"):
-                archive.write(path, build_url + relative[len("Build"):])
+                zip_add(archive, build_url + relative[len("Build"):], path.read_bytes())
             else:
-                archive.write(path, relative)
-        archive.writestr("WEBGL-MANIFEST.json", json.dumps({
+                zip_add(archive, relative, path.read_bytes())
+        zip_add(archive, "WEBGL-MANIFEST.json", json.dumps({
             "buildVersion": version, "buildUrl": build_url, "sha256": build_hashes
         }, indent=2) + "\n")
     temporary.replace(destination)
@@ -69,7 +78,7 @@ def package_linux(linux, destination):
     for source, deployed_name in linux_names.items():
         if source != deployed_name and (linux / deployed_name).exists():
             raise ValueError(f"Conflicting Linux deployment path: {deployed_name}")
-    for required in (linux / "UnityPlayer.so", linux / "Configs/server-network.json"):
+    for required in (linux / "UnityPlayer.so", linux / "Configs/Network/server-network.json"):
         if not required.is_file():
             raise FileNotFoundError(required)
     temporary = destination.with_suffix(destination.suffix + ".tmp")

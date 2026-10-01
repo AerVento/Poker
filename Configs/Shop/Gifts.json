@@ -1,0 +1,18 @@
+[
+  {
+    "ItemId": "rotten-egg",
+    "Effect": "gifts/rotten-egg"
+  },
+  {
+    "ItemId": "champagne",
+    "Effect": "gifts/champagne"
+  },
+  {
+    "ItemId": "gunfire",
+    "Effect": "gifts/gunfire"
+  },
+  {
+    "ItemId": "swiss-bank-note",
+    "Effect": "gifts/swiss-bank-note"
+  }
+]
