@@ -1,0 +1,39 @@
+{
+  "contracts": [
+    {
+      "item-id": "devil-contract",
+      "sign-below-assets": 1000,
+      "payout": 1000,
+      "repayment": 1100,
+      "service-years": 1
+    },
+    {
+      "item-id": "archdevil-contract",
+      "sign-below-assets": 10000,
+      "payout": 10000,
+      "repayment": 11000,
+      "service-years": 10
+    },
+    {
+      "item-id": "satan-contract",
+      "sign-below-assets": 100000,
+      "payout": 100000,
+      "repayment": 110000,
+      "service-years": 100
+    }
+  ],
+  "service-namecards": [
+    {
+      "min-service-years": 100,
+      "namecard-item-id": "namecard-devil-service"
+    },
+    {
+      "min-service-years": 500,
+      "namecard-item-id": "namecard-archdevil-service"
+    },
+    {
+      "min-service-years": 1000,
+      "namecard-item-id": "namecard-satan-service"
+    }
+  ]
+}

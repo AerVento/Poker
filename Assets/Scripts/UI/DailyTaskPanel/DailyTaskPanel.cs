@@ -211,8 +211,9 @@ namespace Game.UI
             _claimRequest = 0;
             Refresh();
             _feedback.text = response.Result == DailyTaskResult.Success
-                ? $"领取成功，${response.GrantedAmount:N0} 已到账。" +
-                    (response.GrantedItems != null && response.GrantedItems.Length > 0 ? " 道具已加入背包。" : "") : ResultMessage(response.Result);
+                ? "领取成功" : ResultMessage(response.Result);
+            if (response.Result == DailyTaskResult.Success && response.GrantedReward?.Entries.Count > 0)
+                UIManager.Instance.PushPanel<RewardPopupPanel>().Present(response.GrantedReward.Entries);
         }
 
         private void DisplayCards()
@@ -292,10 +293,10 @@ namespace Game.UI
             _deleteRequest = 0;
             Refresh();
             _feedback.text = response.Result == DailyTaskResult.Success
-                ? (response.Refreshed ? "任务已刷新，本槽位免费刷新已用完。" : "任务已删除，空位将在下一业务日补充。") +
-                    (response.GrantedAmount > 0 ? $" ${response.GrantedAmount:N0} 奖励已自动到账。" : "") +
-                    (response.GrantedItems != null && response.GrantedItems.Length > 0 ? " 奖励道具已加入背包。" : "")
+                ? (response.Refreshed ? "任务已刷新，本槽位免费刷新已用完。" : "任务已删除，空位将在下一业务日补充。")
                 : ResultMessage(response.Result);
+            if (response.Result == DailyTaskResult.Success && response.GrantedReward?.Entries.Count > 0)
+                UIManager.Instance.PushPanel<RewardPopupPanel>().Present(response.GrantedReward.Entries);
         }
 
         private void RequestPage()
@@ -323,11 +324,11 @@ namespace Game.UI
             DailyTaskResult.BalanceTooHigh => "当前总资产尚未满足任务的领取条件。",
             DailyTaskResult.NotComplete => "本轮目标尚未完成。",
             DailyTaskResult.Expired => "任务已到期，未完成的轮次不再开放。",
-            DailyTaskResult.ItemLimit => "奖励道具已达持有上限，暂时无法领取。",
+            DailyTaskResult.ItemLimit => "奖励物品暂不可用，请稍后重试。",
             DailyTaskResult.ActiveHand => "当前无法领取奖励。",
             DailyTaskResult.OutsideRoomRequired => "当前无法领取奖励。",
             DailyTaskResult.PeriodChanged => "已进入新的一天，任务状态正在刷新，请重新领取。",
-            DailyTaskResult.BalanceLimit => "美金余额已达上限，无法领取奖励。",
+            DailyTaskResult.BalanceLimit => "货币余额已达上限，无法领取奖励。",
             _ => "暂时无法读取任务，请刷新后重试。",
         };
     }

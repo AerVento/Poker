@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Linq;
 using Framework.Configs;
-using Game.Network.Accounts;
 using Game.Tasks;
 
 namespace Game.Network.Tasks
@@ -26,14 +25,15 @@ namespace Game.Network.Tasks
                 return string.IsNullOrEmpty(configured) ? DefaultDirectory : Path.GetFullPath(configured);
             }
         }
-        public static TaskCatalog Load(ItemPurchaseRuntime items)
+        public static TaskCatalog Load(Func<string, uint?> itemLimit)
         {
             var directory = ConfigurationDirectory;
             try
             {
-                var texts = FileNames.Select(name =>
-                    ConfigManager.ReadAllTextAtPath(Path.Combine(directory, name))).ToArray();
-                return TaskCatalog.Load(texts[0], texts[1], texts[2], id => items?.Find(id)?.MaxQuantity);
+                return TaskCatalog.Build(
+                    ConfigManager.LoadAtPath<TaskDefinitionsConfigData>(Path.Combine(directory, FileNames[0])),
+                    ConfigManager.LoadAtPath<FixedTasksConfigData>(Path.Combine(directory, FileNames[1])),
+                    ConfigManager.LoadAtPath<RandomTasksConfigData>(Path.Combine(directory, FileNames[2])), itemLimit);
             }
             catch (Exception error)
             {

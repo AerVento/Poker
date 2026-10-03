@@ -38,6 +38,9 @@ namespace Game.Content
         public static RemoteDownloadState DownloadState(string address)
         {
             if (string.IsNullOrEmpty(address)) return RemoteDownloadState.Downloaded;
+#if UNITY_EDITOR
+            if (ReadsLocalAssets) return LocalAssetExists(address) ? RemoteDownloadState.Downloaded : RemoteDownloadState.Failed;
+#endif
             var state = StateOf(address);
             if (state == RemoteContentState.Current || state == RemoteContentState.Stale) return RemoteDownloadState.Downloaded;
             if (Transfers.ContainsKey(address)) return RemoteDownloadState.Downloading;
@@ -52,7 +55,7 @@ namespace Game.Content
         public static float DownloadProgress(string address) => string.IsNullOrEmpty(address) ? 1f :
             Transfers.TryGetValue(address, out var transfer) ? transfer.Progress : IsDownloaded(address) ? 1f : 0f;
 
-        // Reads only the local records against the remote catalog; never downloads artwork merely to browse a product.
+        // Reads only the local records against the remote catalog; never downloads artwork merely to browse an item.
         public static UniTask<bool> CheckDownloadAsync(string address, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(address)) return UniTask.FromResult(true);
@@ -65,6 +68,9 @@ namespace Game.Content
 
         private static async UniTask<bool> CheckDownloadCore(string address, CancellationToken cancellationToken)
         {
+#if UNITY_EDITOR
+            if (ReadsLocalAssets) return IsDownloaded(address);
+#endif
             await Initialize().AttachExternalCancellation(cancellationToken);
             return IsDownloaded(address);
         }
@@ -83,6 +89,9 @@ namespace Game.Content
 
         private static async UniTask<bool> DownloadCore(string address, CancellationToken cancellationToken)
         {
+#if UNITY_EDITOR
+            if (ReadsLocalAssets) return IsDownloaded(address);
+#endif
             if (!await Initialize().AttachExternalCancellation(cancellationToken)) return false;
             switch (StateOf(address))
             {
@@ -109,6 +118,9 @@ namespace Game.Content
 
         private static async UniTask CheckForUpdatesCore()
         {
+#if UNITY_EDITOR
+            if (ReadsLocalAssets) return;
+#endif
             try
             {
                 if (_catalog == null)

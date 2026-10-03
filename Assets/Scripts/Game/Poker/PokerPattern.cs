@@ -38,24 +38,6 @@ namespace Game
             }
         }
 
-        public bool BiggerThanOrSame(PokerPattern other)
-        {
-            if (Rank != other.Rank)
-                return Rank > other.Rank;
-            else
-            {
-                for (int i = 0; i < Grades.Count; i++)
-                {
-                    var gradeA = Grades[i];
-                    var gradeB = other.Grades[i];
-                    if (gradeA != gradeB)
-                        return gradeA > gradeB;
-                }
-                // 比到最后是相等的，true
-                return true;
-            }
-        }
-
         public bool SmallerThan(PokerPattern other)
         {
             if (Rank != other.Rank)
@@ -71,24 +53,6 @@ namespace Game
                 }
                 // 比到最后是相等的，返回false
                 return false;
-            }
-        }
-
-        public bool SmallerThanOrSame(PokerPattern other)
-        {
-            if (Rank != other.Rank)
-                return Rank < other.Rank;
-            else
-            {
-                for (int i = 0; i < Grades.Count; i++)
-                {
-                    var gradeA = Grades[i];
-                    var gradeB = other.Grades[i];
-                    if (gradeA != gradeB)
-                        return gradeA < gradeB;
-                }
-                // 比到最后是相等的，true
-                return true;
             }
         }
 

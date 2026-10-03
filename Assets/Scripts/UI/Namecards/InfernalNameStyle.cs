@@ -14,11 +14,13 @@ namespace Game.UI
         private Material _originalMaterial;
         private Material _material;
 
+        private static bool IsServing(ulong serviceYears) => Game.Network.ClientCatalog.Current?.IsServing(serviceYears) == true;
+
         public void Present(TMP_Text label, ulong serviceYears)
         {
-            if (_label != label || !InfernalNamecard.IsForced(serviceYears))
+            if (_label != label || !IsServing(serviceYears))
                 Dispose();
-            if (label == null || !InfernalNamecard.IsForced(serviceYears))
+            if (label == null || !IsServing(serviceYears))
                 return;
             if (_label == null)
             {

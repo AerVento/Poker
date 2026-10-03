@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab2819ee38119fb4392d229fff82d624, type: 3}
+  m_Name: Cigar
+  m_EditorClassIdentifier: 
+  _script: {fileID: 4900000, guid: 6c8879f7b78475a43ae11a6b4ff6981c, type: 3}
+  _modules: []
+  _resources:
+  - _name: cigar
+    _asset: {fileID: 21300000, guid: 1231e569b227c0742a0ef62f598851a7, type: 3}
+  - _name: cut-cigar
+    _asset: {fileID: 21300000, guid: 75e10687f38853f43a457c52df2c6b7a, type: 3}
+  - _name: cap
+    _asset: {fileID: 21300000, guid: a92c2db14c9a39d4683df1314363c864, type: 3}
+  - _name: cutter
+    _asset: {fileID: 21300000, guid: b3faebafd7e12da4496a1caf2e9148f1, type: 3}
+  - _name: blade
+    _asset: {fileID: 21300000, guid: 09a4566602742954f81022e30ac5e3a4, type: 3}
+  - _name: lighter
+    _asset: {fileID: 21300000, guid: ffda00e08f5dc0a49b6518e09aacbd59, type: 3}
+  - _name: flame
+    _asset: {fileID: 21300000, guid: 87a3ab0236cee9448b767d2cb3c32864, type: 3}
+  - _name: snip
+    _asset: {fileID: 8300000, guid: c054508377af3cb4e9ad86a1b8eeac67, type: 3}
+  - _name: ignite
+    _asset: {fileID: 8300000, guid: 6539a66de3f0aea4ba25b484b7b75084, type: 3}

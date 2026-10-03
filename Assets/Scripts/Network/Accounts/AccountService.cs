@@ -28,23 +28,18 @@ namespace Game.Network.Accounts
 
     public sealed class AccountService
     {
-        public const uint DefaultInitialDollars = 10000;
-        public const uint DefaultInitialChips = DefaultInitialDollars;
-
         public static readonly TimeSpan DefaultSessionLifetime = TimeSpan.FromDays(30);
 
         private readonly IAccountRepository _repository;
         private readonly PasswordHasher _passwordHasher;
         private readonly IPasswordAccountRepository _passwordRepository;
         private readonly ISessionAccountRepository _sessionRepository;
-        private readonly uint _initialChips;
         private readonly TimeSpan _sessionLifetime;
         private readonly Func<DateTime> _utcNow;
 
         public AccountService(
             IAccountRepository repository,
             PasswordHasher passwordHasher = null,
-            uint initialChips = DefaultInitialChips,
             TimeSpan? sessionLifetime = null,
             Func<DateTime> utcNow = null)
         {
@@ -52,7 +47,6 @@ namespace Game.Network.Accounts
             _sessionRepository = repository as ISessionAccountRepository;
             _passwordRepository = repository as IPasswordAccountRepository;
             _passwordHasher = passwordHasher ?? new PasswordHasher();
-            _initialChips = initialChips;
             _sessionLifetime = sessionLifetime ?? DefaultSessionLifetime;
             if (_sessionLifetime <= TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(sessionLifetime));
@@ -83,7 +77,7 @@ namespace Game.Network.Accounts
                     PasswordHash = passwordData.Hash,
                     PasswordSalt = passwordData.Salt,
                     PasswordIterations = passwordData.Iterations,
-                    Dollars = _initialChips,
+                    Dollars = 0,
                     Chips = 0,
                     Version = 0,
                     CreatedAtUtc = now,

@@ -34,7 +34,6 @@ namespace Game.UI
 
         public LeaderboardTab SelectedTab { get; private set; }
         private LeaderboardSnapshot _snapshot;
-        private bool _hasSnapshot;
         private ulong _requestId;
         private double _deadline;
         private double _refreshAfter;
@@ -42,7 +41,6 @@ namespace Game.UI
         private void OnEnable()
         {
             FitContent();
-            _hasSnapshot = false;
             _wealthTab.onClick.AddListener(SelectWealth);
             _serviceTab.onClick.AddListener(SelectService);
             SelectTab(LeaderboardTab.Wealth);
@@ -59,7 +57,6 @@ namespace Game.UI
             _wealthTab.onClick.RemoveListener(SelectWealth);
             _serviceTab.onClick.RemoveListener(SelectService);
             _requestId = 0;
-            _hasSnapshot = false;
             _snapshot = default;
         }
 
@@ -98,11 +95,9 @@ namespace Game.UI
             {
                 _requestId = 0;
                 _snapshot = snapshot;
-                _hasSnapshot = true;
                 RenderSnapshot();
                 return;
             }
-            _hasSnapshot = false;
             _snapshot = default;
             ClearRows();
             _self.Show(default);
@@ -137,7 +132,6 @@ namespace Game.UI
                 return;
             }
             _snapshot = response.Snapshot;
-            _hasSnapshot = true;
             RenderSnapshot();
         }
 

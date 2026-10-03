@@ -40,14 +40,6 @@ namespace Game.UI
             PokerShortcutBindings.ShortcutPerformed -= HandleShortcut;
         }
 
-        public void SetConfirmButton(Button button) => _confirmButton = button;
-
-        public void SetBackButton(Button button) => _backButton = button;
-
-        public void SetAmountInput(TMP_InputField input) => _amountInput = input;
-
-        public void SetFocusOrder(params Selectable[] focusOrder) => _focusOrder = focusOrder;
-
         public void InitializeForPanel(BasePanel panel)
         {
             if (panel != null)

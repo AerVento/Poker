@@ -68,9 +68,9 @@ namespace Game.Editor
         [MenuItem("Poker/Shop/Validate Namecard Artwork")]
         public static void ValidateAll()
         {
-            var issues = ShopConfiguration.Load().Namecards.Where(card => !card.IsDefault).SelectMany(card =>
+            var issues = CatalogConfiguration.Load().Namecards.Where(card => !card.IsDefault).SelectMany(card =>
                 GetIssues(AssetDatabase.LoadAssetAtPath<NamecardArtworkSO>(RemoteAssets.SourcePath(card.Artwork)))
-                    .Select(issue => card.Id + ": " + issue)).ToArray();
+                    .Select(issue => card.ItemId + ": " + issue)).ToArray();
             if (issues.Length > 0)
                 Debug.LogError(string.Join("\n", issues));
             else

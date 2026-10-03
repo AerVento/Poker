@@ -117,14 +117,6 @@ namespace Game.Network
             }
         }
 
-        public bool CanExchangeChips(int roomId, string accountId)
-        {
-            var info = GetGameInfo(roomId);
-            if (info == null || !IsHandInProgress(roomId)) return true;
-            var player = info.Players.FirstOrDefault(p => p.IsOccupied && p.AccountId == accountId);
-            return player == null || !player.ParticipatedThisHand || player.IsFold;
-        }
-
         public void RefreshWalletBalance(int roomId, PlayerAccount account)
         {
             var info = GetGameInfo(roomId);

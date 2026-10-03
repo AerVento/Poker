@@ -1,73 +1,71 @@
 {
-  "schemaVersion": 2,
-  "revision": "daily-tasks-v5",
   "capacity": 3,
   "entries": [
     {
-      "taskId": "set_of_set",
+      "task-id": "set_of_set",
       "enabled": true,
       "weight": 20,
-      "validityDays": 1
+      "validity-days": 1
     },
     {
-      "taskId": "flush",
+      "task-id": "flush",
       "enabled": true,
       "weight": 20,
-      "validityDays": 1
+      "validity-days": 1
     },
     {
-      "taskId": "win_5hands",
+      "task-id": "win_5hands",
       "enabled": true,
       "weight": 50,
-      "validityDays": 1
+      "validity-days": 1
     },
     {
-      "taskId": "complete_10hands",
+      "task-id": "complete_10hands",
       "enabled": true,
       "weight": 50,
-      "validityDays": 1
+      "validity-days": 1
     },
     {
-      "taskId": "surprise",
+      "task-id": "surprise",
       "enabled": true,
       "weight": 5,
-      "validityDays": 1
+      "validity-days": 1
     },
     {
-      "taskId": "fullhouse",
+      "task-id": "fullhouse",
       "enabled": true,
       "weight": 30,
-      "validityDays": 1
+      "validity-days": 1
     },
     {
-      "taskId": "twopair_10hands",
+      "task-id": "twopair_10hands",
       "enabled": true,
       "weight": 50,
-      "validityDays": 1
+      "validity-days": 1
     },
     {
-      "taskId": "pair",
+      "task-id": "pair",
       "enabled": true,
       "weight": 50,
-      "validityDays": 1
+      "validity-days": 1
     },
     {
-      "taskId": "four_of_a_kind",
+      "task-id": "four_of_a_kind",
       "enabled": true,
       "weight": 25,
-      "validityDays": 7
+      "validity-days": 7
     },
     {
-      "taskId": "straight",
+      "task-id": "straight",
       "enabled": true,
       "weight": 40,
-      "validityDays": 1
+      "validity-days": 1
     },
     {
-      "taskId": "straight_flush",
+      "task-id": "straight_flush",
       "enabled": true,
       "weight": 10,
-      "validityDays": 30
+      "validity-days": 30
     }
   ]
 }

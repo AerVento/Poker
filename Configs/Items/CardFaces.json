@@ -1,0 +1,27 @@
+[
+  {
+    "item-id": "cardface-default",
+    "cards": "",
+    "preview": "default"
+  },
+  {
+    "item-id": "cardface-minimal",
+    "cards": "cardfaces/minimal",
+    "preview": "minimal"
+  },
+  {
+    "item-id": "cardface-cat-court",
+    "cards": "cardfaces/cat-court",
+    "preview": "cat-court"
+  },
+  {
+    "item-id": "cardface-jewel-court",
+    "cards": "cardfaces/jewel-court",
+    "preview": "jewel-court"
+  },
+  {
+    "item-id": "cardface-gensokyo",
+    "cards": "cardfaces/gensokyo",
+    "preview": "gensokyo"
+  }
+]

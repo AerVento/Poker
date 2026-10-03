@@ -7,7 +7,7 @@ description: 在 Poker 项目中不重新构建页面地更新商品与远程内
 
 商品列表在 `Configs/Shop/`，美术和礼物脚本是远程内容，两者都能在不重新构建页面的情况下更新。先读根目录 `AGENTS.md`，检查工作区已有改动。
 
-- [货币、商店与物品](../../../Docs/Systems/Economy.md)：四个配置文件的字段与校验规则。
+- [货币、商店与物品](../../../Docs/Systems/Economy.md)：物品表、功能目录、商城、初始发放各文件的字段与校验规则。
 - [远程资源](../../../Docs/Operations/RemoteArtwork.md)：内容版本、格式版本、缺失／失效／生效、页面更新、构建与上传顺序。
 - 新款名片或牌面的美术：[poker-cosmetics](../poker-cosmetics/SKILL.md)；新礼物或改礼物动画：[poker-gifts](../poker-gifts/SKILL.md)。
 
@@ -15,18 +15,20 @@ description: 在 Poker 项目中不重新构建页面地更新商品与远程内
 
 | 改动 | 需要做的 |
 | --- | --- |
-| 改价、上下架、改名称或介绍、调整顺序 | 只改 `Configs/Shop/*.json`，重启服务器 |
-| 新增无专属行为的物品、礼物、名片、牌面 | 准备远程内容并发布，再加配置、重启服务器 |
+| 改价、上下架、调整商城顺序 | 只改 `Configs/Shop/Shop.json`，重启服务器 |
+| 改名称或介绍 | 只改 `Configs/Items/Items.json`，重启服务器 |
+| 新增普通物品、礼物、名片、牌面，或调整契约数值、服刑名片门槛 | 需要远程内容时先发布，再改 `Configs/Items/` 与 `Configs/Shop/`、重启服务器 |
+| 修改新账号初始发放 | 只改 `Configs/Accounts/StarterGrants.json`，重启服务器；只影响之后创建的账号 |
 | 换图、换音效、改礼物 Lua 节奏或效果 | 只发布远程内容；已下载的玩家回到大厅时在后台更新 |
 | 改了礼物宿主接口、程序化图形、远程内容用到的脚本类型或序列化字段 | 内容格式变化：执行 `XLua/Generate Code`（宿主接口变化时），页面、服务端和内容一起发布 |
-| 契约等带购买或还款规则的物品、服刑名片、成就奖励逻辑 | 需要改代码，页面与服务端一起发布 |
+| 新的消耗方式、新的功能目录、成就奖励逻辑 | 需要改代码，页面与服务端一起发布 |
 
 ## 修改配置
 
-1. 编辑 `Items.json`、`Gifts.json`、`Namecards.json` 或 `CardFaces.json`。数组顺序就是商城或礼物菜单顺序；ID 永久不变。
-2. 玩家可能拥有的商品不能删除，只能写 `"Listed": false`。名片、牌面第一项必须是 `default`；三种契约和三款服刑名片必须存在。
-3. 在 Unity 执行 `Poker/Shop/Validate Catalogs`（与服务器启动时的校验相同），通过后把文件放到服务器的 `Configs/Shop/` 并重启服务器。配置有误时服务器会拒绝启动，日志写明文件、条目和字段。
-4. 新配置引用的远程地址（`Artwork`、`Cards`、`Effect`）和图标、预览名必须已经发布到资源网站，否则玩家只看到默认外观。
+1. 物品本身（名称、介绍、图标、可消耗、上限）在 `Configs/Items/Items.json`；名片、牌面、礼物、契约的角色在 `Configs/Items/` 下对应目录；出售在 `Configs/Shop/Shop.json`。`Shop.json` 顺序就是商城顺序，`Gifts.json` 顺序就是礼物菜单顺序；ID 永久不变，名片、牌面 ID 保留 `namecard-`、`cardface-` 前缀。字段名用小写加短横线，每个对象都写全该文件的所有字段，空值写 `""`，见 `Docs/Standards/Configuration.md`；字段表见 `Docs/Systems/Economy.md`。
+2. 玩家可能拥有的物品不能从 `Items.json` 删除；停售只在 `Shop.json` 写 `"listed": false`。`namecard-default`、`cardface-default` 必须存在。
+3. 在 Unity 执行 `Poker/Validate Server Configuration`（与服务器启动时的校验相同，一次列出全部问题），通过后把文件放到服务器的 `Configs/Items/`、`Configs/Shop/`、`Configs/Accounts/` 并重启服务器。配置有误时服务器会拒绝启动，日志和 stderr 写明文件、条目和字段。
+4. 新配置引用的远程地址（`artwork`、`cards`、`effect`）和图标、预览名必须已经发布到资源网站，否则玩家只看到默认外观。
 
 ## 发布远程内容
 
@@ -47,6 +49,6 @@ description: 在 Poker 项目中不重新构建页面地更新商品与远程内
 
 ## 验证
 
-- 配置：`Poker/Shop/Validate Catalogs`、EditMode 测试，并在 `Game.unity` 登录后检查商城、收藏和礼物菜单。
-- 内容：本地运行 `python Tools/serve_remote_content.py`，用 WebGL 页面验证首次下载、刷新后命中缓存、回到大厅后的更新替换。
+- 配置：`Poker/Validate Server Configuration`、EditMode 测试，并在 `Game.unity` 登录后检查商城、收藏和礼物菜单。
+- 内容：Editor Play Mode 默认直接读取 `Assets/RemoteContent`（`Poker/Remote Artwork/Editor Content Source/Local Assets`），用于检查美术与脚本；验证已上传的内容时切到 `Remote Server`，它读取 `client-network.json` 的 `resource-base-url`。浏览器缓存与更新替换用 `python Tools/serve_remote_content.py` 和 WebGL 页面验证首次下载、刷新后命中缓存、回到大厅后的更新替换。
 - 动画效果交给用户观看确认；如实说明未做的上传、多人与浏览器验证。

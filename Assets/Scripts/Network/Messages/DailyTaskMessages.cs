@@ -17,8 +17,7 @@ namespace Game.Network
         public string AccountId;
         public string InstanceId;
         public DailyTaskResult Result;
-        public uint GrantedAmount;
-        public TaskRewardItemState[] GrantedItems;
+        public Reward GrantedReward;
     }
 
     public struct DailyTasksRequest : NetworkMessage
@@ -48,9 +47,8 @@ namespace Game.Network
         public ulong RequestId;
         public string AccountId;
         public DailyTaskResult Result;
-        public uint GrantedAmount;
+        public Reward GrantedReward;
         public string InstanceId;
         public int CompletionOrdinal;
-        public TaskRewardItemState[] GrantedItems;
     }
 }

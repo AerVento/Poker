@@ -1,0 +1,21 @@
+[
+  {
+    "kind": "Dollars",
+    "quantity": 10000
+  },
+  {
+    "kind": "Item",
+    "item-id": "namecard-default",
+    "quantity": 1
+  },
+  {
+    "kind": "Item",
+    "item-id": "cardface-default",
+    "quantity": 1
+  },
+  {
+    "kind": "Item",
+    "item-id": "cardface-minimal",
+    "quantity": 1
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-03",
+  "tool": "built-in image_gen",
+  "prompt": "Edit this single cigar sprite for a 2D game. Preserve the horizontal cigar, its left rounded end, brown wrapper material and red/gold band near the left end. Change ONLY the RIGHT end: replace the flat exposed tobacco cross-section with a CLOSED rounded convex domed tobacco cap matching the left end. Both ends must be smoothly rounded and bulging before it is cut, NO flat plane or visible filler at either end. Keep the long straight body, same approximately 4:1 aspect ratio, no lighting changes, no smoke, fire, cutter, hands, text, floor or glow. Single isolated complete cigar on genuine alpha transparency with a small margin around the entire silhouette. Preserve reference style and all band details.",
+  "reference": "original cigar sprite from cigar-atlas.png",
+  "source": "cigar-rounded.png",
+  "outputs": [
+    "Assets/Art/Gifts/Cigar/cigar.png",
+    "Assets/Art/Gifts/Cigar/cut-cigar.png",
+    "Assets/Art/Gifts/Cigar/cap.png"
+  ],
+  "export": "export-assets.ps1"
+}

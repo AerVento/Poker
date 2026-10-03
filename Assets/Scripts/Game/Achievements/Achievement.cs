@@ -33,8 +33,6 @@ namespace Game.Achievements
         public virtual int SortOrder => 0;
         public virtual int Target => 1;
         public abstract Reward Reward { get; }
-        // Compatibility hook for existing hand-only definitions. New definitions implement typed handlers.
-        public virtual void Evaluate(AchievementContext context, string accountId, AchievementProgress progress) { }
     }
 
     public sealed class AchievementProgress

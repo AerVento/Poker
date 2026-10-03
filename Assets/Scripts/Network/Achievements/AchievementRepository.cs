@@ -19,8 +19,7 @@ namespace Game.Network.Accounts
         public long CompletedAt { get; set; }
         public long ClaimedAt { get; set; }
         public bool Announced { get; set; }
-        public uint RewardChips { get; set; }
-        public ItemStack[] RewardItems { get; set; } = Array.Empty<ItemStack>();
+        public Reward Reward { get; set; } = Reward.Empty;
         public Dictionary<string, uint> ItemLimits { get; set; } = new Dictionary<string, uint>();
     }
 
@@ -34,12 +33,6 @@ namespace Game.Network.Accounts
     {
         public string AccountId { get; set; }
         public PlayerEvent Event { get; set; }
-        // Compatibility for callers constructing legacy hand events.
-        public AchievementContext Context
-        {
-            get => (Event as HandStageRecordedEvent)?.Context;
-            set => Event = value == null ? null : new HandStageRecordedEvent(value);
-        }
     }
 
     public abstract class AchievementAccountTransaction
@@ -48,6 +41,7 @@ namespace Game.Network.Accounts
         public AchievementDocument Document { get; protected set; }
         public bool AlreadyConsumed { get; protected set; }
         public bool Changed { get; set; }
+        public Reward GrantedReward { get; protected set; } = Reward.Empty;
         public abstract bool CanClaim { get; }
         public abstract AchievementResult Grant(Reward reward, IReadOnlyDictionary<string, uint> limits, string claimKey);
     }

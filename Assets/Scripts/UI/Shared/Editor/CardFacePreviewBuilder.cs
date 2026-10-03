@@ -17,11 +17,11 @@ namespace Game.UI.Editor
         public static void Generate()
         {
             Directory.CreateDirectory(DirectoryPath);
-            foreach (var face in ShopConfiguration.Load().CardFaces)
+            foreach (var face in CatalogConfiguration.Load().CardFaces)
             {
                 var cards = face.IsDefault ? ShopLocalArtSO.Instance?.ClassicCards :
                     AssetDatabase.LoadAssetAtPath<PokerCardsSO>(RemoteAssets.SourcePath(face.Cards));
-                if (cards == null) throw new System.InvalidOperationException("Missing cards: " + face.Id);
+                if (cards == null) throw new System.InvalidOperationException("Missing cards: " + face.ItemId);
                 var target = RenderTexture.GetTemporary(384, 256, 0, RenderTextureFormat.ARGB32);
                 var previous = RenderTexture.active;
                 var image = new Texture2D(384, 256, TextureFormat.RGBA32, false);

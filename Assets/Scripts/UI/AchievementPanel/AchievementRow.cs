@@ -18,6 +18,10 @@ namespace Game.UI
         [SerializeField] private TextMeshProUGUI _progress;
         [SerializeField] private Image _progressFill;
         [SerializeField] private TextMeshProUGUI _reward;
+        [SerializeField] private RectTransform _rewards;
+        [SerializeField] private ScrollRect _rewardScroll;
+        [SerializeField] private RewardItemView _rewardPrefab;
+        private readonly System.Collections.Generic.List<RewardItemView> _rewardViews = new System.Collections.Generic.List<RewardItemView>();
         [SerializeField] private Button _claim;
         [SerializeField] private TextMeshProUGUI _claimLabel;
 
@@ -106,15 +110,12 @@ namespace Game.UI
             _description.richText = false;
             _expanded = false;
             _bound = true;
-            RefreshDescriptionLayout();
             _category.text = view.Category;
             _progress.text = hidden ? "?? / ??" : view.CompletedAt > 0 ? "已达成" : $"{view.Progress:N0} / {view.Target:N0}";
             _progressFill.fillAmount = hidden ? 0 : view.Target > 0 ? Mathf.Clamp01((float)view.Progress / view.Target) : 0;
             _accent.color = view.CompletedAt > 0 ? new Color(0.87f, 0.70f, 0.39f) : new Color(0.23f, 0.34f, 0.31f);
-            var rewards = new System.Collections.Generic.List<string>();
-            if (!hidden && view.RewardDollars > 0) rewards.Add($"${view.RewardDollars:N0} 美金");
-            if (!hidden && view.RewardItems != null) rewards.AddRange(view.RewardItems.Select(i => ItemName(i.ItemId) + " ×" + i.Count));
-            _reward.text = hidden ? "??" : string.Join("\n", rewards);
+            BindRewards(view.Reward, hidden);
+            RefreshDescriptionLayout();
             _claimLabel.text = view.ClaimedAt > 0 ? "已领取" : hidden ? "未解锁" :
                 view.CompletedAt == 0 ? "未达成" : !canClaim ? "暂不可领" : "领取奖励";
             _claim.interactable = !busy && canClaim && view.CompletedAt > 0 && view.ClaimedAt == 0;
@@ -124,19 +125,22 @@ namespace Game.UI
 
         public static Sprite LoadIcon(string path) => Resources.Load<Sprite>(path ?? "") ?? Resources.Load<Sprite>("UI/Achievements/default");
 
-        private static string ItemName(string id)
+        private void BindRewards(Reward reward, bool hidden)
         {
-            if (NamecardItemId.TryToNamecardId(id, out var namecardId))
+            var entries = (reward ?? Reward.Empty).Entries;
+            int count = hidden ? 0 : entries.Count;
+            _reward.gameObject.SetActive(hidden);
+            _rewardScroll.gameObject.SetActive(!hidden && count > 0);
+            _reward.text = "??";
+            for (int i = 0; i < count; i++)
             {
-                var namecard = Game.Network.ClientShopCatalog.FindNamecard(namecardId);
-                return namecard != null ? namecard.Name + "名片" : id;
+                if (i == _rewardViews.Count) _rewardViews.Add(Instantiate(_rewardPrefab, _rewards));
+                _rewardViews[i].gameObject.SetActive(true);
+                _rewardViews[i].Bind(entries[i]);
             }
-            if (CardFaceItemId.TryToCardFaceId(id, out var cardFaceId))
-            {
-                var face = Game.Network.ClientShopCatalog.FindCardFace(cardFaceId);
-                return face != null ? face.Name + "牌面" : id;
-            }
-            return Game.Network.ClientShopCatalog.FindItem(id)?.Name ?? id;
+            for (int i = count; i < _rewardViews.Count; i++) _rewardViews[i].gameObject.SetActive(false);
+            _rewardScroll.StopMovement();
+            _rewards.anchoredPosition = Vector2.zero;
         }
     }
 }

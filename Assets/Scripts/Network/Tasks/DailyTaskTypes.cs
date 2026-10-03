@@ -34,12 +34,6 @@ namespace Game.Network.Accounts
         public int Target;
     }
 
-    public struct TaskRewardItemState
-    {
-        public string ItemId;
-        public uint Count;
-    }
-
     public struct DailyTaskState
     {
         public string InstanceId;
@@ -56,10 +50,9 @@ namespace Game.Network.Accounts
         public int ClaimOrdinal;
         public long ExpiresAtUnixSeconds;
         public TaskObjectiveState[] Objectives;
-        public TaskRewardItemState[] RewardItems;
         public string Name;
         public string Description;
-        public uint Reward;
+        public Reward Reward;
         public DailyTaskAvailability Availability;
     }
 

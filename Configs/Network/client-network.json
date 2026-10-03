@@ -1,7 +1,7 @@
 {
-  "serverHost": "127.0.0.1",
-  "serverPort": 7777,
-  "useSsl": false,
-  "connectTimeoutSeconds": 10,
-  "resourceBaseUrl": ""
+  "server-host": "127.0.0.1",
+  "server-port": 7777,
+  "use-ssl": false,
+  "connect-timeout-seconds": 10,
+  "resource-base-url": "https://www.aervento.top/games/poker/Content/v1"
 }

@@ -33,11 +33,12 @@ namespace Game.Network.Achievements
                 CatalogRevision = BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(
                     JsonSerializer.Serialize(fullDefinitions, new JsonSerializerOptions { IncludeFields = true })))).Replace("-", "");
             _now = now ?? (() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-            foreach (var achievement in catalog.All)
-                foreach (var item in achievement.Reward.Items ?? Array.Empty<ItemStack>())
-                    if (!_itemLimit(item.ItemId).HasValue || item.Quantity > _itemLimit(item.ItemId).Value)
-                        throw new InvalidOperationException("Invalid achievement reward item: " + item.ItemId);
+            foreach (var achievement in catalog.All) achievement.Reward.Validate(_itemLimit);
         }
+
+        private IReadOnlyDictionary<string, uint> CurrentLimits(IReadOnlyDictionary<string, uint> snapshot)
+            => (snapshot ?? new Dictionary<string, uint>()).Where(p => _itemLimit(p.Key).HasValue).ToDictionary(p => p.Key,
+                p => _itemLimit(p.Key).Value);
 
         public void Initialize() => _repository.InitializeAchievements();
 
@@ -74,9 +75,8 @@ namespace Game.Network.Achievements
                     if (state.Progress.Count == definition.Target)
                     {
                         state.CompletedAt = Math.Max(1, context.OccurredAt);
-                        state.RewardChips = definition.Reward.Chip;
-                        state.RewardItems = (definition.Reward.Items ?? Array.Empty<ItemStack>()).ToArray();
-                        state.ItemLimits = state.RewardItems.ToDictionary(i => i.ItemId, i => _itemLimit(i.ItemId)
+                        state.Reward = definition.Reward;
+                        state.ItemLimits = state.Reward.Items.ToDictionary(i => i.ItemId, i => _itemLimit(i.ItemId)
                             ?? throw new InvalidOperationException("Achievement item was removed: " + i.ItemId));
                         state.Progress.Data.Clear();
                     }
@@ -86,26 +86,6 @@ namespace Game.Network.Achievements
             }, context.EventId);
             // Notify only after the durable transaction commits; scratch-state changes need no UI refresh.
             if (visibleChanged) ProgressChanged?.Invoke(entry.AccountId);
-        }
-
-        public AchievementsResponse GetStatus(string accountId, int offset = 0, long revision = 0)
-        {
-            if (offset < 0 || offset > Catalog.All.Count) return new AchievementsResponse { Result = AchievementResult.InvalidRequest };
-            return _repository.TransactAchievements(accountId, tx =>
-            {
-                var response = new AchievementsResponse { AccountId = accountId, Result = AchievementResult.Success,
-                    Dollars = tx.Account.Dollars, CanClaim = tx.CanClaim, Revision = tx.Document.Revision,
-                    Offset = offset, Total = Catalog.All.Count, NextOffset = -1 };
-                if (offset > 0 && revision != tx.Document.Revision)
-                {
-                    response.Result = AchievementResult.RevisionChanged;
-                    return response;
-                }
-                response.Achievements = Catalog.All.Skip(offset).Take(PageSize)
-                    .Select(d => Project(d, tx.Document.Achievements.Find(a => a.Id == d.Id))).ToArray();
-                if (offset + response.Achievements.Length < Catalog.All.Count) response.NextOffset = offset + response.Achievements.Length;
-                return response;
-            });
         }
 
         public AchievementCatalogResponse GetDefinitions(string accountId, int offset = 0, string revision = null)
@@ -169,8 +149,8 @@ namespace Game.Network.Achievements
                     updated = tx.Account;
                     return response;
                 }
-                response.Result = tx.Grant(new Reward(state.RewardChips, state.RewardItems),
-                    state.ItemLimits ?? new Dictionary<string, uint>(),
+                response.Result = tx.Grant(state.Reward,
+                    CurrentLimits(state.ItemLimits),
                     "AchievementReward:" + accountId + ":" + id);
                 if (response.Result != AchievementResult.Success) return response;
                 state.ClaimedAt = Math.Max(1, _now());
@@ -178,9 +158,7 @@ namespace Game.Network.Achievements
                 response.HasState = true;
                 response.State = ProjectState(definition, state);
                 response.Revision = checked(tx.Document.Revision + 1);
-                response.GrantedDollars = state.RewardChips;
-                response.GrantedItems = (state.RewardItems ?? Array.Empty<ItemStack>()).Select(i =>
-                    new TaskRewardItemState { ItemId = i.ItemId, Count = i.Quantity }).ToArray();
+                response.GrantedReward = tx.GrantedReward;
                 updated = tx.Account;
                 return response;
             });
@@ -195,7 +173,7 @@ namespace Game.Network.Achievements
             if (category != null && !Catalog.All.Any(definition => definition.Category == category))
                 return new AchievementBatchClaimResponse { AccountId = accountId, Category = category,
                     Result = AchievementResult.InvalidRequest, States = Array.Empty<AchievementStateView>(),
-                    GrantedItems = Array.Empty<TaskRewardItemState>() };
+                    GrantedReward = Reward.Empty };
 
             PlayerAccount updated = null;
             var result = _repository.TransactAchievements(accountId, tx =>
@@ -211,22 +189,15 @@ namespace Game.Network.Achievements
                     Result = completed.Length > 0 ? AchievementResult.AlreadyClaimed : AchievementResult.NotComplete,
                     Revision = tx.Document.Revision,
                     States = Array.Empty<AchievementStateView>(),
-                    GrantedItems = Array.Empty<TaskRewardItemState>()
+                    GrantedReward = Reward.Empty
                 };
                 if (claimable.Length == 0) return response;
 
-                ulong dollars = 0;
-                var items = new List<ItemStack>();
+                var reward = Reward.Empty;
                 var limits = new Dictionary<string, uint>(StringComparer.Ordinal);
                 foreach (var state in claimable)
                 {
-                    dollars += state.RewardChips;
-                    if (dollars > uint.MaxValue)
-                    {
-                        response.Result = AchievementResult.BalanceLimit;
-                        return response;
-                    }
-                    items.AddRange(state.RewardItems ?? Array.Empty<ItemStack>());
+                    reward += state.Reward;
                     foreach (var pair in state.ItemLimits ?? new Dictionary<string, uint>())
                     {
                         if (limits.TryGetValue(pair.Key, out var existing)) limits[pair.Key] = Math.Min(existing, pair.Value);
@@ -234,8 +205,7 @@ namespace Game.Network.Achievements
                     }
                 }
 
-                var reward = new Reward((uint)dollars, items);
-                response.Result = tx.Grant(reward, limits,
+                response.Result = tx.Grant(reward, CurrentLimits(limits),
                     "AchievementRewardBatch:" + accountId + ":" + (category ?? "all") + ":" +
                     string.Join(",", claimable.Select(state => state.Id).OrderBy(id => id, StringComparer.Ordinal)));
                 if (response.Result != AchievementResult.Success) return response;
@@ -244,9 +214,7 @@ namespace Game.Network.Achievements
                 foreach (var state in claimable) state.ClaimedAt = claimedAt;
                 tx.Changed = true;
                 response.ClaimedCount = claimable.Length;
-                response.GrantedDollars = (uint)dollars;
-                response.GrantedItems = reward.Items.Select(item => new TaskRewardItemState
-                    { ItemId = item.ItemId, Count = item.Quantity }).ToArray();
+                response.GrantedReward = tx.GrantedReward;
                 response.Revision = checked(tx.Document.Revision + 1);
                 response.States = claimable.Select(state => ProjectState(definitions[state.Id], state)).ToArray();
                 updated = tx.Account;
@@ -283,9 +251,7 @@ namespace Game.Network.Achievements
                 Id = state?.Id ?? definition.Id,
                 Progress = hidden ? 0 : complete ? definition.Target : state?.Progress.Count ?? 0,
                 CompletedAt = state?.CompletedAt ?? 0, ClaimedAt = state?.ClaimedAt ?? 0,
-                RewardDollars = complete ? state.RewardChips : 0,
-                RewardItems = complete ? (state.RewardItems ?? Array.Empty<ItemStack>()).Select(i => new TaskRewardItemState
-                    { ItemId = i.ItemId, Count = i.Quantity }).ToArray() : Array.Empty<TaskRewardItemState>(),
+                Reward = complete ? state.Reward : Reward.Empty,
                 HasRevealedDefinition = complete && definition.Hidden,
                 RevealedDefinition = complete && definition.Hidden ? ProjectDefinition(definition, false) : default
             };
@@ -295,8 +261,6 @@ namespace Game.Network.Achievements
         {
             var complete = state?.CompletedAt > 0;
             var hidden = definition.Hidden && !complete;
-            var items = complete ? state.RewardItems ?? Array.Empty<ItemStack>() :
-                definition.Reward.Items ?? Array.Empty<ItemStack>();
             return new AchievementView
             {
                 Id = definition.Id,
@@ -309,9 +273,7 @@ namespace Game.Network.Achievements
                 CompletedAt = state?.CompletedAt ?? 0,
                 ClaimedAt = state?.ClaimedAt ?? 0,
                 Hidden = definition.Hidden,
-                RewardDollars = hidden ? 0 : complete ? state.RewardChips : definition.Reward.Chip,
-                RewardItems = hidden ? Array.Empty<TaskRewardItemState>() : items.Select(i => new TaskRewardItemState
-                    { ItemId = i.ItemId, Count = i.Quantity }).ToArray()
+                Reward = hidden ? Reward.Empty : complete ? state.Reward : definition.Reward
             };
         }
 
@@ -327,10 +289,7 @@ namespace Game.Network.Achievements
                 IconPath = hidden ? HiddenAchievementPresentation.IconPath : definition.IconPath,
                 Target = hidden ? 0 : definition.Target,
                 Hidden = definition.Hidden,
-                RewardDollars = hidden ? 0 : definition.Reward.Chip,
-                RewardItems = hidden ? Array.Empty<TaskRewardItemState>() :
-                    (definition.Reward.Items ?? Array.Empty<ItemStack>()).Select(item => new TaskRewardItemState
-                        { ItemId = item.ItemId, Count = item.Quantity }).ToArray()
+                Reward = hidden ? Reward.Empty : definition.Reward
             };
         }
     }

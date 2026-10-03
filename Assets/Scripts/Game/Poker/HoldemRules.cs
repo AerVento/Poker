@@ -50,14 +50,6 @@ namespace Game
             return currentBet - betFacedAtLastAction >= minimumRaiseIncrement;
         }
 
-        public static uint GetMinimumRaiseTotal(uint currentBet, uint minimumRaiseIncrement)
-        {
-            if (minimumRaiseIncrement == 0)
-                throw new ArgumentOutOfRangeException(nameof(minimumRaiseIncrement));
-
-            return checked(currentBet + minimumRaiseIncrement);
-        }
-
         public static int GetNextSeat(int seat, IReadOnlyList<bool> participatingPlayers)
         {
             ValidateParticipants(participatingPlayers);

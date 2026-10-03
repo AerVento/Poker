@@ -1,0 +1,250 @@
+[
+  {
+    "id": "devil-contract",
+    "name": "恶魔契约",
+    "description": "这是一纸卖身契，你必须身无分文才能签下，签下后立即获得 $1,000。死后，你须为恶魔服役一年：戴着烧红的镣铐，向熔炉搬运煤石。烟灰灼烧喉咙，停步便遭鞭笞。\n\n若想赎回自由，须备齐 $1,100，在仓库使用此契约向恶魔还款。款项付清，这份契约便化为灰烬，解除相应的一年服刑。",
+    "icon": "devil-contract",
+    "consumable": true,
+    "max-quantity": 4294967295
+  },
+  {
+    "id": "archdevil-contract",
+    "name": "大恶魔契约",
+    "description": "这是一纸卖身契，你必须身无分文才能签下，签下后立即获得 $10,000。死后，你须为大恶魔服役十年：拖着锁链，在业火矿坑中日夜凿石。双手磨破又复原，疲惫却不断累积。这里没有睡眠，只有催工的钟声。\n\n若想赎回自由，须备齐 $11,000，在仓库使用此契约向恶魔还款。款项付清，这份契约便化为灰烬，解除相应的十年服刑。",
+    "icon": "archdevil-contract",
+    "consumable": true,
+    "max-quantity": 4294967295
+  },
+  {
+    "id": "satan-contract",
+    "name": "撒旦契约",
+    "description": "这是一纸卖身契，你必须身无分文才能签下，签下后立即获得 $100,000。死后，你须为撒旦服役一百年：以脊背推动炼魂巨轮，受业火与寒霜轮番煎熬。每次昏厥，都会被钟声唤醒。落笔只需一瞬，偿还却要一个世纪。\n\n若想赎回自由，须备齐 $110,000，在仓库使用此契约向恶魔还款。款项付清，这份契约便化为灰烬，解除相应的一百年服刑。",
+    "icon": "satan-contract",
+    "consumable": true,
+    "max-quantity": 4294967295
+  },
+  {
+    "id": "rotten-egg",
+    "name": "臭鸡蛋",
+    "description": "牌局内使用的消耗品礼物。点击其他玩家的名片后对其投掷，在讨厌的人身上留下难闻的气味~",
+    "icon": "rotten-egg",
+    "consumable": true,
+    "max-quantity": 4294967295
+  },
+  {
+    "id": "champagne",
+    "name": "倒香槟",
+    "description": "为对方斟满一杯香槟，轻碰杯沿，共庆这一刻。",
+    "icon": "champagne",
+    "consumable": true,
+    "max-quantity": 4294967295
+  },
+  {
+    "id": "gunfire",
+    "name": "枪击",
+    "description": "瞄准你的目标、连续射击。",
+    "icon": "gunfire",
+    "consumable": true,
+    "max-quantity": 4294967295
+  },
+  {
+    "id": "swiss-bank-note",
+    "name": "瑞士银行本票",
+    "description": "掷出本票，自信微笑亮出你的底牌。",
+    "icon": "swiss-bank-note",
+    "consumable": true,
+    "max-quantity": 4294967295
+  },
+  {
+    "id": "cigar",
+    "name": "雪茄",
+    "description": "为对方点上一只雪茄，既高雅，又有风度。",
+    "icon": "cigar",
+    "consumable": true,
+    "max-quantity": 4294967295
+  },
+  {
+    "id": "namecard-default",
+    "name": "经典",
+    "description": "熟悉的墨绿，属于每一位入座者。",
+    "icon": "namecard-default",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-galaxy",
+    "name": "星河",
+    "description": "把璀璨星河，留在你的座位。",
+    "icon": "namecard-galaxy",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-ember",
+    "name": "赤焰",
+    "description": "以黑曜为甲，让余烬为你加冕。",
+    "icon": "namecard-ember",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-neon",
+    "name": "霓虹",
+    "description": "穿过霓虹夜色，留下你的光轨。",
+    "icon": "namecard-neon",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-gilded",
+    "name": "鎏金",
+    "description": "墨绿藏锋，金色自有分量。",
+    "icon": "namecard-gilded",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-frost",
+    "name": "极霜",
+    "description": "冰晶凝住锋芒，极光掠过桌沿。",
+    "icon": "namecard-frost",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-abyss",
+    "name": "幽海",
+    "description": "潜入无声深海，让幽光替你发声。",
+    "icon": "namecard-abyss",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-jade",
+    "name": "龙珀",
+    "description": "青玉藏龙，云纹之间自有威仪。",
+    "icon": "namecard-jade",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-sakura",
+    "name": "绯樱",
+    "description": "一席夜樱，把锋芒藏进温柔。",
+    "icon": "namecard-sakura",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-clockwork",
+    "name": "时轮",
+    "description": "黄铜齿轮转动，掌握自己的节奏。",
+    "icon": "namecard-clockwork",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-eclipse",
+    "name": "蚀日",
+    "description": "日冕划破暗夜，沉默亦有引力。",
+    "icon": "namecard-eclipse",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-prism",
+    "name": "幻晶",
+    "description": "万色折光，让每次亮相都不同。",
+    "icon": "namecard-prism",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-twilight-duo",
+    "name": "幻夜双影",
+    "description": "花海映双影，与你共赴蓝紫幻夜。",
+    "icon": "namecard-twilight-duo",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-devil-service",
+    "name": "狱契之印",
+    "description": "服役百年，狱火将契约烙入灵魂。",
+    "icon": "namecard-devil-service",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-archdevil-service",
+    "name": "深狱领主",
+    "description": "服役五百年，锁链铸成深狱的权印。",
+    "icon": "namecard-archdevil-service",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-satan-service",
+    "name": "撒旦敕印",
+    "description": "服役千年，万狱之火俯首于不灭的王冠。",
+    "icon": "namecard-satan-service",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-straight-flush",
+    "name": "同花顺",
+    "description": "翠影流光，五芒一脉相连。",
+    "icon": "namecard-straight-flush",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "namecard-royal-straight-flush",
+    "name": "皇家同花顺",
+    "description": "紫绒鎏金，冠冕之下尽显锋芒。",
+    "icon": "namecard-royal-straight-flush",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "cardface-default",
+    "name": "经典牌面",
+    "description": "熟悉的经典扑克牌风格。",
+    "icon": "cardface-default",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "cardface-minimal",
+    "name": "简约款",
+    "description": "简洁数字，清晰花色。",
+    "icon": "cardface-minimal",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "cardface-cat-court",
+    "name": "猫猫宫廷",
+    "description": "四种花色化作可爱猫头，宫廷猫咪演绎 J、Q、K。含 52 张牌面与专属牌背。",
+    "icon": "cardface-cat-court",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "cardface-jewel-court",
+    "name": "宝石宫廷",
+    "description": "璀璨珠宝花色与卡通宫廷人物，搭配白金纹饰牌面。",
+    "icon": "cardface-jewel-court",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
+    "id": "cardface-gensokyo",
+    "name": "幻想乡绘札",
+    "description": "52 位幻想乡角色与各自的小小日常，搭配专属阴阳绘纹牌背。",
+    "icon": "cardface-gensokyo",
+    "consumable": false,
+    "max-quantity": 1
+  }
+]

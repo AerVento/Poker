@@ -8,33 +8,23 @@ namespace Game.Network.Accounts
     public sealed class PlayerTaskInstance
     {
         public string InstanceId { get; set; }
+        /// <summary>The task ID in TaskDefinitions.json; name, rule, reward and order come from the current configuration.</summary>
         public string DefinitionId { get; set; }
-        public string DefinitionJson { get; set; }
-        public string Revision { get; set; }
         public bool IsRandom { get; set; }
         public int? SlotId { get; set; }
         public bool RefreshUsed { get; set; }
         public bool OutDated { get; set; }
-        public int DisplayOrder { get; set; }
         public int Period { get; set; }
         public long AssignedAt { get; set; }
         public long ExpiresAt { get; set; }
         public TaskState State { get; set; }
-        public Dictionary<string, uint> ItemLimits { get; set; } = new Dictionary<string, uint>();
-    }
-
-    public sealed class TaskRewardItem
-    {
-        public string ItemId { get; set; }
-        public uint Count { get; set; }
     }
 
     public sealed class TaskClaimReceipt
     {
         public string InstanceId { get; set; }
         public int Ordinal { get; set; }
-        public uint Chip { get; set; }
-        public TaskRewardItem[] Items { get; set; }
+        public Reward Reward { get; set; } = Reward.Empty;
     }
 
     public sealed class PlayerTaskDocument
@@ -54,8 +44,7 @@ namespace Game.Network.Accounts
         public PlayerTaskDocument Document { get; protected set; }
         public bool AlreadyConsumed { get; protected set; }
         public bool Changed { get; set; }
-        public virtual DailyTaskResult RewardBlockReason => DailyTaskResult.Success;
-        public virtual void AuthorizeRewardAccess(TaskRewardAccess access) { }
+        public Reward GrantedReward { get; protected set; } = Reward.Empty;
         public abstract DailyTaskResult Grant(Reward reward, IReadOnlyDictionary<string, uint> itemLimits, string claimKey);
     }
 

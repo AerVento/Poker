@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: CardFace_gensokyo
+  m_EditorClassIdentifier: 
+  m_GroupName: CardFace_gensokyo
+  m_Data:
+    m_SerializedData: []
+  m_GUID: acf01eaf6d5afb4498b6461737d092f9
+  m_SerializeEntries:
+  - m_GUID: 609e2ad0b49880845aeec82c1f2e0290
+    m_Address: cardfaces/gensokyo
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 8d0b2af6b70451145a85efb7d3a9fece, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: f987b0bb7226d91409c3ca9233fd94a5, type: 2}
+    - {fileID: 11400000, guid: 109ca7fcc935a6c4ca2b672ae6b36d53, type: 2}

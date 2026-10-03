@@ -1,0 +1,48 @@
+{
+  "tool": "Built-in image_gen (no CLI)",
+  "date": "2026-10-03",
+  "reference": "Assets/Sprites/Items/Contracts/devil-contract.png",
+  "format": "1024 x 1024 RGBA PNG; generated original uniformly scaled into 896 x 896 centered region for safe margins; genuine alpha",
+  "assets": [
+    {
+      "id": "champagne",
+      "name": "倒香槟",
+      "generationPrompt": "Use case: stylized-concept / style-transfer. Create a NEW dedicated Poker inventory item icon: champagne. Reference image is ONLY the cartoon rendering style of the approved Devil Contract item icon; do NOT copy its contract, horns, chains, flames or demonic theme. One coherent isolated icon, square 1024x1024 PNG. Subject: A squat elegant emerald green champagne bottle tilted slightly left, gold foil neck and cream blank label with a simple gold diamond, paired with one broad readable champagne flute filled with golden bubbly drink. Bottle and flute overlap into a compact coherent icon. Bottle uncorked, just two small crisp golden bubbles above flute. No branding, words or label writing. Style: bold clean thick dark outline around major shapes, simple cel shading with just two or three broad tones per material, warm highlights, chunky readable silhouettes. Match our fantasy cartoon game UI item family. Remove photographic textures, grain, complex metallic gradients, realistic microdetails. Compact three-quarter composition, visual mass balanced in square, occupy roughly 75-80% canvas. All parts safely inside with generous margin. Readable at 64px and 128px. No readable text letters numerals watermark, no icon container or external border. CRITICAL background genuine transparent RGBA alpha=0 everywhere outside actual object and through holes/gaps. NO backdrop, checkerboard, colored haze, floor shadow, outer glow. Only crisp fully colored cartoon foreground.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-dc63e972-e4af-4e02-9b1f-37e4a9a00da2.png",
+      "path": "Assets/Sprites/Items/Gifts/champagne.png",
+      "sourceFile": "ArtSources/Items/GiftIconOriginals/champagne.png"
+    },
+    {
+      "id": "gunfire",
+      "name": "枪击",
+      "generationPrompt": "Use case: stylized-concept / style-transfer. Create a NEW dedicated Poker inventory item icon: gunfire. Reference image is ONLY the cartoon rendering style of the approved Devil Contract item icon; do NOT copy its contract, horns, chains, flames or demonic theme. One coherent isolated icon, square 1024x1024 PNG. Subject: One chunky stylized charcoal-black semi-automatic pistol, warm brown grip and restrained antique gold hardware, three-quarter side view, barrel points upper right at 15 degrees, compact orange-gold starburst muzzle flash at tip. Clear curved trigger guard with real transparent hole. Simplify moving parts, no realistic rifling, serial numbers, wood grain or tiny mechanical detail. No hands or people. Style: bold clean thick dark outline around major shapes, simple cel shading with just two or three broad tones per material, warm highlights, chunky readable silhouettes. Match our fantasy cartoon game UI item family. Remove photographic textures, grain, complex metallic gradients, realistic microdetails. Compact three-quarter composition, visual mass balanced in square, occupy roughly 75-80% canvas. All parts safely inside with generous margin. Readable at 64px and 128px. No readable text letters numerals watermark, no icon container or external border. CRITICAL background genuine transparent RGBA alpha=0 everywhere outside actual object and through holes/gaps. NO backdrop, checkerboard, colored haze, floor shadow, outer glow. Only crisp fully colored cartoon foreground.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-c7295454-f355-43b7-b142-2d41eb2f3f13.png",
+      "path": "Assets/Sprites/Items/Gifts/gunfire.png",
+      "sourceFile": "ArtSources/Items/GiftIconOriginals/gunfire.png"
+    },
+    {
+      "id": "rotten-egg",
+      "name": "臭鸡蛋",
+      "generationPrompt": "Use case: stylized-concept / style-transfer. Create a NEW dedicated Poker inventory item icon: rotten-egg. Reference image is ONLY the cartoon rendering style of the approved Devil Contract item icon; do NOT copy its contract, horns, chains, flames or demonic theme. One coherent isolated icon, square 1024x1024 PNG. Subject: One plump ivory rotten egg tilted slightly, a big jagged crack on top and three broad olive green rotten patches at base, mischievous narrowed eyes and crooked grin simplified into bold readable face. Two short crisp olive green stink curls float above, separated and dark outlined, no haze. Egg is dominant, no nest, broken puddle or background. Style: bold clean thick dark outline around major shapes, simple cel shading with just two or three broad tones per material, warm highlights, chunky readable silhouettes. Match our fantasy cartoon game UI item family. Remove photographic textures, grain, complex metallic gradients, realistic microdetails. Compact three-quarter composition, visual mass balanced in square, occupy roughly 75-80% canvas. All parts safely inside with generous margin. Readable at 64px and 128px. No readable text letters numerals watermark, no icon container or external border. CRITICAL background genuine transparent RGBA alpha=0 everywhere outside actual object and through holes/gaps. NO backdrop, checkerboard, colored haze, floor shadow, outer glow. Only crisp fully colored cartoon foreground.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-722ebfc3-b7d3-46bc-bb7f-f064de4f61ca.png",
+      "path": "Assets/Sprites/Items/Gifts/rotten-egg.png",
+      "sourceFile": "ArtSources/Items/GiftIconOriginals/rotten-egg.png"
+    },
+    {
+      "id": "swiss-bank-note",
+      "name": "瑞士银行本票",
+      "generationPrompt": "Use case: stylized-concept / style-transfer. Create a NEW dedicated Poker inventory item icon: swiss-bank-note. Reference image is ONLY the cartoon rendering style of the approved Devil Contract item icon; do NOT copy its contract, horns, chains, flames or demonic theme. One coherent isolated icon, square 1024x1024 PNG. Subject: One thick ivory bank promissory note, broad portrait sheet tilted counterclockwise 12 degrees, softly curled upper corner, thick dark clean edge. Large red wax seal with two short red green ribbon tails in lower right; ONE bold black spade emblem centered on broad blank paper, a restrained broad gold decorative rule near top. No readable writing, letters, numerals, money amounts, Swiss cross or brand logos. Compact document silhouette, no envelope, no piles of cash. Style: bold clean thick dark outline around major shapes, simple cel shading with just two or three broad tones per material, warm highlights, chunky readable silhouettes. Match our fantasy cartoon game UI item family. Remove photographic textures, grain, complex metallic gradients, realistic microdetails. Compact three-quarter composition, visual mass balanced in square, occupy roughly 75-80% canvas. All parts safely inside with generous margin. Readable at 64px and 128px. No readable text letters numerals watermark, no icon container or external border. CRITICAL background genuine transparent RGBA alpha=0 everywhere outside actual object and through holes/gaps. NO backdrop, checkerboard, colored haze, floor shadow, outer glow. Only crisp fully colored cartoon foreground.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-222764d9-42d7-418a-91a7-e4035d8e434d.png",
+      "path": "Assets/Sprites/Items/Gifts/swiss-bank-note.png",
+      "sourceFile": "ArtSources/Items/GiftIconOriginals/swiss-bank-note.png"
+    },
+    {
+      "id": "cigar",
+      "name": "雪茄",
+      "generationPrompt": "Create a NEW dedicated Poker inventory item icon: cigar. Reference ONLY rendering style of Devil Contract, do not copy its subject. One chunky brown cigar angled from lower left to upper right, simple red band bordered in warm gold, crisp orange-red glowing ember at upper right with a few large charcoal ash shapes and two short ivory smoke curls. Broad tobacco wrap planes with only two wide seam lines, no realistic veins or grain, no tiny ash fragments. No lettering or brand emblem. Compact isolated cigar silhouette, all smoke fully inside square. Square 1024x1024. Bold clean thick dark outlines, simple cel shading, two or three broad tones, chunky cartoon game UI shapes readable at 64px. No photographic textures. Compact balanced composition occupying 75-80% canvas, generous safe margins including smoke. No text letters numerals watermark border. Genuine transparent RGBA outside objects and gaps, no backdrop floor shadow haze or glow.",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-85e22bb5-c360-401c-acce-d3c8ac9cdb15.png",
+      "path": "Assets/Sprites/Items/Gifts/cigar.png",
+      "sourceFile": "ArtSources/Items/GiftIconOriginals/cigar.png"
+    }
+  ]
+}

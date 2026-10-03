@@ -10,17 +10,6 @@ using UnityEngine.UI;
 
 namespace Game.UI
 {
-    internal enum LoginDestination
-    {
-        Lobby,
-        DailyTasks,
-        Leaderboard,
-        Shop,
-        Collection,
-        Achievements,
-        Exchange,
-    }
-
     internal enum LoginMode
     {
         Login,
@@ -68,8 +57,6 @@ namespace Game.UI
         private bool _savedLoginStarted;
         private LoginMode _mode;
 
-        internal LoginDestination DestinationAfterLogin { get; private set; }
-
         private void OnEnable()
         {
             _loginTab.onClick.AddListener(ShowLogin);
@@ -110,17 +97,8 @@ namespace Game.UI
             _back.onClick.RemoveListener(Back);
             Unsubscribe();
             _savedLoginStarted = false;
-            DestinationAfterLogin = LoginDestination.Lobby;
             _password.text = string.Empty;
             _passwordConfirmation.text = string.Empty;
-        }
-
-        public void BeginTaskLogin() => BeginAccountLogin(LoginDestination.DailyTasks);
-
-        internal void BeginAccountLogin(LoginDestination destination)
-        {
-            DestinationAfterLogin = destination;
-            BeginSavedLogin();
         }
 
         public void BeginSavedLogin(string sessionToken = null)

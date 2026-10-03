@@ -39,12 +39,15 @@ namespace Game.UI.Editor
             settings.RemoteCatalogBuildPath.SetVariableByName(settings, AddressableAssetSettings.kRemoteBuildPath);
             settings.RemoteCatalogLoadPath.SetVariableByName(settings, AddressableAssetSettings.kRemoteLoadPath);
 
-            // Every product in Configs/Shop gets its own bundle; the configuration names the address.
-            var definitions = ShopConfiguration.Load();
+            // Every namecard, card face and gift in Configs/Items gets its own bundle; the configuration names the address.
+            // Group names keep the ID without the item prefix, as before items were unified.
+            var definitions = CatalogConfiguration.Load();
             foreach (var card in definitions.Namecards.Where(card => !card.IsDefault))
-                Register(settings, "Namecard_" + card.Id, RequireSource<NamecardArtworkSO>(card.Artwork, card.Id), card.Artwork);
+                Register(settings, "Namecard_" + card.ItemId.Substring(NamecardDefinition.Prefix.Length),
+                    RequireSource<NamecardArtworkSO>(card.Artwork, card.ItemId), card.Artwork);
             foreach (var face in definitions.CardFaces.Where(face => !face.IsDefault))
-                Register(settings, "CardFace_" + face.Id, RequireSource<PokerCardsSO>(face.Cards, face.Id), face.Cards);
+                Register(settings, "CardFace_" + face.ItemId.Substring(CardFaceDefinition.Prefix.Length),
+                    RequireSource<PokerCardsSO>(face.Cards, face.ItemId), face.Cards);
             foreach (var gift in definitions.Gifts)
             {
                 var path = RequireSource<GiftEffectSO>(gift.Effect, gift.ItemId);
@@ -53,9 +56,9 @@ namespace Game.UI.Editor
                 Register(settings, "Gift_" + gift.ItemId, path, gift.Effect);
             }
             // All item icons in one shared bundle, all card face previews in another; the classic preview stays local.
-            Register(settings, "Icons_items", BuildSpriteSet(ProductArt.ItemIconsAddress, ItemIconRoot, _ => true), ProductArt.ItemIconsAddress);
-            Register(settings, "Previews_cardfaces", BuildSpriteSet(ProductArt.CardFacePreviewsAddress, CardFacePreviewBuilder.DirectoryPath,
-                name => name != CardFaceDefinition.DefaultId), ProductArt.CardFacePreviewsAddress);
+            Register(settings, "Icons_items", BuildSpriteSet(ItemArt.ItemIconsAddress, ItemIconRoot, _ => true), ItemArt.ItemIconsAddress);
+            Register(settings, "Previews_cardfaces", BuildSpriteSet(ItemArt.CardFacePreviewsAddress, CardFacePreviewBuilder.DirectoryPath,
+                name => name != definitions.FindCardFace(CardFaceDefinition.DefaultItemId)?.Preview), ItemArt.CardFacePreviewsAddress);
             EditorUtility.SetDirty(settings);
             AssetDatabase.SaveAssets();
             Validate();
@@ -69,7 +72,7 @@ namespace Game.UI.Editor
         {
             var path = RemoteAssets.SourcePath(address);
             if (AssetDatabase.LoadAssetAtPath<T>(path) == null)
-                throw new InvalidOperationException("Product " + id + " has no " + typeof(T).Name + " at " + path);
+                throw new InvalidOperationException("Item " + id + " has no " + typeof(T).Name + " at " + path);
             return path;
         }
 
@@ -159,7 +162,7 @@ namespace Game.UI.Editor
         public static void Validate()
         {
             var settings = AddressableAssetSettingsDefaultObject.Settings;
-            var definitions = ShopConfiguration.Load();
+            var definitions = CatalogConfiguration.Load();
             var roots = RemoteRoots();
             foreach (var root in roots)
             {
@@ -172,22 +175,22 @@ namespace Game.UI.Editor
             var addresses = definitions.Namecards.Where(c => !c.IsDefault).Select(c => c.Artwork)
                 .Concat(definitions.CardFaces.Where(f => !f.IsDefault).Select(f => f.Cards))
                 .Concat(definitions.Gifts.Select(g => g.Effect))
-                .Concat(new[] { ProductArt.ItemIconsAddress, ProductArt.CardFacePreviewsAddress });
+                .Concat(new[] { ItemArt.ItemIconsAddress, ItemArt.CardFacePreviewsAddress });
             foreach (var address in addresses)
             {
                 var path = RemoteAssets.SourcePath(address);
                 if (!roots.Contains(path) || settings.FindAssetEntry(AssetDatabase.AssetPathToGUID(path))?.address != address)
                     throw new InvalidOperationException("Configured address is not prepared: " + address + ". Run Prepare Catalogs and Groups.");
             }
-            var icons = AssetDatabase.LoadAssetAtPath<RemoteSpriteSetSO>(RemoteAssets.SourcePath(ProductArt.ItemIconsAddress));
+            var icons = AssetDatabase.LoadAssetAtPath<RemoteSpriteSetSO>(RemoteAssets.SourcePath(ItemArt.ItemIconsAddress));
             foreach (var item in definitions.Items)
                 if (icons.Find(item.Icon) == null) throw new InvalidOperationException("Item " + item.Id + " icon " + item.Icon + " is not in " + ItemIconRoot);
-            var previews = AssetDatabase.LoadAssetAtPath<RemoteSpriteSetSO>(RemoteAssets.SourcePath(ProductArt.CardFacePreviewsAddress));
+            var previews = AssetDatabase.LoadAssetAtPath<RemoteSpriteSetSO>(RemoteAssets.SourcePath(ItemArt.CardFacePreviewsAddress));
             foreach (var face in definitions.CardFaces.Where(f => !f.IsDefault))
                 if (previews.Find(face.Preview) == null)
-                    throw new InvalidOperationException("Card face " + face.Id + " preview is missing; run Poker/Card Faces/Generate Previews.");
+                    throw new InvalidOperationException("Card face " + face.ItemId + " preview is missing; run Poker/Card Faces/Generate Previews.");
             // UI theme sprites and the contract icons (also leaderboard headings; contracts ship with the page) may be
-            // copied into bundles; all other product art must never be in the page.
+            // copied into bundles; all other item art must never be in the page.
             var remote = new HashSet<string>(AssetDatabase.GetDependencies(roots, true).Where(p => !p.EndsWith(".cs", StringComparison.Ordinal) &&
                 !p.StartsWith(GiftLuaRoot, StringComparison.Ordinal) && !p.StartsWith("Assets/Sprites/UITheme/", StringComparison.Ordinal) &&
                 !p.StartsWith(ItemIconRoot + "/Contracts/", StringComparison.Ordinal)));
@@ -204,7 +207,7 @@ namespace Game.UI.Editor
                 if (effect == null || !effect.HasScript) throw new InvalidOperationException("Gift requires a scripted remote effect: " + gift.ItemId);
                 var dependencies = AssetDatabase.GetDependencies(root, true);
                 if (dependencies.Any(p => p != root && p.StartsWith(Root + "/", StringComparison.Ordinal)))
-                    throw new InvalidOperationException("Gift must not depend on another product: " + gift.ItemId);
+                    throw new InvalidOperationException("Gift must not depend on another remote content root: " + gift.ItemId);
                 ValidateGiftScript(gift.ItemId, effect);
                 // Gift bundles may share Lua module text, which is copied into each bundle, but never artwork or audio.
                 foreach (var dependency in dependencies.Where(p => p != root && !p.EndsWith(".cs", StringComparison.Ordinal) &&
@@ -300,7 +303,7 @@ namespace Game.UI.Editor
             var configuration = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, System.Text.Json.JsonElement>>(
                 File.ReadAllText(configPath));
             using (var value = System.Text.Json.JsonDocument.Parse("\"../Content/v1\""))
-                configuration["resourceBaseUrl"] = value.RootElement.Clone();
+                configuration["resource-base-url"] = value.RootElement.Clone();
             File.WriteAllText(configPath, System.Text.Json.JsonSerializer.Serialize(configuration));
             File.WriteAllText("Build/RemoteContent/WebGLBuild.txt", "Bytes: " + report.summary.totalSize +
                 "\nErrors: " + report.summary.totalErrors + "\nWarnings: " + report.summary.totalWarnings);

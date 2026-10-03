@@ -3,15 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using Framework.UI;
 using Game.Network;
-using Game.Network.Accounts;
-using Game.SO;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace Game.UI
 {
-    // Shared by the shop and collection. Emits requests; never deducts chips or consumes inventory locally.
+    // Shared by the shop and collection for every item that is not a namecard or card face (those have their own tabs).
+    // Emits requests; never deducts money or consumes inventory locally.
     public sealed class ItemBrowserView : MonoBehaviour
     {
         [SerializeField] private InventoryItemCard[] _cards;
@@ -36,7 +35,7 @@ namespace Game.UI
         [SerializeField] private Button _goToShop;
         [SerializeField] private TMP_InputField _quantityInputPrefab;
 
-        private ItemInventorySnapshot _snapshot = ItemInventorySnapshot.Empty;
+        private InventorySnapshot _snapshot = InventorySnapshot.Empty;
         private List<string> _visible = new List<string>();
         private string _selectedId;
         private int _page;
@@ -44,18 +43,12 @@ namespace Game.UI
         private MsgBox _confirmation;
         private string _pendingOperation;
         private Action<ItemActionRequest> _requestHandler;
-        private uint _dollars;
-        private uint _availableChips;
-        private bool _canExchange;
 
         public event Action ShopRequested;
-        public event Action<ItemInventorySnapshot> SnapshotChanged;
-        public event Action EligibilityRefreshRequested;
         public ShopPageMode Mode { get; private set; }
-        public string SelectedId => _selectedId;
         public int CurrentPage => _page;
         public int PageCount => Mathf.Max(1, (_visible.Count + _cards.Length - 1) / _cards.Length);
-        public ItemInventorySnapshot Snapshot => _snapshot;
+        public InventorySnapshot Snapshot => _snapshot;
 
         private void OnEnable()
         {
@@ -63,16 +56,16 @@ namespace Game.UI
             _previous.onClick.AddListener(Previous);
             _next.onClick.AddListener(Next);
             _goToShop.onClick.AddListener(GoToShop);
-            ClientShopCatalog.Changed += Rebuild;
-            Game.Content.ProductArt.Changed += Redraw;
+            ClientCatalog.Changed += Rebuild;
+            Game.Content.ItemArt.Changed += Redraw;
             Redraw();
         }
 
         private void OnDisable()
         {
             CancelConfirmation();
-            ClientShopCatalog.Changed -= Rebuild;
-            Game.Content.ProductArt.Changed -= Redraw;
+            ClientCatalog.Changed -= Rebuild;
+            Game.Content.ItemArt.Changed -= Redraw;
             _action.onClick.RemoveListener(ConfirmAction);
             _previous.onClick.RemoveListener(Previous);
             _next.onClick.RemoveListener(Next);
@@ -97,44 +90,24 @@ namespace Game.UI
             Redraw();
         }
 
-        public void SetSnapshot(ItemInventorySnapshot snapshot)
+        public void SetSnapshot(InventorySnapshot snapshot)
         {
             CancelConfirmation();
-            _snapshot = snapshot ?? ItemInventorySnapshot.Empty;
-            _dollars = _snapshot.Balance;
+            _snapshot = snapshot ?? InventorySnapshot.Empty;
             Rebuild();
-            SnapshotChanged?.Invoke(_snapshot);
         }
 
         public void ClearLoadingFeedback()
         {
-            if (_feedback.text == "正在读取库存与商品价格…") _feedback.text = string.Empty;
+            if (_feedback.text == "正在读取账户、库存与商品价格…") _feedback.text = string.Empty;
         }
 
         public void SetFeedback(string message) => _feedback.text = message ?? string.Empty;
 
-        public void SetBalance(uint balance)
-        {
-            SetWallet(balance, _availableChips, _canExchange);
-        }
+        private bool CanAfford(ulong amount) =>
+            CurrencySystem.CanAfford(amount, _snapshot.Dollars, _snapshot.AvailableChips, _snapshot.CanExchange);
 
-        public void SetWallet(uint dollars, uint availableChips, bool canExchange,
-            bool requestEligibilityRefresh = true)
-        {
-            if (_snapshot.Balance == dollars && _availableChips == availableChips && _canExchange == canExchange) return;
-            _dollars = dollars;
-            _availableChips = availableChips;
-            _canExchange = canExchange;
-            SetSnapshot(new ItemInventorySnapshot(_snapshot.Items, _snapshot.Offers, dollars, _snapshot.CanAct, false));
-            if (requestEligibilityRefresh) EligibilityRefreshRequested?.Invoke();
-        }
-
-        private bool CanAfford(ulong amount)
-        {
-            return CurrencySystem.CanAfford(amount, _dollars, _availableChips, _canExchange);
-        }
-
-        public bool CompleteAction(string operationId, ItemInventorySnapshot snapshot, string message)
+        public bool CompleteAction(string operationId, InventorySnapshot snapshot, string message)
         {
             if (_pendingOperation == null || operationId != _pendingOperation) return false;
             _pendingOperation = null;
@@ -147,25 +120,35 @@ namespace Game.UI
         {
             _requestHandler = null;
             _pendingOperation = null;
-            _dollars = 0;
-            _availableChips = 0;
-            _canExchange = false;
             _selectedId = null;
             _page = 0;
             _feedback.text = string.Empty;
-            SetSnapshot(ItemInventorySnapshot.Empty);
+            SetSnapshot(InventorySnapshot.Empty);
         }
 
-        private static ItemDefinition Definition(string id) => ClientShopCatalog.FindItem(id);
+        private static ItemDefinition Definition(string id) => ClientCatalog.FindItem(id);
+        private static ShopOffer Offer(string id) => ClientCatalog.FindOffer(id);
+        private static bool IsAppearance(string id)
+        {
+            var catalog = ClientCatalog.Current;
+            return catalog != null && (catalog.FindNamecard(id)?.ItemId == id || catalog.FindCardFace(id)?.ItemId == id);
+        }
+        private static bool IsGift(string id) => ClientCatalog.FindGift(id) != null;
+        // Using a contract repays it; every other usable item would add its cost here.
+        private static uint UseCost(string id) => ClientCatalog.Current?.FindContract(id)?.Repayment ?? 0;
+        private static uint PurchaseReward(string id) => ClientCatalog.Current?.FindContract(id)?.Payout ?? 0;
+
         private string NameOf(string id) => Definition(id)?.Name ?? id;
         private string KindOf(string id) => Definition(id) == null ? "物品信息待更新" :
-            Definition(id).Kind == ItemKind.Consumable ? "消耗品" : "非消耗品";
+            IsGift(id) ? "礼物" : Definition(id).Consumable ? "消耗品" : "非消耗品";
 
         private void Rebuild()
         {
+            var catalog = ClientCatalog.Current;
             _visible = Mode == ShopPageMode.Shop
-                ? _snapshot.Offers.Where(offer => offer.IsListed && Definition(offer.ItemId) != null).Select(offer => offer.ItemId).ToList()
-                : _snapshot.Items.Where(item => item.Quantity > 0).Select(item => item.ItemId).ToList();
+                ? (catalog?.Shop ?? Array.Empty<ShopOffer>()).Where(offer => offer.Listed && Definition(offer.ItemId) != null &&
+                    !IsAppearance(offer.ItemId)).Select(offer => offer.ItemId).ToList()
+                : _snapshot.Items.Where(item => !IsAppearance(item.ItemId)).Select(item => item.ItemId).ToList();
             _page = Mathf.Clamp(_page, 0, PageCount - 1);
             if (!_visible.Contains(_selectedId)) _selectedId = null;
             Redraw();
@@ -195,13 +178,16 @@ namespace Game.UI
         private string ActionLabel()
         {
             if (_selectedId == null) return "请选择物品";
-            if (Mode == ShopPageMode.Collection && Definition(_selectedId)?.Kind == ItemKind.NonConsumable) return "永久收藏";
-            if (Mode == ShopPageMode.Shop && Definition(_selectedId)?.Kind == ItemKind.NonConsumable && _snapshot.QuantityOf(_selectedId) > 0) return "已收藏";
+            var item = Definition(_selectedId);
+            if (Mode == ShopPageMode.Collection && item?.Consumable == false) return "永久收藏";
+            if (Mode == ShopPageMode.Shop && item?.MaxQuantity == 1 && _snapshot.Owns(_selectedId)) return "已收藏";
             if (_pendingOperation != null) return "正在处理…";
+            // Gifts are consumed by giving them at the table, not from the collection.
+            if (Mode == ShopPageMode.Collection && IsGift(_selectedId) && !_snapshot.CanUse(_selectedId)) return "牌局中送出";
             if (!CanAct()) return Mode == ShopPageMode.Shop ? "无法购买" : "无法使用";
             if (Mode == ShopPageMode.Collection) return "使用";
-            var offer = _snapshot.OfferFor(_selectedId);
-            return offer.Price == 0 ? "免费购买" : $"购买 · ${offer.Price:N0}";
+            var price = Offer(_selectedId).Price;
+            return price == 0 ? "免费购买" : $"购买 · ${price:N0}";
         }
 
         private bool CanAct()
@@ -209,21 +195,17 @@ namespace Game.UI
             if (_selectedId == null || _pendingOperation != null || !_snapshot.CanAct || _requestHandler == null) return false;
             var item = Definition(_selectedId);
             if (item == null) return false;
-            if (Mode == ShopPageMode.Shop && item.Kind == ItemKind.NonConsumable && _snapshot.QuantityOf(item.Id) > 0) return false;
             if (Mode == ShopPageMode.Collection)
-            {
-                var use = _snapshot.Offers.FirstOrDefault(o => o.ItemId == item.Id);
-                return item.Kind == ItemKind.Consumable && _snapshot.QuantityOf(item.Id) > 0 &&
-                    _snapshot.EligibilityCurrent && use != null && use.CanUse && CanAfford(use.UseCost);
-            }
-            var offer = _snapshot.OfferFor(item.Id);
-            return offer != null && _snapshot.EligibilityCurrent && offer.CanPurchase &&
-                CanAfford(offer.Price) && _snapshot.QuantityOf(item.Id) < offer.MaxQuantity;
+                return item.Consumable && _snapshot.Owns(item.Id) && _snapshot.EligibilityCurrent &&
+                    _snapshot.CanUse(item.Id) && CanAfford(UseCost(item.Id));
+            var offer = Offer(item.Id);
+            return offer != null && offer.Listed && _snapshot.EligibilityCurrent && _snapshot.OfferState(item.Id)?.CanPurchase == true &&
+                CanAfford(offer.Price) && _snapshot.QuantityOf(item.Id) < item.MaxQuantity;
         }
 
         private string OfferDescription(string id)
         {
-            var offer = _snapshot.OfferFor(id);
+            var offer = Offer(id);
             if (offer == null) return string.Empty;
             return offer.Price == 0 ? "免费购买" : $"${offer.Price:N0}";
         }
@@ -246,8 +228,9 @@ namespace Game.UI
                 _cards[i].gameObject.SetActive(index < _visible.Count);
                 if (index >= _visible.Count) continue;
                 var id = _visible[index];
-                _cards[i].Present(NameOf(id), KindOf(id), Game.Content.ProductArt.ItemIcon(Definition(id)?.Icon),
-                    shop ? _snapshot.OfferFor(id).Price == 0 ? string.Empty : $"${_snapshot.OfferFor(id).Price:N0}" : $"× {_snapshot.QuantityOf(id):N0}",
+                var price = Offer(id)?.Price ?? 0;
+                _cards[i].Present(NameOf(id), KindOf(id), Game.Content.ItemArt.ItemIcon(Definition(id)?.Icon),
+                    shop ? price == 0 ? string.Empty : $"${price:N0}" : $"× {_snapshot.QuantityOf(id):N0}",
                     id == _selectedId, () => SelectItem(id));
             }
             var selected = Definition(_selectedId);
@@ -262,7 +245,7 @@ namespace Game.UI
             }
             _detailQuantity.gameObject.SetActive(Mode == ShopPageMode.Collection);
             _detailQuantity.text = _selectedId == null ? string.Empty : $"当前拥有  × {_snapshot.QuantityOf(_selectedId):N0}";
-            _detailIcon.sprite = Game.Content.ProductArt.ItemIcon(selected?.Icon);
+            _detailIcon.sprite = Game.Content.ItemArt.ItemIcon(selected?.Icon);
             _detailIcon.enabled = _detailIcon.sprite != null;
             if (_detailPlaceholder != null) _detailPlaceholder.SetActive(!_detailIcon.enabled);
             _actionLabel.text = ActionLabel();
@@ -276,21 +259,22 @@ namespace Game.UI
             var revision = _revision;
             var id = _selectedId;
             bool shop = Mode == ShopPageMode.Shop;
-            uint price = shop ? _snapshot.OfferFor(id).Price : 0;
-            var offer = shop ? _snapshot.OfferFor(id) : null;
-            bool bulkPurchase = shop && Definition(id)?.Kind == ItemKind.Consumable && offer?.RewardChips == 0;
+            uint price = shop ? Offer(id).Price : 0;
+            var item = Definition(id);
+            // Several at once for plain consumables; an item with a purchase effect (a contract) is bought one at a time.
+            bool bulkPurchase = shop && item.Consumable && PurchaseReward(id) == 0;
             uint maximumQuantity = 1;
             if (bulkPurchase)
             {
-                var remaining = offer.MaxQuantity - _snapshot.QuantityOf(id);
-                var purchasingPower = CurrencySystem.PurchasingPower(_dollars, _availableChips, _canExchange);
+                var remaining = item.MaxQuantity - _snapshot.QuantityOf(id);
+                var purchasingPower = CurrencySystem.PurchasingPower(_snapshot.Dollars, _snapshot.AvailableChips, _snapshot.CanExchange);
                 var affordable = price == 0 ? remaining : Math.Min(uint.MaxValue, purchasingPower / price);
                 maximumQuantity = Math.Max(1, Math.Min(remaining, (uint)affordable));
             }
             _confirmation = MsgBox.Create("ItemAction");
             _confirmation.Type = MsgboxType.ConfirmAndCancel;
             _confirmation.Title = shop ? "购买物品" : "使用物品";
-            var useCost = _snapshot.Offers.FirstOrDefault(o => o.ItemId == id)?.UseCost ?? 0;
+            var useCost = UseCost(id);
             _confirmation.Message = shop ? bulkPurchase
                     ? BulkPurchaseMessage(id, maximumQuantity, price, 1)
                     : $"{NameOf(id)} × 1\n{OfferDescription(id)}" :
@@ -368,6 +352,5 @@ namespace Game.UI
             _confirmation = null;
             if (confirmation != null) confirmation.Hide();
         }
-
     }
 }

@@ -25,7 +25,7 @@ namespace Game
                     networkRoom, cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
                 IsClientNetworkReady = true;
-                _ = ShopConfiguration.Server;
+                _ = ServerConfiguration.Current;
                 networkRoom.StartHost();
                 if (!NetworkServer.active || !NetworkClient.active || !networkRoom.transport.ServerActive())
                     throw new System.InvalidOperationException("The Editor local host did not start completely.");

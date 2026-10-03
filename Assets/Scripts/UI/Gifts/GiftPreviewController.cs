@@ -11,7 +11,7 @@ using UnityEngine.UI;
 
 namespace Game.UI.Gifts
 {
-    /// <summary>Offline preview of the gifts in Configs/Shop/Gifts.json, using the same gift definitions as the table.</summary>
+    /// <summary>Offline preview of the gifts in Configs/Items/Gifts.json, using the same gift definitions as the table.</summary>
     public sealed class GiftPreviewController : MonoBehaviour
     {
         [SerializeField] private bool _useRemoteResources;
@@ -43,8 +43,6 @@ namespace Game.UI.Gifts
         private bool _scrubbing;
         private GiftEffect _pose;
         private float _lastStarted;
-        public string SelectedGiftId => _entries.Count > 0 ? _entries[_selected].Gift.ItemId : string.Empty;
-        public int ActiveCount => _active.Count;
 
         private void OnEnable()
         {
@@ -149,21 +147,21 @@ namespace Game.UI.Gifts
             finally { resources?.Dispose(); }
         }
 
-        // The Editor reads Configs/Shop directly; a player build uses the catalog received from the server.
-        private static ShopDefinitions Definitions()
+        // The Editor reads Configs/Items directly; a player build uses the catalog received from the server.
+        private static GameCatalog Definitions()
         {
 #if UNITY_EDITOR
-            try { return ShopConfiguration.Load(); }
+            try { return CatalogConfiguration.Load(); }
             catch (Exception exception) { Debug.LogException(exception); return null; }
 #else
-            return ClientShopCatalog.Current;
+            return ClientCatalog.Current;
 #endif
         }
 
         private static Sprite Icon(ItemDefinition item)
         {
 #if UNITY_EDITOR
-            var icons = UnityEditor.AssetDatabase.LoadAssetAtPath<RemoteSpriteSetSO>(RemoteAssets.SourcePath(ProductArt.ItemIconsAddress));
+            var icons = UnityEditor.AssetDatabase.LoadAssetAtPath<RemoteSpriteSetSO>(RemoteAssets.SourcePath(ItemArt.ItemIconsAddress));
             if (icons != null && icons.Find(item.Icon) != null) return icons.Find(item.Icon);
 #endif
             return ShopLocalArtSO.ItemIcon(item);

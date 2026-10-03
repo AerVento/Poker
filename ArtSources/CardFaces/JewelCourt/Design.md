@@ -25,4 +25,4 @@ J/Q/K 只在右下显示单个人物半身像，采用深色轮廓、简化明�
 
 52 张 PNG 位于 `Assets/Sprites/CardFaces/JewelCourt/`，通过商品的 `Cards Address` 按需加载 `Assets/RemoteContent/cardfaces/JewelCourt.asset`，使用统一 `CardFaceView.prefab`。牌背已替换为专属 `back.png`（白金卷草和多色宝石徽章）；牌面数据结构见 [牌面](../../../Docs/Systems/CardFaces.md)。Sprite 使用 Single、Full Rect、100 PPU、Clamp、Bilinear、无 mipmap；当前导入尺寸与压缩配置见 [远程美术资源](../../../Docs/Operations/RemoteArtwork.md)；所有装饰关闭 Raycast Target。
 
-商品 `JewelCourt.asset` 已注册到 `Assets/Resources/SO/CardFaceCatalog.asset`，ID `jewel-court`，名称「宝石宫廷」，统一物品 ID `cardface-jewel-court`。`JewelCourt.asset` 与 `CatCourt.asset` 的 SO 默认值均为上架、售价 $50,000；经典款与简约款保持免费默认拥有。部署后可由 `Configs/Shop/CardFaces.json` 局部覆盖。没有向现有账户发放或自动装备商品。
+远程数据为 `Assets/RemoteContent/cardfaces/JewelCourt.asset`，物品 ID `cardface-jewel-court`，名称「宝石宫廷」。物品、牌面目录与售价（$50,000）分别配置在 `Configs/Items/Items.json`、`Configs/Items/CardFaces.json` 和 `Configs/Shop/Shop.json`，见 [牌面](../../../Docs/Systems/CardFaces.md)。没有向现有账户发放或自动装备商品。

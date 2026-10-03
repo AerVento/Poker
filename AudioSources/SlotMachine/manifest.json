@@ -1,0 +1,56 @@
+[
+  {
+    "file": "Assets/Audio/SFX/SlotMachine/sfx-slot-lever-down.wav",
+    "seconds": 0.36,
+    "peak_dbfs": -4.44,
+    "source": "original local synthesis"
+  },
+  {
+    "file": "Assets/Audio/SFX/SlotMachine/sfx-slot-lever-up.wav",
+    "seconds": 0.36,
+    "peak_dbfs": -4.44,
+    "source": "original local synthesis"
+  },
+  {
+    "file": "Assets/Audio/SFX/SlotMachine/sfx-slot-reel-stop.wav",
+    "seconds": 0.2,
+    "peak_dbfs": -1.11,
+    "source": "original local synthesis"
+  },
+  {
+    "file": "Assets/Audio/SFX/SlotMachine/sfx-slot-cannon.wav",
+    "seconds": 0.65,
+    "peak_dbfs": -4.73,
+    "source": "original local synthesis"
+  },
+  {
+    "file": "Assets/Audio/SFX/SlotMachine/sfx-slot-small.wav",
+    "seconds": 1.33,
+    "peak_dbfs": -3.35,
+    "source": "original local synthesis"
+  },
+  {
+    "file": "Assets/Audio/SFX/SlotMachine/sfx-slot-medium.wav",
+    "seconds": 1.99,
+    "peak_dbfs": -3.35,
+    "source": "original local synthesis"
+  },
+  {
+    "file": "Assets/Audio/SFX/SlotMachine/sfx-slot-grand.wav",
+    "seconds": 3.3,
+    "peak_dbfs": -3.35,
+    "source": "original local synthesis"
+  },
+  {
+    "file": "Assets/Audio/SFX/SlotMachine/sfx-slot-lose.wav",
+    "seconds": 1.14,
+    "peak_dbfs": -6.38,
+    "source": "original local synthesis"
+  },
+  {
+    "file": "Assets/Audio/Music/bgm-slot-spin.wav",
+    "seconds": 4.0,
+    "peak_dbfs": -5.19,
+    "source": "original local synthesis"
+  }
+]

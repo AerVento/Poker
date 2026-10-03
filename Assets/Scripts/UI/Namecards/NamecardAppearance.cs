@@ -16,8 +16,10 @@ namespace Game.UI
         [SerializeField] private RectTransform _content;
         private bool _highlighted;
         private bool _hasPresented;
-        private NamecardDefinition _product;
-        private string _requestedId;
+        private NamecardDefinition _card;
+        private string _equippedId;
+        private ulong _serviceYears;
+        private TMP_Text _playerName;
         private Vector2 _lastArtworkSize;
         private NamecardArtworkSO _loadedArtwork;
         private readonly RemoteAssetBinding<NamecardArtworkSO> _binding = new RemoteAssetBinding<NamecardArtworkSO>();
@@ -27,17 +29,27 @@ namespace Game.UI
         public void Present(string id, ulong serviceYears = 0, TMP_Text playerName = null)
         {
             _nameStyle.Present(playerName, serviceYears);
-            _requestedId = InfernalNamecard.Resolve(id, serviceYears);
-            _product = ClientShopCatalog.FindNamecard(_requestedId);
+            _equippedId = id;
+            _serviceYears = serviceYears;
+            _playerName = playerName;
             _hasPresented = true;
+            Resolve();
             BindArtwork();
         }
 
-        // Rooms can be drawn before the product catalog arrives; resolve the card again once it does.
+        // Service namecards replace the equipped one; both come from the catalog.
+        private void Resolve()
+        {
+            var catalog = ClientCatalog.Current;
+            _card = catalog?.FindNamecard(catalog.ResolveNamecard(_equippedId, _serviceYears));
+        }
+
+        // Rooms can be drawn before the catalog arrives; resolve the card again once it does.
         private void OnCatalogChanged()
         {
             if (!_hasPresented) return;
-            _product = ClientShopCatalog.FindNamecard(_requestedId);
+            _nameStyle.Present(_playerName, _serviceYears);
+            Resolve();
             BindArtwork();
         }
 
@@ -45,7 +57,7 @@ namespace Game.UI
 
         private void OnDisable()
         {
-            ClientShopCatalog.Changed -= OnCatalogChanged;
+            ClientCatalog.Changed -= OnCatalogChanged;
             _loadedArtwork = null;
             if (_artwork != null) _artwork.sprite = null;
             _binding.Dispose();
@@ -54,7 +66,7 @@ namespace Game.UI
         private void BindArtwork()
         {
             if (Application.isPlaying && !isActiveAndEnabled) return;
-            _binding.Bind(_product != null ? _product.Artwork : null, artwork =>
+            _binding.Bind(_card != null ? _card.Artwork : null, artwork =>
             {
                 _loadedArtwork = artwork;
                 RefreshArtwork();
@@ -64,7 +76,7 @@ namespace Game.UI
 
         private void OnEnable()
         {
-            ClientShopCatalog.Changed += OnCatalogChanged;
+            ClientCatalog.Changed += OnCatalogChanged;
             if (_hasPresented)
                 BindArtwork();
         }
@@ -82,7 +94,7 @@ namespace Game.UI
                 return;
             _lastArtworkSize = _artwork.rectTransform.rect.size;
             float aspect = _lastArtworkSize.y > 0f ? _lastArtworkSize.x / _lastArtworkSize.y : NamecardLayout.Aspect;
-            var sprite = _product != null && !_product.IsDefault && _loadedArtwork != null ? _loadedArtwork.Select(aspect) : null;
+            var sprite = _card != null && !_card.IsDefault && _loadedArtwork != null ? _loadedArtwork.Select(aspect) : null;
             bool custom = sprite != null;
             _artwork.sprite = sprite;
             _artwork.type = Image.Type.Simple;

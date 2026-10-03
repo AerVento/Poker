@@ -11,13 +11,11 @@ namespace Game.UI
 {
     public sealed class LobbyPanel : SingletonPanel<LobbyPanel>
     {
+        private enum AccountPage { DailyTasks, Leaderboard, Shop, Collection, Achievements, Exchange }
+
         [Header("Account")]
         [SerializeField] private TextMeshProUGUI _userName;
-        [SerializeField] private TextMeshProUGUI _dollars;
-        [SerializeField] private TextMeshProUGUI _chips;
         private string _displayedUserName;
-        private uint? _displayedDollars;
-        private uint? _displayedChips;
 
         [Header("Navigation")]
         [SerializeField] private Button _back;
@@ -102,16 +100,6 @@ namespace Game.UI
                 _displayedUserName = state.UserName;
                 _userName.text = state.UserName ?? string.Empty;
             }
-            if (_dollars != null && _displayedDollars != state.Dollars)
-            {
-                _displayedDollars = state.Dollars;
-                _dollars.text = $"${state.Dollars:N0}";
-            }
-            if (_chips != null && _displayedChips != state.Chips)
-            {
-                _displayedChips = state.Chips;
-                _chips.text = $"${state.Chips:N0}";
-            }
         }
 
         private void Back() => UIManager.Instance.PopPanel(Identifier);
@@ -122,58 +110,58 @@ namespace Game.UI
                 UIManager.Instance.PushPanel<RoomListPanel>();
         }
 
-        private void OpenLeaderboard() => OpenAccountPage(LoginDestination.Leaderboard);
+        private void OpenLeaderboard() => OpenAccountPage(AccountPage.Leaderboard);
 
-        private void OpenAchievements() => OpenAccountPage(LoginDestination.Achievements);
+        private void OpenAchievements() => OpenAccountPage(AccountPage.Achievements);
 
-        private void OpenTasks() => OpenAccountPage(LoginDestination.DailyTasks);
+        private void OpenTasks() => OpenAccountPage(AccountPage.DailyTasks);
 
-        private void OpenShop() => OpenAccountPage(LoginDestination.Shop);
+        private void OpenShop() => OpenAccountPage(AccountPage.Shop);
 
-        private void OpenCollection() => OpenAccountPage(LoginDestination.Collection);
+        private void OpenCollection() => OpenAccountPage(AccountPage.Collection);
 
         private void OpenSettings() => UIManager.Instance.PushPanel<OptionPanel>();
 
-        private void OpenExchange() => OpenAccountPage(LoginDestination.Exchange);
+        private void OpenExchange() => OpenAccountPage(AccountPage.Exchange);
 
-        private void OpenAccountPage(LoginDestination destination)
+        private void OpenAccountPage(AccountPage destination)
         {
             if (!(NetworkManager.singleton is NetworkRoom room) || room.IsRoomEntryPending)
                 return;
 
             bool canOpen = destination switch
             {
-                LoginDestination.Shop or LoginDestination.Collection => room.CanOpenShop,
-                LoginDestination.Achievements => room.CanViewAchievements,
-                LoginDestination.Leaderboard => room.CanOpenLeaderboard,
-                LoginDestination.DailyTasks => room.CanOpenDailyTasks,
-                LoginDestination.Exchange => room.CanOpenWallet,
+                AccountPage.Shop or AccountPage.Collection => room.CanOpenShop,
+                AccountPage.Achievements => room.CanViewAchievements,
+                AccountPage.Leaderboard => room.CanOpenLeaderboard,
+                AccountPage.DailyTasks => room.CanOpenDailyTasks,
+                AccountPage.Exchange => room.CanOpenWallet,
                 _ => false,
             };
             if (canOpen)
                 ShowAccountPage(destination);
         }
 
-        internal static void ShowAccountPage(LoginDestination destination)
+        private static void ShowAccountPage(AccountPage destination)
         {
             switch (destination)
             {
-                case LoginDestination.Achievements:
+                case AccountPage.Achievements:
                     UIManager.Instance.PushPanel<AchievementPanel>();
                     break;
-                case LoginDestination.DailyTasks:
+                case AccountPage.DailyTasks:
                     UIManager.Instance.PushPanel<DailyTaskPanel>();
                     break;
-                case LoginDestination.Leaderboard:
+                case AccountPage.Leaderboard:
                     UIManager.Instance.PushPanel<LeaderboardPanel>();
                     break;
-                case LoginDestination.Shop:
-                case LoginDestination.Collection:
+                case AccountPage.Shop:
+                case AccountPage.Collection:
                     var shop = UIManager.Instance.PushPanel<ShopPanel>();
-                    shop.Open(destination == LoginDestination.Collection ? ShopPageMode.Collection : ShopPageMode.Shop);
+                    shop.Open(destination == AccountPage.Collection ? ShopPageMode.Collection : ShopPageMode.Shop);
                     shop.BeginOnline();
                     break;
-                case LoginDestination.Exchange:
+                case AccountPage.Exchange:
                     UIManager.Instance.PushPanel<ChipExchangePanel>();
                     break;
             }

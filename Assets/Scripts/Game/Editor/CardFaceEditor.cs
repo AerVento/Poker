@@ -19,11 +19,11 @@ namespace Game.Editor
             if (view == null || view.Image == null || view.GetComponentsInChildren<PokerElement>(true).Length != 0 ||
                 view.GetComponentsInChildren<Mirror.NetworkIdentity>(true).Length != 0)
                 throw new InvalidOperationException("ShopLocalArt needs a card face view with an image and no gameplay components.");
-            Check("default", local.ClassicCards);
+            Check(CardFaceDefinition.DefaultItemId, local.ClassicCards);
             if (local.ClassicPreview == null) throw new InvalidOperationException("ShopLocalArt needs the classic preview.");
-            var faces = ShopConfiguration.Load().CardFaces;
+            var faces = CatalogConfiguration.Load().CardFaces;
             foreach (var face in faces.Where(face => !face.IsDefault))
-                Check(face.Id, AssetDatabase.LoadAssetAtPath<PokerCardsSO>(RemoteAssets.SourcePath(face.Cards)));
+                Check(face.ItemId, AssetDatabase.LoadAssetAtPath<PokerCardsSO>(RemoteAssets.SourcePath(face.Cards)));
             Debug.Log("Card faces validated: " + faces.Length);
         }
 

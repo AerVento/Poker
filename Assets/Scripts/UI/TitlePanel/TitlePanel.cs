@@ -54,11 +54,6 @@ namespace Game.UI
             LoginPanel.Instance.BeginSavedLogin();
         }
 
-        internal static void ShowAccountPage(LoginDestination destination)
-        {
-            LobbyPanel.ShowAccountPage(destination);
-        }
-
         private void Option()
         {
             UIManager.Instance.PushPanel<OptionPanel>();

@@ -1,16 +1,19 @@
-using System.Linq;
 using Game.Events;
 
 namespace Game.Achievements
 {
-    /// <summary>Centralizes the contract inventory facts shared by account and asset achievements.</summary>
+    /// <summary>
+    /// Centralizes the contract inventory facts shared by account and asset achievements. Contracts are configured in
+    /// Configs/Items/Contracts.json; the server sets the catalog before it evaluates any achievement.
+    /// </summary>
     internal static class ContractAchievementFacts
     {
-        public static bool IsContract(string id) => id == "devil-contract" || id == "archdevil-contract" || id == "satan-contract";
+        public static GameCatalog Catalog { get; set; }
 
-        public static ulong Years(InventoryChangedEvent value) => InfernalNamecard.CalculateYears(
-            value.Items.FirstOrDefault(item => item.ItemId == "devil-contract")?.Quantity ?? 0,
-            value.Items.FirstOrDefault(item => item.ItemId == "archdevil-contract")?.Quantity ?? 0,
-            value.Items.FirstOrDefault(item => item.ItemId == "satan-contract")?.Quantity ?? 0);
+        public static bool IsContract(string id) => Catalog?.FindContract(id) != null;
+
+        public static ulong Years(InventoryChangedEvent value) => Catalog?.ServiceYears(value.Items) ?? 0;
+
+        public static ulong Debt(System.Collections.Generic.IReadOnlyList<ItemStack> items) => Catalog?.ContractDebt(items) ?? 0;
     }
 }

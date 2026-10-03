@@ -2,6 +2,8 @@ namespace Game
 {
     public class GameSettings
     {
+        public event System.Action WalletChanged;
+
         public string AccountId { get; private set; }
 
         public string UserName { get; private set; }
@@ -34,6 +36,7 @@ namespace Game
             Dollars = dollars;
             LastRoomId = lastRoomId;
             SessionToken = sessionToken;
+            WalletChanged?.Invoke();
         }
 
         public void ClearAuthenticatedAccount()
@@ -44,6 +47,7 @@ namespace Game
             Dollars = 0;
             LastRoomId = null;
             SessionToken = null;
+            WalletChanged?.Invoke();
         }
 
         public void SetLastRoom(int? roomId)
@@ -53,18 +57,24 @@ namespace Game
 
         public void SetChips(uint chips)
         {
+            if (Chips == chips) return;
             Chips = chips;
+            WalletChanged?.Invoke();
         }
 
         public void SetDollars(uint dollars)
         {
+            if (Dollars == dollars) return;
             Dollars = dollars;
+            WalletChanged?.Invoke();
         }
 
         public void SetWallet(uint dollars, uint chips)
         {
+            if (Dollars == dollars && Chips == chips) return;
             Dollars = dollars;
             Chips = chips;
+            WalletChanged?.Invoke();
         }
     }
 }

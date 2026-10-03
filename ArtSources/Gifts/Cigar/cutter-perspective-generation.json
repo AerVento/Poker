@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-03",
+  "tool": "built-in image_gen",
+  "prompt": "Create replacement animation sprites for the silver cigar cutter in the two reference images. References describe the material and design ONLY. Change the CAMERA ANGLE substantially: use an almost SIDE-ON view, yaw 75 degrees around its upright axis from the current frontal view. Its circular cigar hole must project as a very NARROW VERTICAL ELLIPSE (width about 20 percent of height), NOT a circle facing the viewer. A cigar runs horizontally LEFT TO RIGHT through this hole, in the screen plane; the cutter's thin body stands in a vertical plane perpendicular to that horizontal cigar axis. Show the metal thickness and foreshortened bright near rim, dark far rim. NO CIGAR in the actual image. Make a transparent sprite atlas with TWO isolated components, side by side, each at the SAME perspective and scale. LEFT component: only the fixed guillotine frame, removed blade, large open narrow elliptical cigar opening in upper half, a separate small narrow elliptical finger grip below it. The cigar opening must be EMPTY genuine alpha transparency. RIGHT component: only the matching sliding blade, long thin metal plate with slanted cutting edge at bottom and small finger grip at top. Its surface and finger grip are foreshortened to match the frame exactly, so it can slide vertically into it. Both objects upright, straight vertical axis, camera level, no roll/diagonal tilt. Leave 15 percent clear margin and a large transparent gap between them. Polished brushed silver, clean dark contour, semi-realistic game illustration, no backdrop, shadows, glow, hands, people, typography, floor or extra objects. Genuine transparent background, 1024x1024.",
+  "references": [
+    "Assets/Art/Gifts/Cigar/cutter.png (original frontal version in cigar-atlas.png)",
+    "Assets/Art/Gifts/Cigar/blade.png (original frontal version in cigar-atlas.png)"
+  ],
+  "source": "cutter-perspective.png",
+  "outputs": [
+    "Assets/Art/Gifts/Cigar/cutter.png",
+    "Assets/Art/Gifts/Cigar/blade.png"
+  ],
+  "export": "export-assets.ps1"
+}

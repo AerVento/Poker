@@ -129,9 +129,5 @@ namespace Game
         {
             return this.Suit == other.Suit && this.Rank == other.Rank;
         }
-        public bool IsNot(Poker other)
-        {
-            return !Is(other);
-        }
     }
 }

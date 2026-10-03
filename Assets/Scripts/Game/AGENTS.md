@@ -8,7 +8,8 @@
 | --- | --- |
 | `App/` | 常驻启动入口 `GameController`（含 Editor 本地主机）、客户端账户会话 `GameSettings`、登录凭据存储 |
 | `Poker/` | 纯牌型与德州规则：扑克牌、牌型评估与比较、座位与盲注规则 `HoldemRules`、边池计算 `PotCalculator` |
-| `Economy/` | 货币、物品库存、购买条件、商品定义与校验 `ShopDefinitions`，以及名片/牌面与统一物品 ID 的转换 |
+| `Items/` | 物品与商城目录 `GameCatalog`：物品表、名片／牌面／礼物／契约等功能目录、商城报价，及其校验与契约规则（刑期、欠款、服刑名片） |
+| `Economy/` | 货币、库存快照与物品请求类型、购买条件、统一奖励 |
 | `Achievements/` | 成就定义、判定规则与实例，流程见 [poker-achievements](../../../.agents/skills/poker-achievements/SKILL.md) |
 | `Tasks/` | 可配置每日任务的规则、奖励与配置解析，以及任务使用的牌局事实 `HandFacts` |
 | `Events/` | 玩家事件模型与事件来源注册 |

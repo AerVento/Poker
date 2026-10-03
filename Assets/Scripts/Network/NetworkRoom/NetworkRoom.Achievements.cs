@@ -32,10 +32,9 @@ namespace Game.Network
             {
                 var repository = (authenticator as AccountAuthenticator)?.AccountRepository as IAchievementRepository;
                 if (repository == null) throw new InvalidOperationException("Achievements require account storage.");
+                ContractAchievementFacts.Catalog = ItemCatalog;
                 _achievements = new AchievementService(repository, AchievementCatalog.Discover(), id =>
-                    NamecardItemId.TryToNamecardId(id, out _)
-                        ? ItemIdentities != null && ItemIdentities.TryGet(id, out var item) ? (uint?)item.MaxQuantity : null
-                        : _itemRuntime?.Find(id)?.MaxQuantity);
+                    ItemCatalog?.MaxQuantityOf(id));
                 _achievements.Initialize();
                 _achievements.ProgressChanged += OnAchievementProgressChanged;
             }
@@ -44,7 +43,6 @@ namespace Game.Network
                 HandleFatalStorageError(exception);
                 return;
             }
-            RegisterServerHandler<AchievementsRequest>((conn, request) => conn.Send(ProcessAchievementsRequest(conn, request)), requireAuthentication: true);
             RegisterServerHandler<AchievementCatalogRequest>((conn, request) =>
             {
                 var result = ValidateAchievementRequest(conn, request.RequestId, out var account);
@@ -70,6 +68,7 @@ namespace Game.Network
                 if (account != null)
                 {
                     if (_playerManager.TryGetSession(conn, out var session)) session.Account = account.Copy();
+                    SynchronizeWalletBalance(account);
                     conn.Send(new AccountBalanceSync { Chips = account.Chips, Dollars = account.Dollars });
                 }
                 conn.Send(response);
@@ -81,6 +80,7 @@ namespace Game.Network
                 if (account != null)
                 {
                     if (_playerManager.TryGetSession(conn, out var session)) session.Account = account.Copy();
+                    SynchronizeWalletBalance(account);
                     conn.Send(new AccountBalanceSync { Chips = account.Chips, Dollars = account.Dollars });
                 }
                 conn.Send(response);
@@ -143,16 +143,6 @@ namespace Game.Network
             return prior.Count >= 12 ? AchievementResult.RateLimited : AchievementResult.Success;
         }
 
-        internal AchievementsResponse ProcessAchievementsRequest(NetworkConnectionToClient conn, AchievementsRequest request)
-        {
-            var result = ValidateAchievementRequest(conn, request.RequestId, out var account);
-            var response = result == AchievementResult.Success
-                ? _achievements.GetStatus(account.AccountId, request.Offset, request.Revision)
-                : new AchievementsResponse { AccountId = account?.AccountId, Result = result };
-            response.RequestId = request.RequestId;
-            return response;
-        }
-
         internal AchievementClaimResponse ProcessAchievementClaim(NetworkConnectionToClient conn, AchievementClaimRequest request, out PlayerAccount updated)
         {
             updated = null;
@@ -177,18 +167,10 @@ namespace Game.Network
                     Category = request.Category,
                     Result = result,
                     States = Array.Empty<AchievementStateView>(),
-                    GrantedItems = Array.Empty<TaskRewardItemState>()
+                    GrantedReward = Reward.Empty
                 };
             response.RequestId = request.RequestId;
             return response;
-        }
-
-        public ulong RequestAchievements(int offset = 0, long revision = 0)
-        {
-            if (!CanViewAchievements) return 0;
-            var request = new AchievementsRequest { RequestId = ++_nextAchievementRequest, Offset = offset, Revision = revision };
-            NetworkClient.Send(request);
-            return request.RequestId;
         }
 
         public ulong RequestAchievementClaim(string id)
@@ -215,11 +197,6 @@ namespace Game.Network
         private void RegisterAchievementClientHandlers()
         {
             ClearAchievementClient();
-            NetworkClient.RegisterHandler<AchievementsResponse>(response =>
-            {
-                if (HasAuthenticatedClient && response.AccountId == GameController.Instance.State.AccountId)
-                    AchievementPanel.Instance?.ReceiveStatus(response);
-            });
             NetworkClient.RegisterHandler<AchievementCatalogResponse>(ReceiveAchievementCatalog);
             NetworkClient.RegisterHandler<AchievementStatesResponse>(ReceiveAchievementStates);
             NetworkClient.RegisterHandler<AchievementProgressChanged>(message =>

@@ -253,8 +253,6 @@ namespace Game.UI.GamePanelElement
             icon.gameObject.SetActive(true);
         }
 
-        public void StartCountDown() => _timer.Start();
-
         public void ShowNetResult(long net) => _balanceAnimation?.ShowDelta(net);
 
         private void OnDisable()
@@ -275,7 +273,6 @@ namespace Game.UI.GamePanelElement
             var seconds = _timer.IsCounting ? System.Convert.ToInt32(System.Math.Ceiling(_timer.TimeRemaining)) : 0;
             _timeText.text = $"Ë¼¿¼ {seconds}s";
         }
-
 
     }
 

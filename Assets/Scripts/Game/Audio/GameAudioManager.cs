@@ -15,6 +15,13 @@ namespace Game
         private AudioSource _soundSource;
         private MusicCue _playingMusic;
         private MusicCue _requestedMusic = MusicCue.Lobby;
+        private UnityEngine.Object _musicOverrideOwner;
+        private AudioClip _musicOverrideClip;
+        private AudioClip _musicOnceClip;
+        private double _musicOnceStartedAt = -1d;
+        private bool _musicNeedsRestart;
+        private const float MusicFadeOutSeconds = 0.2f;
+        private const float MusicFadeInSeconds = 0.4f;
         private float _musicEnvelope;
         private float _duckUntil;
         private float _duckEnvelope = 1f;
@@ -25,8 +32,6 @@ namespace Game
         internal event System.Action<SoundCue> SoundRequested;
         public float MusicVolume => AudioPreferences.MusicVolume;
         public float SoundVolume => AudioPreferences.SoundVolume;
-        public MusicCue CurrentMusic => _playingMusic;
-        public MusicCue RequestedMusic => _requestedMusic;
 
         public static GameAudioManager EnsureClient()
         {
@@ -117,6 +122,37 @@ namespace Game
                 _duckUntil = Time.unscaledTime + clip.length;
         }
 
+        // An owned temporary track shares the single music channel and its mute settings.
+        public void SetMusicOverride(UnityEngine.Object owner, AudioClip clip)
+        {
+            if (owner == null || clip == null) return;
+            _musicOverrideOwner = owner;
+            _musicOverrideClip = clip;
+            ClearMusicOnce();
+        }
+
+        // Exclusive one-shot music; the owning page supplies the loop to resume afterwards.
+        public void PlayMusicOnce(UnityEngine.Object owner, AudioClip clip, AudioClip resumeClip)
+        {
+            if (owner == null || resumeClip == null) return;
+            SetMusicOverride(owner, resumeClip);
+            _musicOnceClip = clip;
+        }
+
+        private void ClearMusicOnce()
+        {
+            _musicOnceClip = null;
+            _musicOnceStartedAt = -1d;
+        }
+
+        public void ClearMusicOverride(UnityEngine.Object owner)
+        {
+            if (_musicOverrideOwner != owner) return;
+            _musicOverrideOwner = null;
+            _musicOverrideClip = null;
+            ClearMusicOnce();
+        }
+
         public void SetMusicVolume(float value) => AudioPreferences.SetMusicVolume(value);
         public void SetSoundVolume(float value) => AudioPreferences.SetSoundVolume(value);
         public void SetMusicMuted(bool muted) => AudioPreferences.SetMusicMuted(muted);
@@ -131,6 +167,7 @@ namespace Game
             if (MusicVolume <= 0f)
             {
                 _musicSource.Stop();
+                _musicNeedsRestart = true;
                 _playingMusic = MusicCue.None;
                 _musicEnvelope = 0f;
             }
@@ -159,33 +196,75 @@ namespace Game
         private void Update()
         {
             float delta = Time.unscaledDeltaTime;
-            if (MusicVolume <= 0f)
-            {
-                if (_musicSource.isPlaying) _musicSource.Stop();
-                _playingMusic = MusicCue.None;
-                _musicEnvelope = 0f;
-            }
-            else if (_playingMusic != _requestedMusic)
-            {
-                _musicEnvelope = Mathf.MoveTowards(_musicEnvelope, 0f, delta / 0.2f);
-                if (_musicEnvelope <= 0f)
-                {
-                    // Stop the previous track before assigning the next: never two BGMs.
-                    _musicSource.Stop();
-                    _playingMusic = _requestedMusic;
-                    _musicSource.clip = _library != null ? _library.GetMusic(_playingMusic) : null;
-                    if (_musicSource.clip != null)
-                        _musicSource.Play();
-                }
-            }
-            else
-                _musicEnvelope = Mathf.MoveTowards(_musicEnvelope, 1f, delta / 0.4f);
+            UpdateMusic(delta);
 
             _duckEnvelope = Mathf.MoveTowards(_duckEnvelope,
                 Time.unscaledTime < _duckUntil ? 0.45f : 1f, delta * 4f);
             _musicSource.volume = MusicVolume * _musicEnvelope * _duckEnvelope;
             if (_preferencesDirty && Time.unscaledTime >= _saveAt)
                 SaveVolumes();
+        }
+
+        private void UpdateMusic(float delta)
+        {
+            // Destroying the owner cancels its pending return as well as its current track.
+            if (_musicOverrideOwner == null) ClearMusicOnce();
+            double now = AudioSettings.dspTime;
+            if (_musicOnceClip != null && _musicOnceStartedAt >= 0d &&
+                now - _musicOnceStartedAt >= _musicOnceClip.length &&
+                (MusicVolume <= 0f || !_musicSource.isPlaying))
+            {
+                ClearMusicOnce();
+            }
+
+            bool once = _musicOverrideOwner != null && _musicOnceClip != null;
+            var desiredClip = once ? _musicOnceClip : _musicOverrideOwner != null && _musicOverrideClip != null
+                ? _musicOverrideClip : _library != null ? _library.GetMusic(_requestedMusic) : null;
+            bool loop = !once;
+            if (MusicVolume <= 0f)
+            {
+                if (_musicSource.isPlaying) _musicSource.Stop();
+                _musicNeedsRestart = true;
+                _playingMusic = MusicCue.None;
+                _musicEnvelope = 0f;
+                // Muted celebrations elapse silently instead of replaying late on unmute.
+                if (once && _musicOnceStartedAt < 0d) _musicOnceStartedAt = now;
+                return;
+            }
+
+            if (_musicSource.clip != desiredClip || _musicSource.loop != loop ||
+                _musicNeedsRestart || (once && _musicOnceStartedAt < 0d))
+            {
+                _musicEnvelope = Mathf.MoveTowards(_musicEnvelope, 0f, delta / MusicFadeOutSeconds);
+                if (_musicEnvelope <= 0f)
+                {
+                    // A single source guarantees the outgoing and incoming music never overlap.
+                    _musicSource.Stop();
+                    _musicSource.volume = 0f;
+                    _musicSource.clip = desiredClip;
+                    _musicSource.loop = loop;
+                    _playingMusic = _requestedMusic;
+                    _musicNeedsRestart = false;
+                    if (desiredClip != null)
+                    {
+                        if (once)
+                        {
+                            if (_musicOnceStartedAt < 0d) _musicOnceStartedAt = now;
+                            _musicSource.time = Mathf.Clamp((float)(now - _musicOnceStartedAt),
+                                0f, Mathf.Max(0f, desiredClip.length - 0.001f));
+                        }
+                        _musicSource.Play();
+                    }
+                }
+            }
+            else
+            {
+                float target = once && _musicOnceStartedAt >= 0d
+                    ? Mathf.Clamp01((float)(_musicOnceClip.length - (now - _musicOnceStartedAt)) / MusicFadeOutSeconds)
+                    : 1f;
+                float duration = target < _musicEnvelope ? MusicFadeOutSeconds : MusicFadeInSeconds;
+                _musicEnvelope = Mathf.MoveTowards(_musicEnvelope, target, delta / duration);
+            }
         }
 
         private void OnApplicationPause(bool paused)

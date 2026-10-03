@@ -19,31 +19,26 @@ namespace Game.UI
         [SerializeField] private Button _previous;
         [SerializeField] private Button _next;
         [SerializeField] private TextMeshProUGUI _ownedLabel;
-        [SerializeField] private TextMeshProUGUI _balance;
-        [SerializeField] private Image _dollarIcon;
+        [SerializeField] private BalanceView _balance;
         [SerializeField] private TextMeshProUGUI _pageLabel;
         [SerializeField] private TextMeshProUGUI _countLabel;
         [SerializeField] private TextMeshProUGUI _feedback;
 
-        private List<NamecardDefinition> _products = new List<NamecardDefinition>();
-        private readonly HashSet<string> _owned = new HashSet<string>(StringComparer.Ordinal);
-        private string _equippedId;
+        // Namecard items shown on the namecard tab: owned ones and listed shop offers, in Namecards.json order.
+        private List<string> _namecards = new List<string>();
+        private InventorySnapshot _inventory = InventorySnapshot.Empty;
         private string _playerName;
-        private uint _dollars;
-        private uint _availableChips;
-        private bool _canExchange;
         private bool _hasAccount;
-        private bool _canAct;
-        private bool _canEquip;
         private int _page;
         private int _revision;
         private MsgBox _confirmation;
 
-        public event Action<NamecardDefinition> PurchaseRequested;
+        public event Action<string> PurchaseRequested;
         public event Action<string> EquipRequested;
 
         public int CurrentPage => _page;
-        public int PageCount => Mathf.Max(1, (_products.Count + PageSize - 1) / PageSize);
+        public int PageCount => Mathf.Max(1, (_namecards.Count + PageSize - 1) / PageSize);
+        public InventorySnapshot Inventory => _inventory;
 
         private void OnEnable()
         {
@@ -51,7 +46,7 @@ namespace Game.UI
             _previous.onClick.AddListener(PreviousPage);
             _next.onClick.AddListener(NextPage);
             _page = 0;
-            ClientShopCatalog.Changed += RefreshCatalog;
+            ClientCatalog.Changed += RefreshCatalog;
             RefreshCatalog();
             FitContent();
             EnableTabs();
@@ -60,21 +55,15 @@ namespace Game.UI
         private void OnDisable()
         {
             CloseConfirmation();
-            ClientShopCatalog.Changed -= RefreshCatalog;
+            ClientCatalog.Changed -= RefreshCatalog;
             DisableTabs();
             _back.onClick.RemoveListener(Back);
             _previous.onClick.RemoveListener(PreviousPage);
             _next.onClick.RemoveListener(NextPage);
             ResetOnline();
-            _owned.Clear();
+            _inventory = InventorySnapshot.Empty;
             _hasAccount = false;
-            _canAct = false;
-            _equippedId = null;
             _playerName = null;
-            _dollars = 0;
-            _availableChips = 0;
-            _canExchange = false;
-            _canEquip = false;
             PurchaseRequested = null;
             EquipRequested = null;
         }
@@ -93,30 +82,23 @@ namespace Game.UI
         public void RefreshCatalog()
         {
             CloseConfirmation();
-            _products = (ClientShopCatalog.Current?.Namecards ?? Array.Empty<NamecardDefinition>()).ToList();
-            _products.RemoveAll(product => !IsVisible(product));
+            var catalog = ClientCatalog.Current;
+            _namecards = (catalog?.Namecards ?? Array.Empty<NamecardDefinition>())
+                .Where(card => catalog.FindItem(card.ItemId) != null && IsVisible(card.ItemId))
+                .Select(card => card.ItemId).ToList();
             _page = Mathf.Clamp(_page, 0, PageCount - 1);
             Redraw();
         }
 
-        // A presentation snapshot only. This panel never mutates account chips or ownership.
-        public void SetAccountView(string playerName, uint dollars, IEnumerable<string> ownedIds,
-            string equippedId, bool canAct, uint availableChips = 0, bool canExchange = false,
-            bool canEquip = true)
+        // A presentation snapshot only. This panel never mutates account balances or ownership.
+        public void SetInventory(string playerName, InventorySnapshot inventory)
         {
             CloseConfirmation();
             _playerName = playerName;
-            _dollars = dollars;
-            _availableChips = availableChips;
-            _canExchange = canExchange;
-            _owned.Clear();
-            if (ownedIds != null)
-                _owned.UnionWith(ownedIds);
-            _equippedId = equippedId;
+            _inventory = inventory ?? InventorySnapshot.Empty;
             _hasAccount = true;
-            _canAct = canAct;
-            _canEquip = canEquip;
-            _itemsView.SetWallet(dollars, availableChips, canExchange, false);
+            _itemsView.SetSnapshot(_inventory);
+            if (_cardFacesView != null) _cardFacesView.SetSnapshot(_inventory);
             RefreshCatalog();
         }
 
@@ -132,68 +114,65 @@ namespace Game.UI
             Redraw();
         }
 
+        private bool IsVisible(string itemId) =>
+            _inventory.Owns(itemId) || ClientCatalog.FindOffer(itemId)?.Listed == true;
+
+        private bool CanCover(uint amount) =>
+            CurrencySystem.CanAfford(amount, _inventory.Dollars, _inventory.AvailableChips, _inventory.CanExchange);
+
         private void Redraw()
         {
             if (_cards == null || _balance == null)
                 return;
-            _balance.text = _hasAccount ? $"${_dollars:N0}" : "—";
-            if (_dollarIcon != null) _dollarIcon.gameObject.SetActive(_hasAccount);
+            _balance.Present(_hasAccount ? _inventory.Dollars : (uint?)null);
             _pageLabel.text = $"{_page + 1:00}  /  {PageCount:00}";
             int first = _page * PageSize;
-            _countLabel.text = _products.Count == 0 ? "暂无上架名片" :
-                $"第 {first + 1}—{Math.Min(first + PageSize, _products.Count)} 款 · 共 {_products.Count} 款";
+            _countLabel.text = _namecards.Count == 0 ? "暂无上架名片" :
+                $"第 {first + 1}—{Math.Min(first + PageSize, _namecards.Count)} 款 · 共 {_namecards.Count} 款";
             _previous.interactable = _page > 0;
             _next.interactable = _page + 1 < PageCount;
-            int ownedCount = _products.FindAll(product => product.IsDefault || _owned.Contains(product.Id)).Count;
-            _ownedLabel.text = $"已收藏 {ownedCount} / {_products.Count}";
+            _ownedLabel.text = $"已收藏 {_namecards.Count(_inventory.Owns)} / {_namecards.Count}";
+            var equippedId = _inventory.Equipped(EquipSlot.Namecard);
             for (int i = 0; i < _cards.Length; i++)
             {
-                bool visible = i < PageSize && first + i < _products.Count;
+                bool visible = i < PageSize && first + i < _namecards.Count;
                 _cards[i].gameObject.SetActive(visible);
                 if (!visible)
                     continue;
-                var product = _products[first + i];
-                bool owned = product.IsDefault || _owned.Contains(product.Id);
-                bool equipped = product.IsDefault ? string.IsNullOrEmpty(_equippedId) || product.Id == _equippedId :
-                    product.Id == _equippedId;
+                var id = _namecards[first + i];
+                var offer = ClientCatalog.FindOffer(id);
+                bool owned = _inventory.Owns(id);
                 bool hasHandler = owned ? EquipRequested != null : PurchaseRequested != null;
-                var actionAllowed = owned ? _canEquip : _canAct;
-                _cards[i].Present(product, _playerName, _dollars, CanCover(PriceOf(product)), _hasAccount, owned,
-                    equipped, actionAllowed && hasHandler && HasOffer(product), SelectProduct, PriceOf(product));
+                var actionAllowed = owned ? _inventory.CanEquip : _inventory.CanAct;
+                _cards[i].Present(ClientCatalog.FindItem(id), ClientCatalog.FindNamecard(id), offer, _playerName,
+                    _inventory.Dollars, CanCover(offer?.Price ?? 0), _hasAccount, owned, id == equippedId,
+                    actionAllowed && hasHandler && !IsBusy, SelectNamecard);
             }
         }
 
-        private bool CanCover(uint amount)
+        private void SelectNamecard(string id)
         {
-            return CurrencySystem.CanAfford(amount, _dollars, _availableChips, _canExchange);
-        }
-
-        private void SelectProduct(NamecardDefinition product)
-        {
-            if (product == null || ActiveTab != ShopTab.Namecards || !_hasAccount || !_products.Contains(product))
+            if (id == null || ActiveTab != ShopTab.Namecards || !_hasAccount || !_namecards.Contains(id) || IsBusy)
                 return;
-            if (product.IsDefault)
+            if (_inventory.Owns(id))
             {
-                if (_canEquip && !string.IsNullOrEmpty(_equippedId) && _equippedId != product.Id)
-                    EquipRequested?.Invoke(string.Empty);
+                if (_inventory.CanEquip && id != _inventory.Equipped(EquipSlot.Namecard))
+                    EquipRequested?.Invoke(id);
                 return;
             }
-            if (_owned.Contains(product.Id))
-            {
-                if (_canEquip && product.Id != _equippedId)
-                    EquipRequested?.Invoke(product.Id);
-                return;
-            }
-            if (!_canAct || !product.CanPurchase || !CanCover(PriceOf(product)) || PurchaseRequested == null || !UIManager.Available)
+            var offer = ClientCatalog.FindOffer(id);
+            var item = ClientCatalog.FindItem(id);
+            if (!_inventory.CanAct || offer == null || item == null || !offer.CanPurchase || !CanCover(offer.Price) ||
+                PurchaseRequested == null || !UIManager.Available)
                 return;
             CloseConfirmation();
-            var price = PriceOf(product);
+            var price = offer.Price;
             var revision = _revision;
             _confirmation = MsgBox.Create("NamecardPurchase");
             _confirmation.Type = MsgboxType.ConfirmAndCancel;
             _confirmation.Title = "收藏这张名片";
-            _confirmation.Message = $"「{product.Name}」\n价格：${price:N0}\n当前美金：${_dollars:N0}";
-            if (!Game.Content.RemoteAssets.IsReady(product.Artwork))
+            _confirmation.Message = $"「{item.Name}」\n价格：${price:N0}\n当前美金：${_inventory.Dollars:N0}";
+            if (!Game.Content.RemoteAssets.IsReady(ClientCatalog.FindNamecard(id)?.Artwork))
                 _confirmation.Message += "\n外观尚未加载完成，购买后可能暂时无法显示。";
             _confirmation.ConfirmButtonText = "确认购买";
             _confirmation.CancelButtonText = "再看看";
@@ -202,9 +181,9 @@ namespace Game.UI
             _confirmation.OnConfirm += () =>
             {
                 _confirmation = null;
-                if (isActiveAndEnabled && _revision == revision && _canAct &&
-                    product != null && PriceOf(product) == price && CanCover(price) && !_owned.Contains(product.Id))
-                    PurchaseRequested?.Invoke(product);
+                if (isActiveAndEnabled && _revision == revision && _inventory.CanAct && !IsBusy &&
+                    ClientCatalog.FindOffer(id)?.Price == price && CanCover(price) && !_inventory.Owns(id))
+                    PurchaseRequested?.Invoke(id);
             };
         }
 

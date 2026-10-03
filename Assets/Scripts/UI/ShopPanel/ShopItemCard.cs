@@ -21,15 +21,16 @@ namespace Game.UI
         [SerializeField] private Button _action;
         [SerializeField] private TextMeshProUGUI _actionLabel;
 
-        private NamecardDefinition _product;
-        private Action<NamecardDefinition> _onAction;
+        private NamecardDefinition _card;
+        private string _itemId;
+        private Action<string> _onAction;
         private bool _canSelect;
         private readonly RemoteAssetBinding<NamecardArtworkSO> _binding = new RemoteAssetBinding<NamecardArtworkSO>();
 
         private void OnEnable()
         {
             _action.onClick.AddListener(Act);
-            if (_product != null) BindArtwork();
+            if (_card != null) BindArtwork();
         }
 
         private void OnDisable()
@@ -40,46 +41,41 @@ namespace Game.UI
             _binding.Dispose();
         }
 
-        public void Present(NamecardDefinition product, string playerName, uint dollars, bool canAfford,
-            bool hasAccount, bool owned, bool equipped, bool canAct, Action<NamecardDefinition> onAction, uint? quotedPrice = null)
+        /// <summary>Shows a namecard item: its name and description, its art, and its shop offer when it has one.</summary>
+        public void Present(ItemDefinition item, NamecardDefinition card, ShopOffer offer, string playerName, uint dollars,
+            bool canAfford, bool hasAccount, bool owned, bool equipped, bool canAct, Action<string> onAction)
         {
-            var price = quotedPrice ?? product.Price;
-            _product = product;
+            _card = card;
+            _itemId = item?.Id ?? card?.ItemId;
             _onAction = onAction;
             BindArtwork();
-            _name.text = product.Name;
-            _description.text = product.Description;
-            _price.text = product.IsDefault ? "免费默认款" : owned ? "永久拥有" : product.Reward ? "奖励名片" : $"${price:N0}";
-            _status.text = equipped ? "当前装备" : product.IsDefault ? "默认拥有" : owned ? "已收藏" : "永久名片";
+            var purchasable = offer != null && offer.CanPurchase;
+            var isDefault = card != null && card.IsDefault;
+            _name.text = item?.Name ?? _itemId;
+            _description.text = item?.Description ?? string.Empty;
+            _price.text = isDefault ? "免费默认款" : owned ? "永久拥有" : !purchasable ? "" : $"${offer.Price:N0}";
+            _status.text = equipped ? "当前装备" : isDefault ? "默认拥有" : owned ? "已收藏" : "永久名片";
             _playerName.text = string.IsNullOrEmpty(playerName) ? "Poker Player" : playerName;
             _playerChips.text = hasAccount ? "$" + ChipAmountFormatter.Format(dollars) : "POKER";
-            _canSelect = owned || product.CanPurchase;
+            _canSelect = owned || purchasable;
             _actionLabel.text = equipped ? "已装备" : owned ? "装备" :
-                !product.CanPurchase ? "不可购买" :
+                !purchasable ? "不可购买" :
                 hasAccount && !canAfford ? "美金不足" : "购买";
             _action.interactable = _canSelect && canAct && hasAccount && !equipped && (owned || canAfford);
             _border.color = equipped ? new Color(0.76f, 0.65f, 0.40f, 0.85f) : new Color(0.26f, 0.42f, 0.37f, 0.52f);
         }
 
-        public void Present(NamecardDefinition product, string playerName, uint dollars,
-            bool hasAccount, bool owned, bool equipped, bool canAct, Action<NamecardDefinition> onAction,
-            uint? quotedPrice = null)
-        {
-            Present(product, playerName, dollars, dollars >= (quotedPrice ?? product.Price), hasAccount,
-                owned, equipped, canAct, onAction, quotedPrice);
-        }
-
         private void BindArtwork()
         {
-            if (!isActiveAndEnabled) return;
-            _binding.Bind(_product.Artwork, artwork =>
+            if (!isActiveAndEnabled || _card == null) return;
+            _binding.Bind(_card.Artwork, artwork =>
             {
                 // The default namecard's surface is local; the others are remote artwork.
                 var sprite = artwork != null ? artwork.Wide ?? artwork.Compact :
-                    _product.IsDefault && ShopLocalArtSO.Instance != null ? ShopLocalArtSO.Instance.DefaultNamecard : null;
+                    _card.IsDefault && ShopLocalArtSO.Instance != null ? ShopLocalArtSO.Instance.DefaultNamecard : null;
                 _artwork.sprite = sprite;
-                _artwork.type = _product.IsDefault ? Image.Type.Sliced : Image.Type.Simple;
-                _artwork.preserveAspect = !_product.IsDefault;
+                _artwork.type = _card.IsDefault ? Image.Type.Sliced : Image.Type.Simple;
+                _artwork.preserveAspect = !_card.IsDefault;
                 _artwork.enabled = sprite != null;
             }, state =>
             {
@@ -91,8 +87,8 @@ namespace Game.UI
 
         private void Act()
         {
-            if (_action.interactable && _product != null && _canSelect)
-                _onAction?.Invoke(_product);
+            if (_action.interactable && _itemId != null && _canSelect)
+                _onAction?.Invoke(_itemId);
         }
     }
 }

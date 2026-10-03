@@ -9,15 +9,15 @@ namespace Game.Network.Accounts
         public string AccountId { get; }
         public uint BalanceBefore { get; }
         public ulong TotalAssets { get; }
-        public ItemPurchaseProduct Product { get; }
+        public ItemRule Item { get; }
         public uint OwnedQuantity { get; }
 
-        public PurchaseContext(string accountId, uint balanceBefore, ItemPurchaseProduct product, uint ownedQuantity, ulong? totalAssets = null)
+        public PurchaseContext(string accountId, uint balanceBefore, ItemRule item, uint ownedQuantity, ulong? totalAssets = null)
         {
             AccountId = accountId;
             BalanceBefore = balanceBefore;
             TotalAssets = totalAssets ?? balanceBefore;
-            Product = product;
+            Item = item;
             OwnedQuantity = ownedQuantity;
         }
     }
@@ -118,25 +118,6 @@ namespace Game.Network.Accounts
             for (int i = 0; i < Conditions.Count; i++)
                 if (!Conditions[i].Check(context)) return ConditionDescriptors[i];
             return null;
-        }
-    }
-
-    public sealed class ItemPurchaseRegistry
-    {
-        private readonly Dictionary<string, ItemPurchasePolicy> _policies = new Dictionary<string, ItemPurchasePolicy>(StringComparer.Ordinal);
-
-        public void Register(string itemId, ItemPurchasePolicy policy)
-        {
-            if (!NamecardServerCatalog.IsValidId(itemId) || policy == null || _policies.ContainsKey(itemId))
-                throw new ArgumentException("Purchase registrations require a unique valid ID and policy.");
-            _policies.Add(itemId, policy);
-        }
-
-        internal ItemPurchasePolicy Get(string itemId)
-        {
-            if (!_policies.TryGetValue(itemId, out var policy))
-                throw new InvalidOperationException("Missing purchase policy for " + itemId);
-            return policy;
         }
     }
 }

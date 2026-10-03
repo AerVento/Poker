@@ -13,45 +13,47 @@
 | 网络处理 | `Assets/Scripts/Network/NetworkRoom/NetworkRoom.DailyTasks.cs`、`NetworkRoom.ConfiguredTasks.cs` |
 | 存储 | `Assets/Scripts/Network/Accounts/Storage/SqliteAccountRepository.Tasks.cs` |
 | 面板 | `Assets/Scripts/UI/DailyTaskPanel/` |
-| 配置编辑器 | Unity 菜单 `Poker/每日任务/配置编辑器` |
+| 配置数据类型 | `Assets/Scripts/Game/Configuration/ConfigurationData.cs`，用 `Poker/配置编辑器` 编辑 |
 
 ## 配置
 
-服务器读取三份 JSON，默认目录为仓库或构建产物旁的 `Configs/DailyTasks/`。可用启动参数 `--task-config <目录>` 或环境变量 `POKER_TASK_CONFIG_DIR` 指定其他目录，命令行优先。三份文件的 `schemaVersion` 必须为 `2`，`revision` 必须相同。
+服务器读取三份 JSON，默认目录为仓库或构建产物旁的 `Configs/DailyTasks/`。可用启动参数 `--task-config <目录>` 或环境变量 `POKER_TASK_CONFIG_DIR` 指定其他目录，命令行优先。字段命名与必填规则见 [配置文件规范](../Standards/Configuration.md)。
 
 | 文件 | 内容 |
 | --- | --- |
-| `TaskDefinitions.json` | 全部任务定义：`id`、`name`、`type`、`params`、`maxCompletions`（每个实例最多完成几轮） |
-| `FixedTasks.json` | 固定任务：`taskId`、`enabled`、`sortOrder` |
-| `RandomTasks.json` | 随机池容量 `capacity`，以及每项的 `taskId`、`enabled`、`weight`、`validityDays` |
+| `TaskDefinitions.json` | 任务定义数组：`id`、`name`、可选的 `description`（不写时由规则生成）、`type`、`reward`、`params`、`max-completions`（每个实例最多完成几轮） |
+| `FixedTasks.json` | 固定任务数组：`task-id`、`enabled`。数组顺序就是面板中的显示顺序 |
+| `RandomTasks.json` | 随机池容量 `capacity`，以及 `entries` 中每项的 `task-id`、`enabled`、`weight`、`validity-days` |
 
 - 同一任务不能同时出现在固定和随机表中。引用不存在、参数不合法、未知类型或道具、重复 ID 等任何错误都会使服务器启动失败，不会退回硬编码配置。
-- 构建时会校验三表并复制到产物的 `Configs/DailyTasks/`。修改后需重启服务器；新配置只影响之后分配的任务，已分配的实例保留当时的定义快照。
-- 推荐用配置编辑器修改：它按字段编辑、预览目标文字，并用与服务器相同的校验器“校验并保存三表”。
+- 构建时会校验并复制到产物的 `Configs/DailyTasks/`。修改后需重启服务器。
+- 已分配的任务只保存任务 ID，名称、说明、规则、奖励、可完成轮数和固定任务的顺序都以服务器当前加载的配置为准，重启后已分配的任务也随之变化。任务的子目标数量变化时，该任务的进度清零。从 `TaskDefinitions.json` 删除的任务会在启动时从所有账号移除，包括尚未领取的奖励；只想停止分配时把它的 `enabled` 设为 `false`。
 
 ### 奖励
 
-`params` 的第一项是每一轮的奖励，可以写成整数，也可以写成 `{"chip": 1000, "items": [{"itemId": "rotten-egg", "count": 1}]}`。字段名 `chip` 是历史名称，**实际发放的是美金**。道具必须存在于服务器物品目录，并受该道具的持有上限约束。
+`reward` 是每完成一轮可领取的奖励条目数组，例如 `[{"kind": "Dollars", "quantity": 1000}, {"kind": "Item", "item-id": "rotten-egg", "quantity": 1}]`。支持美金、筹码、普通物品、名片和牌面，见 [统一奖励](Economy.md#统一奖励)。
 
 ### 任务类型
 
+`params` 是该任务类型的位置参数，个数与类型由 `type` 决定：
+
 | type | params | 何时计数 |
 | --- | --- | --- |
-| `DirectClaim` | `[奖励]` | 领取成功即完成一轮 |
-| `DirectClaimWhenLesserThan` | `[奖励, 阈值]` | 领取时总资产严格小于阈值 |
-| `DirectClaimWhenAtMost` | `[奖励, 阈值]` | 领取时总资产不高于阈值 |
-| `PlayHands` | `[奖励, 手数]` | 每正常结算一手 |
-| `FormPattern` | `[奖励, 牌型, 手数]` | 该手出现指定牌型时立即计数 |
-| `WinHands` | `[奖励, 手数]` | 正常结算且赢得任一奖池（含平分） |
-| `WinWithPattern` | `[奖励, 牌型, 手数]` | 获胜且本手曾出现指定牌型 |
-| `CountHands` | `[奖励, 手数, 条件数组]` | 同一手同时满足全部条件 |
-| `AllObjectives` | `[奖励, 子目标数组]` | 各子目标分别累计，全部达标完成一轮 |
+| `DirectClaim` | `[]` | 领取成功即完成一轮 |
+| `DirectClaimWhenLesserThan` | `[阈值]` | 领取时总资产严格小于阈值 |
+| `DirectClaimWhenAtMost` | `[阈值]` | 领取时总资产不高于阈值 |
+| `PlayHands` | `[手数]` | 每正常结算一手 |
+| `FormPattern` | `[牌型, 手数]` | 该手出现指定牌型时立即计数 |
+| `WinHands` | `[手数]` | 正常结算且赢得任一奖池（含平分） |
+| `WinWithPattern` | `[牌型, 手数]` | 获胜且本手曾出现指定牌型 |
+| `CountHands` | `[手数, 条件数组]` | 同一手同时满足全部条件 |
+| `AllObjectives` | `[子目标数组]` | 各子目标分别累计，全部达标完成一轮 |
 
 - `CountHands` 的条件：`{"type": "PatternObserved", "params": ["FullHouse"]}`、`{"type": "Won", "params": []}`、`{"type": "HandSettled", "params": []}`。
 - `AllObjectives` 的子目标：`{"id": "play", "type": "CountDistinctHands", "params": [手数, 条件数组]}`。
 - 牌型：`Pair`、`TwoPair`、`ThreeOfAKind`、`Straight`、`Flush`、`FullHouse`、`FourOfAKind`、`StraightFlush`（不含高牌）。
-- 直接领取类任务放进随机池时，`validityDays` 必须为 1。
-- 新增任务类型需要在 `TaskFactory` 中显式注册，并同步更新配置编辑器。
+- 直接领取类任务放进随机池时，`validity-days` 必须为 1。
+- 新增任务类型需要在 `TaskConfigKind` 与 `TaskFactory` 中注册，并在配置编辑器的 `ConfigurationMetadata.TaskParameterType` 中声明各参数的类型。
 
 ## 分配与生命周期
 
@@ -72,7 +74,7 @@
 - 客户端提交实例 ID 和轮次序号，服务器据此做到幂等：重试不会领到下一轮。
 - 登录后在任何页面都可以领取，包括牌局中；奖励为美金，不影响正在进行的一手的筹码。
 - 带余额条件的任务每领一轮都重新检查条件。
-- 美金入账、道具发放、领取记录和任务状态在同一个事务中提交；余额或道具达到上限时整笔失败。
+- 货币入账、物品发放、领取记录和任务状态在同一个事务中提交；货币溢出时整笔失败，物品按剩余容量发放，超出部分停止发放。名片和牌面进入对应收藏。若奖励含筹码，进行中的牌局内暂不可领取。回执保存实际入账奖励，重复领取不再次发放。
 
 ## 界面
 

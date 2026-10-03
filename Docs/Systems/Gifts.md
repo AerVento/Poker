@@ -1,6 +1,6 @@
 # 礼物
 
-礼物是牌局中对其他玩家使用的消耗品。服务器负责校验、扣库存或扣款、广播；每个客户端收到广播后，用礼物包里的 Lua 脚本播放同一段特效。新增礼物的流程见 [poker-gifts](../../.agents/skills/poker-gifts/SKILL.md)。
+礼物是可消耗的普通物品，`Gifts.json` 让它可以在牌局中“送出”给其他玩家。服务器负责校验、扣库存或扣款、广播；每个客户端收到广播后，用礼物包里的 Lua 脚本播放同一段特效。新增礼物的流程见 [poker-gifts](../../.agents/skills/poker-gifts/SKILL.md)。
 
 ## 当前礼物
 
@@ -10,24 +10,29 @@
 | 倒香槟 | `champagne` | $100 | `Champagne.lua.txt` | 4.1 秒 |
 | 枪击 | `gunfire` | $100 | `Gunfire.lua.txt` | 3.3 秒 |
 | 瑞士银行本票 | `swiss-bank-note` | $100 | `SwissBankNote.lua.txt` | 4.9 秒 |
+| 雪茄 | `cigar` | $100 | `Cigar.lua.txt` | 4.8 秒 |
 
-- 礼物列表在 `Configs/Shop/Gifts.json`：数组顺序就是菜单顺序，每项写物品 ID 和特效地址 `gifts/<物品 ID>`。礼物必须是 `Items.json` 中的消耗品（名称、介绍、图标、价格都在那里，见 [货币、商店与物品](Economy.md)）。服务器只按物品 ID 注册礼物用途，不加载特效；修改后重启服务器生效。
+- 礼物列表在 `Configs/Items/Gifts.json`：数组顺序就是菜单顺序，每项写物品 ID 和特效地址 `gifts/<物品 ID>`。礼物必须是 `Configs/Items/Items.json` 中的可消耗物品（名称、介绍、图标在那里），价格在 `Configs/Shop/Shop.json`，见 [货币、商店与物品](Economy.md)。服务器只按物品 ID 绑定“送出”方式，不加载特效；修改后重启服务器生效。
+- 礼物在仓库里照常显示，标注“牌局中送出”，不能在仓库直接使用。
 - 每个礼物一个远程包，入口是 `Assets/RemoteContent/gifts/<礼物大驼峰>.asset`（`GiftEffectSO`）：引用入口 Lua 模块、用到的共享模块，以及“资源名 → 图片 / 音效 / UI prefab”的映射。图片在 `Assets/Art/Gifts/`，音效在 `Assets/Audio/SFX/Gifts/`；菜单与商城图标在 `Assets/Sprites/Items/Gifts/`，进入公共图标包。生成原图与提示词在 `ArtSources/Gifts/`，音效由 `Tools/Audio/build_gift_sfx.py` 等脚本重建（参数在 `AudioSources/Gifts/`）。
 - 只改脚本、美术、音效或礼物配置时，重新打包远程内容、重启服务器即可，不需要发布新页面。“瑞士银行本票”的传统黑桃 A 与红色花纹牌背在 `Assets/Art/Gifts/SwissBankNote/`，只属于该礼物。
+
+雪茄的一端固定在目标名片上，茄身统一向右斜伸，呈现叼在嘴边的姿态。未剪时两端均为圆凸的封闭端头，剪下外露端后才出现平切面。剪切器与打火机从送礼者方向靠近，在外露端依次完成剪切、点火后退开，不显示手部。剪切器采用侧向透视的框体与刀片，椭圆孔口沿雪茄轴向套入，刀片垂直于茄身合拢。白烟从余火处向上飘散。约 1.45 秒剪切、2.3 秒点火、2.7 秒起烟，4.8 秒结束；靠近屏幕底边时调整倾斜方向，保持嘴边锚点不变。素材位于 `Assets/Art/Gifts/Cigar/`，切片源图和导出脚本位于 `ArtSources/Gifts/Cigar/`，剪切声为短促干脆的刀刃合拢声（0.10 秒），点火声为擦轮与金属击发声（0.16 秒），无持续气流声。原创剪切与点火音效可用 `AudioSources/Gifts/build_cigar_foley.py` 重建。
 
 ## 使用规则（服务器）
 
 - 只能在已开始的牌局中使用。发送者身份来自已认证的连接；目标是稳定的座位号，服务器拒绝不存在、已离开或是自己的座位。
-- 服刑年数 ≥ 100（见 [名片](Namecards.md) 中的恶魔名片）时禁止送礼，服务器在同一事务中读取契约库存并拒绝。
-- 一次请求最多 32 条命令、200 个礼物。`ConsumeGiftBatch` 在一个 SQLite 事务中处理整批：先用库存，不足的按服务器单价扣美金；按命令顺序执行到付不起为止（最后一条可以只执行一部分）。
+- 送礼是统一消耗请求 `ItemConsumeRequest` 的“送出”方式（`ItemConsumeMethod.Give`），每条命令带物品 ID、数量和目标座位。
+- 服刑中（刑期达到 `Contracts.json` 最低服刑名片门槛，见 [名片](Namecards.md) 中的恶魔名片）禁止送礼，服务器在同一事务中读取契约库存并拒绝。
+- 一次请求最多 32 条命令、200 个礼物。`ConsumeItems` 在一个 SQLite 事务中处理整批：先用库存，不足的按商城单价扣美金（礼物须在 `Shop.json` 中可购买）；按命令顺序执行到付不起为止（最后一条可以只执行一部分）。
 - 请求带 `operationId`，重试返回原结果，不会重复扣除或重复广播。
 - 首次成功提交后，服务器向房间成员发送 `GiftPlaybackBatchMessage`（发送者座位、目标座位、数量、统一开始时间）。
 
-代码：`Assets/Scripts/Network/Gifts/GiftUse.cs`、`Storage/SqliteAccountRepository.Gifts.cs`、`NetworkRoom/NetworkRoom.Gifts.cs`。
+代码：`Storage/SqliteAccountRepository.Items.cs`（`ConsumeItems`）、`NetworkRoom/NetworkRoom.Items.cs`（消耗请求）、`NetworkRoom/NetworkRoom.Gifts.cs`（座位校验与播放广播）。
 
 ## 客户端交互
 
-- `GamePanel` 上的 `GiftInteractionController` 负责菜单和播放，礼物列表来自服务器下发的商品目录。点击其他玩家的名片打开礼物菜单，点击菜单外关闭。
+- `GamePanel` 上的 `GiftInteractionController` 负责菜单和播放，礼物列表来自服务器下发的物品目录，库存与可购买状态来自统一的库存快照。点击其他玩家的名片打开礼物菜单，点击菜单外关闭。
 - 菜单有库存时显示数量；无库存时显示单价，付得起为白色，付不起为红色并禁用。服刑期间图标加灰色遮罩并禁用。
 - 礼物商城与收藏不提供下载遮罩或下载按钮。牌局菜单中，未下载礼物的小图标覆盖半透明黑色遮罩和下载标记；标记本身不执行操作，也不穿透触发投掷。
 - 点击投掷后先下载礼物包，期间显示简约进度条并继续接受投掷；礼物包下载、加载且 Lua 模块通过校验后，遮罩消失，才向服务器发送请求。0.2 秒内的连续点击及下载等待期间的点击保留数量，连续同目标同礼物合并为命令，仍受每批 32 条／200 个限制。已下载的旧版本礼物直接使用，同时在后台更新（见 [远程资源](../Operations/RemoteArtwork.md)）。
@@ -94,6 +99,6 @@
 
 ## 预览
 
-打开 `Assets/Scenes/GiftPreview.unity` 进入 Play 模式，或执行菜单 `Poker/Gifts/Play Gift Preview`。预览不连接服务器、不消耗库存：左侧选择礼物，点击目标名片或“播放”；支持“连送 × 5”、停止、循环、音效开关，拖动进度条可查看静止画面。列表读取 `Configs/Shop/Gifts.json`；预览界面是 `Assets/Prefabs/Gifts/GiftPreview.prefab`。
+打开 `Assets/Scenes/GiftPreview.unity` 进入 Play 模式，或执行菜单 `Poker/Gifts/Play Gift Preview`。预览不连接服务器、不消耗库存：左侧选择礼物，点击目标名片或“播放”；支持“连送 × 5”、停止、循环、音效开关，拖动进度条可查看静止画面。列表读取 `Configs/Items/Gifts.json`；预览界面是 `Assets/Prefabs/Gifts/GiftPreview.prefab`。
 
 Editor 预览默认直接读取磁盘上的 `.lua.txt`，保存后重新播放即生效。勾选预览控制器 Inspector 的 `Use Remote Resources` 可验证真实加载路径，需先为 Windows 构建远程内容并运行本地资源服务器。

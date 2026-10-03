@@ -15,9 +15,6 @@ namespace Game.Network
         [SerializeField]
         private string _databaseFileName = "PokerAccounts.db";
 
-        [SerializeField]
-        private uint _initialChips = AccountService.DefaultInitialChips;
-
         private NetworkRoom _networkRoom;
         private AccountService _accountService;
         private AccountAuthenticationOperation? _pendingOperation;
@@ -34,16 +31,6 @@ namespace Game.Network
 
         public IHandAccountRepository AccountRepository { get; private set; }
 
-        public void ConfigureDatabaseFileName(string databaseFileName)
-        {
-            if (NetworkServer.active)
-                throw new InvalidOperationException("The account database cannot be changed after the server starts.");
-            if (string.IsNullOrWhiteSpace(databaseFileName) || Path.GetFileName(databaseFileName) != databaseFileName)
-                throw new ArgumentException("A database file name without a directory is required.", nameof(databaseFileName));
-
-            _databaseFileName = databaseFileName;
-        }
-
         private void Awake()
         {
             _networkRoom = GetComponent<NetworkRoom>();
@@ -55,11 +42,11 @@ namespace Game.Network
             try
             {
                 var databasePath = Path.Combine(Application.persistentDataPath, _databaseFileName);
-                AccountRepository = new GuardedAccountRepository(
-                    new SqliteAccountRepository(databasePath), _networkRoom.HandleFatalStorageError);
-                _accountService = new AccountService(
-                    AccountRepository,
-                    initialChips: _initialChips);
+                var configuration = ServerConfiguration.Current;
+                var sqlite = new SqliteAccountRepository(databasePath);
+                sqlite.ConfigureItems(configuration.Catalog, configuration.StarterGrants);
+                AccountRepository = new GuardedAccountRepository(sqlite, _networkRoom.HandleFatalStorageError);
+                _accountService = new AccountService(AccountRepository);
                 _accountService.Initialize();
                 Log.WriteInfo($"Account database initialized at {databasePath}.");
             }
@@ -108,15 +95,15 @@ namespace Game.Network
                 OnAuthenticationResponse,
                 requireAuthentication: false);
             NetworkClient.RegisterHandler<AccountLogoutResponse>(OnLogoutResponse, requireAuthentication: false);
-            // Public product definitions arrive just before a successful login response.
-            NetworkClient.RegisterHandler<ShopCatalogMessage>(ClientShopCatalog.Apply, requireAuthentication: false);
+            // The public item catalog arrives just before a successful login response.
+            NetworkClient.RegisterHandler<GameCatalogMessage>(ClientCatalog.Apply, requireAuthentication: false);
         }
 
         public override void OnStopClient()
         {
             NetworkClient.UnregisterHandler<AccountAuthenticationResponse>();
             NetworkClient.UnregisterHandler<AccountLogoutResponse>();
-            NetworkClient.UnregisterHandler<ShopCatalogMessage>();
+            NetworkClient.UnregisterHandler<GameCatalogMessage>();
             ClearPendingAuthentication();
             _logoutPending = false;
             _logoutSessionToken = null;
@@ -344,7 +331,7 @@ namespace Game.Network
                 operation,
                 result,
                 oldConnection == null || !canRestoreReplacedSession);
-            conn.Send(_networkRoom.ShopCatalogMessage);
+            conn.Send(_networkRoom.CatalogMessage);
             conn.Send(response);
             ServerAccept(conn);
 

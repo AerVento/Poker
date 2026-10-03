@@ -18,12 +18,10 @@ namespace Game.Network.Accounts
     {
         public long Rank;
         public string UserName;
-        public uint DevilContracts;
-        public uint ArchdevilContracts;
-        public uint SatanContracts;
+        /// <summary>Held quantity of each contract, in Contracts.json order.</summary>
+        public uint[] Contracts;
+        public ulong ServiceYears;
         public bool IsSelf;
-
-        public ulong ServiceYears => InfernalNamecard.CalculateYears(DevilContracts, ArchdevilContracts, SatanContracts);
     }
 
     public struct LeaderboardSnapshot

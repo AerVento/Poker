@@ -1,6 +1,6 @@
 namespace Game.Network.Accounts
 {
-    public sealed partial class GuardedAccountRepository : IWalletRepository, IWalletPaymentRepository
+    public sealed partial class GuardedAccountRepository : IWalletRepository
     {
         public WalletSnapshot ReadWallet(string accountId) => Execute(() => ((IWalletRepository)_inner).ReadWallet(accountId));
         public WalletResult ExchangeWallet(string accountId, string operationId, bool dollarsToChips, uint amount)
@@ -16,18 +16,5 @@ namespace Game.Network.Accounts
             account = snapshot;
             return result;
         }
-        public ShopResult ChangeNamecard(string accountId, string operationId, ShopAction action, string productId,
-            string catalogRevision, NamecardServerCatalog catalog, bool authorizeChipConversion, uint authorizedShortfall)
-            => Execute(() => ((IWalletPaymentRepository)_inner).ChangeNamecard(accountId, operationId, action,
-                productId, catalogRevision, catalog, authorizeChipConversion, authorizedShortfall));
-        public ShopResult ChangeCardFace(string accountId, string operationId, ShopAction action, string productId,
-            string catalogRevision, CardFaceServerCatalog catalog, bool authorizeChipConversion, uint authorizedShortfall)
-            => Execute(() => ((IWalletPaymentRepository)_inner).ChangeCardFace(accountId, operationId, action,
-                productId, catalogRevision, catalog, authorizeChipConversion, authorizedShortfall));
-        public ItemChangeExecution ChangeItem(string accountId, string operationId, ItemShopAction action, string itemId,
-            uint quantity, uint quotedPrice, string catalogRevision, ItemPurchaseRuntime runtime, bool inRoom,
-            bool authorizeChipConversion, uint authorizedShortfall)
-            => Execute(() => ((IWalletPaymentRepository)_inner).ChangeItem(accountId, operationId, action, itemId,
-                quantity, quotedPrice, catalogRevision, runtime, inRoom, authorizeChipConversion, authorizedShortfall));
     }
 }

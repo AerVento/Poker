@@ -14,7 +14,7 @@ namespace Game.Achievements
 
     public abstract class HandAchievement : Achievement, IAchievementHandler<HandStageRecordedEvent>
     {
-        public abstract override void Evaluate(AchievementContext context, string accountId, AchievementProgress progress);
+        public abstract void Evaluate(AchievementContext context, string accountId, AchievementProgress progress);
         public void Evaluate(HandStageRecordedEvent playerEvent, string accountId, AchievementProgress progress)
             => Evaluate(playerEvent.Context, accountId, progress);
     }
@@ -54,14 +54,6 @@ namespace Game.Achievements
                             throw;
                         }
                     }));
-                }
-                // Keep source compatibility with existing extensions overriding the old virtual hook.
-                if (!handlers.Any(t => t.GetGenericArguments()[0] == typeof(HandStageRecordedEvent)) &&
-                    definition.GetType().GetMethod("Evaluate", new[] { typeof(AchievementContext), typeof(string), typeof(AchievementProgress) })
-                        ?.DeclaringType != typeof(Achievement))
-                {
-                    Add(typeof(HandStageRecordedEvent), new AchievementEventBinding(definition, (value, account, progress) =>
-                        definition.Evaluate(((HandStageRecordedEvent)value).Context, account, progress)));
                 }
             }
         }

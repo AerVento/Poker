@@ -1,71 +1,56 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
-
 namespace Game.Network.Accounts
 {
-    public enum ItemShopAction : byte { Read, Purchase, Use }
-    public enum ItemShopResult : byte
+    /// <summary>
+    /// Outcome of an item purchase, equip or consume request. Values are persisted in item_requests receipts and sent
+    /// on the wire: append new results without renumbering.
+    /// </summary>
+    public enum ItemActionResult : byte
     {
-        Success, InsufficientChips, NotOwned, UnknownItem, CatalogChanged,
-        OutsideRoomRequired, Unavailable, InvalidRequest, RateLimited,
-        AlreadyOwned, QuantityLimit, NotConsumable, EffectUnavailable, BalanceConditionNotMet, BalanceLimit, UseConditionNotMet,
-        RoomStartedRequired, UseLocationNotAllowed, ConversionRequired, QuoteChanged
-    }
-
-    public sealed class ServerItemDefinition
-    {
-        public string Id { get; set; }
-        public ItemKind Kind { get; set; } = ItemKind.NonConsumable;
-        public uint Price { get; set; }
-        public bool Listed { get; set; } = true;
-        public uint MaxQuantity { get; set; } = 1;
-    }
-
-    public sealed class ItemServerCatalog
-    {
-        public ServerItemDefinition[] Products { get; set; } = Array.Empty<ServerItemDefinition>();
-
-        public string Revision
-        {
-            get
-            {
-                using var sha = SHA256.Create();
-                return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(
-                    JsonSerializer.Serialize(Products.OrderBy(p => p.Id, StringComparer.Ordinal)))))
-                    .Replace("-", "");
-            }
-        }
-
-        public void Validate()
-        {
-            if (Products == null || Products.Length > 500)
-                throw new InvalidOperationException("Item catalog must contain at most 500 products.");
-            var ids = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var product in Products)
-            {
-                if (product == null || !NamecardServerCatalog.IsValidId(product.Id) || !ids.Add(product.Id) ||
-                    !Enum.IsDefined(typeof(ItemKind), product.Kind) || product.MaxQuantity == 0 ||
-                    (product.Kind == ItemKind.NonConsumable && product.MaxQuantity != 1))
-                    throw new InvalidOperationException("Invalid item ID, kind or quantity limit.");
-            }
-        }
+        Success, InvalidRequest, Unavailable, RateLimited, UnknownItem, CatalogChanged,
+        InsufficientDollars, ConversionRequired, QuoteChanged, BalanceLimit,
+        AlreadyOwned, QuantityLimit, NotOwned, PurchaseConditionNotMet,
+        NotEquippable, OutsideRoomRequired,
+        NotConsumable, MethodUnavailable, UseConditionNotMet, LocationNotAllowed, RoomStartedRequired,
+        SenderNotSeated, TargetNotFound, CannotTargetSelf, ServiceRestricted, InsufficientItems,
     }
 
     public sealed class AccountItemInventory
     {
         public PlayerAccount Account { get; set; }
+        /// <summary>Every owned item, including namecards and card faces.</summary>
         public ItemStack[] Items { get; set; }
-        public bool CanAct { get; set; }
+    }
+
+    /// <summary>One consume instruction. Give needs a target seat; Use always consumes one item and has no target.</summary>
+    public sealed class ItemConsumeCommand
+    {
+        public string ItemId { get; }
+        public uint Quantity { get; }
+        public int TargetSeatIndex { get; }
+
+        public ItemConsumeCommand(string itemId, uint quantity, int targetSeatIndex = -1)
+        {
+            ItemId = itemId;
+            Quantity = quantity;
+            TargetSeatIndex = targetSeatIndex;
+        }
     }
 
     public interface IItemRepository
     {
         AccountItemInventory ReadItems(string accountId);
-        ItemChangeExecution ChangeItem(string accountId, string operationId, ItemShopAction action,
-            string itemId, uint quantity, uint quotedPrice, string catalogRevision, ItemPurchaseRuntime runtime, bool inRoom = false);
+
+        ItemChangeExecution PurchaseItem(string accountId, string operationId, string itemId, uint quantity,
+            uint quotedPrice, string catalogRevision, ItemRules rules, bool authorizeChipConversion = false, uint authorizedShortfall = 0);
+
+        ItemActionResult EquipItem(string accountId, string operationId, string itemId, ItemRules rules);
+
+        /// <summary>
+        /// Consumes items by one method in a single transaction. Location checks that need live room state are done by
+        /// the caller and passed in as location.
+        /// </summary>
+        ItemConsumeExecution ConsumeItems(string accountId, string operationId, ItemConsumeMethod method,
+            System.Collections.Generic.IReadOnlyList<ItemConsumeCommand> commands, string catalogRevision, ItemRules rules,
+            ItemUseLocation location, bool authorizeChipConversion = false, uint authorizedShortfall = 0);
     }
 }

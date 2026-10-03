@@ -79,7 +79,7 @@ namespace Game.Network.Achievements
         {
             var state = new AchievementStateView { Id = view.Id, Progress = view.Progress,
                 CompletedAt = view.CompletedAt, ClaimedAt = view.ClaimedAt,
-                RewardDollars = view.RewardDollars, RewardItems = view.RewardItems,
+                Reward = view.Reward,
                 HasRevealedDefinition = view.Hidden,
                 RevealedDefinition = view.Hidden ? new AchievementDefinitionView
                 {
@@ -90,8 +90,7 @@ namespace Game.Network.Achievements
                     IconPath = view.IconPath,
                     Target = view.Target,
                     Hidden = true,
-                    RewardDollars = view.RewardDollars,
-                    RewardItems = view.RewardItems
+                    Reward = view.Reward
                 } : default };
             _states.TryGetValue(view.Id, out var prior);
             _states[view.Id] = PreserveCompletion(state, prior);
@@ -142,9 +141,7 @@ namespace Game.Network.Achievements
                     Progress = hidden ? 0 : complete ? definition.Target : state.Progress,
                     CompletedAt = state.CompletedAt, ClaimedAt = state.ClaimedAt,
                     Hidden = d.Hidden,
-                    RewardDollars = hidden ? 0 : complete ? state.RewardDollars : definition.RewardDollars,
-                    RewardItems = hidden ? Array.Empty<TaskRewardItemState>() :
-                        complete ? state.RewardItems : definition.RewardItems
+                    Reward = hidden ? Reward.Empty : complete ? state.Reward : definition.Reward
                 };
             }).ToArray();
         }

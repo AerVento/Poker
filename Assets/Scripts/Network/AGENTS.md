@@ -10,10 +10,10 @@
 | `Rooms/` | 房间与座位（`RoomManager`、`RoomInfo`）、在线会话（`PlayerManager`）、离座与参战（`RoomDepartureService`、`TableParticipationService`） |
 | `Holdem/` | 服务端牌局 `GameManager` 及其 partial、完整状态 `ServerGameInfo`、按玩家裁剪的 `ClientGameInfo`、结算结果与操作类型 |
 | `Messages/` | 网络协议消息，以及复杂字段的读写方法 `Serialization.cs` |
-| `Config/` | 网络配置，以及 `Configs/Shop` 商品配置的读取与校验（`ShopConfiguration`） |
+| `Config/` | 网络配置；物品与商城目录的读取 `CatalogConfiguration`；启动时统一校验全部服务器配置的 `ServerConfiguration`（物品、商城、初始发放、每日任务、抽奖） |
 | `Accounts/` | 登录（`AccountAuthenticator`、`AccountService`、`PasswordHasher`）、账户与钱包模型、仓储接口 |
 | `Accounts/Storage/` | `SqliteAccountRepository` 与 `GuardedAccountRepository`，按功能拆成 partial 文件 |
-| `Shop/` | 道具、名片、牌面商店，购买与使用策略，物品发放；客户端商品目录 `ClientShopCatalog` |
+| `Shop/` | 由目录生成的服务器物品规则 `ItemRules`（购买条件与效果、消耗方式），购买与消耗的结果类型，物品发放；客户端目录 `ClientCatalog` |
 | `Gifts/`、`Leaderboard/`、`Tasks/`、`Achievements/` | 对应功能的服务端逻辑与仓储接口 |
 
 纯规则（`HoldemRules`、`PotCalculator`、牌型比较）放在 `Game/Poker`，不要放进本目录。

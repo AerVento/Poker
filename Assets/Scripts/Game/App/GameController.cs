@@ -119,8 +119,8 @@ namespace Game
                 if (!(NetworkManager.singleton is NetworkRoom networkRoom))
                     throw new InvalidOperationException("NetworkRoom is missing from the startup scene.");
                 NetworkConfigurationLoader.LoadAndApplyServer(networkRoom);
-                // An invalid Configs/Shop stops startup here, before the server accepts players.
-                _ = ShopConfiguration.Server;
+                // Invalid item, shop, account, task or lottery configuration stops startup here, listing every problem.
+                _ = ServerConfiguration.Current;
                 networkRoom.StartServer();
                 if (!NetworkServer.active || !networkRoom.transport.ServerActive())
                     throw new InvalidOperationException("The game server did not start listening.");
@@ -133,7 +133,7 @@ namespace Game
 #if UNITY_EDITOR
                 UnityEditor.EditorApplication.isPlaying = false;
 #else
-                QuitAfterStartupFailure().Forget();
+                QuitAfterStartupFailure($"Server startup failed: {exception.Message}").Forget();
 #endif
             }
         }

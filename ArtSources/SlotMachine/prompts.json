@@ -1,0 +1,63 @@
+{
+  "tool": "built-in image_gen",
+  "symbols": [
+    [
+      "small",
+      "a single thick elegant gold poker chip standing slightly tilted, emerald green inlay, raised four-point star at center"
+    ],
+    [
+      "medium",
+      "a large emerald-cut deep green gemstone in a thick polished champagne gold setting, slightly tilted, bold diamond silhouette"
+    ],
+    [
+      "grand",
+      "a regal five-point champagne gold crown with three deep emerald gems, strong wide crown silhouette"
+    ]
+  ],
+  "edits": [
+    [
+      "small",
+      "exec-5c74c62a-cab9-45d1-8e43-394c09f0b290.png",
+      "Change ALL green enamel areas to vivid warm coral-red enamel; keep gold star and gold rim. Small-prize symbol in a wild colorful casino."
+    ],
+    [
+      "medium",
+      "exec-ce9c385b-4504-4f4c-b354-ae77584d3a5e.png",
+      "Change gemstone from green to luminous electric cyan and sapphire blue with brilliant pale ice highlights, keep gold setting. Mid-prize symbol in a colorful casino."
+    ],
+    [
+      "grand",
+      "exec-b5ce5660-d874-44db-9fcb-c410ed7da87a.png",
+      "Change all green gems to vivid hot pink ruby gems, change green inset velvet to deep royal violet, keep gold crown. Grand-prize symbol in a colorful casino."
+    ]
+  ],
+  "commonPrompt": "Transparent isolated premium 3D illustrated slot prize symbol; brushed champagne gold, upper-left warm light, bold readable silhouette, no text or extra objects. Original emerald versions retained as drafts.",
+  "backgroundPrompt": "16:9 exuberant casino stage; deep plum velvet, magenta neon arches, cyan lights, gold ribbons and edge confetti; center 70% dark and clean; no text, UI or slot machine.",
+  "modules": {
+    "cabinet": "Photorealistic front orthographic casino cabinet, 1.4:1; heavy brushed champagne-gold trim and glossy black cherry lacquer; blank top marquee and bottom status glass; empty central aperture; no reels, symbols, text or lever; transparent background.",
+    "lever": "Isolated front orthographic polished ruby bakelite ball, straight brushed gold shaft and pivot hub; realistic material reflections, transparent background.",
+    "reel-window": "One empty warm ivory cylindrical reel behind reflective glass, narrow brass rim, dark top and bottom shading, clean pale center; no icons or text; transparent outside window."
+  },
+  "leverSpriteSlices": {
+    "method": "Unity TextureImporter native slicing; original PNG unchanged",
+    "origin": "bottom-left",
+    "LeverKnob": [
+      320,
+      1114,
+      390,
+      406
+    ],
+    "LeverShaft": [
+      444,
+      302,
+      136,
+      820
+    ],
+    "LeverPivot": [
+      370,
+      48,
+      275,
+      260
+    ]
+  }
+}

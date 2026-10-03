@@ -4,6 +4,8 @@ using UnityEngine;
 
 namespace Framework.Configs
 {
+    public enum ConfigUsage { Unspecified, Client, Server, Both }
+
     /// <summary>
     /// The attribute used to easily set up config file path.
     /// </summary>
@@ -14,5 +16,6 @@ namespace Framework.Configs
         /// The file path of configuartion. It is a relative path to <see cref="ConfigManager.CONFIG_SAVE_PATH"/>.
         /// </summary>
         public string Path { get; set; } = string.Empty;
+        public ConfigUsage Usage { get; set; } = ConfigUsage.Unspecified;
     }
 }

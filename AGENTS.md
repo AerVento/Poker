@@ -7,7 +7,7 @@
 - 新增或调整成就：[poker-achievements](.agents/skills/poker-achievements/SKILL.md)。
 - 新增、替换、上下架名片或牌面：[poker-cosmetics](.agents/skills/poker-cosmetics/SKILL.md)。
 - 新增或调整礼物：[poker-gifts](.agents/skills/poker-gifts/SKILL.md)。
-- 改商品配置（上下架、改价、新增物品／礼物／名片／牌面）或发布远程内容、新页面：[poker-dynamic-content](.agents/skills/poker-dynamic-content/SKILL.md)。
+- 改物品或商城配置（上下架、改价、新增物品／礼物／名片／牌面／契约）或发布远程内容、新页面：[poker-dynamic-content](.agents/skills/poker-dynamic-content/SKILL.md)。
 - 新增或修改网络消息：[poker-network-messages](.agents/skills/poker-network-messages/SKILL.md)。
 - 新增、移动、重命名或清理任何资源与文件：[poker-assets](.agents/skills/poker-assets/SKILL.md)。
 
@@ -28,7 +28,7 @@ Skill 中的具体需求以当前用户要求为准。
 - 联机层使用内嵌的 Mirror `93.0.0`；异步代码使用内嵌的 UniTask `2.5.10`。
 - 客户端界面使用 uGUI、TextMeshPro。网络协议和存储使用 `System.Text.Json`（NuGet DLL 位于 `Assets/Packages`）；`Framework` 的配置读写使用 UPM 包提供的 Newtonsoft.Json，不要再另装一份。
 - 服务端账户数据存储在 SQLite（`Microsoft.Data.Sqlite`，NuGetForUnity 安装）。
-- 名片、非经典牌面、礼物特效、物品图标与牌面预览是 Addressables 远程内容，按需下载并在页面内更新，见 [远程资源](Docs/Operations/RemoteArtwork.md)。商品列表以 `Configs/Shop/` 的 JSON 为唯一来源，服务器启动时读取并下发给客户端。
+- 名片、非经典牌面、礼物特效、物品图标与牌面预览是 Addressables 远程内容，按需下载并在页面内更新，见 [远程资源](Docs/Operations/RemoteArtwork.md)。物品以 `Configs/Items/`（物品表与名片、牌面、礼物、契约等功能目录）、商城以 `Configs/Shop/Shop.json`、新账号初始发放以 `Configs/Accounts/StarterGrants.json` 为唯一来源，服务器启动时统一校验并把目录下发给客户端，见 [货币、商店与物品](Docs/Systems/Economy.md)。
 - 礼物特效由 Lua 编排：xLua v2.1.16（`Assets/XLua/`，Lua 5.3；WebGL 时 Lua C 源码随页面以 C 语言编译）执行，DOTween 1.3.030（`Assets/Plugins/Demigiant/DOTween/`，官网免费版）驱动，见 [礼物](Docs/Systems/Gifts.md)。xLua 生成代码在 `Assets/XLua/Gen/`，修改礼物宿主接口后执行 `XLua/Generate Code`。
 - 当前自有代码未拆分 asmdef：运行时代码编译进 `Assembly-CSharp`，`Editor` 目录下的代码编译进 `Assembly-CSharp-Editor`。
 
@@ -44,7 +44,7 @@ Skill 中的具体需求以当前用户要求为准。
 
 资源目录：
 
-- `Assets/Resources/SO`：运行时按路径加载的 SO 数据（`GameAudioLibrary`、本地默认外观 `ShopLocalArt`）。商品不再用 SO 定义，见 `Configs/Shop/`。`Resources` 下只放运行时要加载的资源，不放文档。
+- `Assets/Resources/SO`：运行时按路径加载的 SO 数据（`GameAudioLibrary`、本地默认外观 `ShopLocalArt`）。物品与商品不用 SO 定义，见 `Configs/Items/`、`Configs/Shop/`；SO 只承载需要引用 Unity 资源的美术与特效。`Resources` 下只放运行时要加载的资源，不放文档。
 - `Assets/Resources/UI/Achievements`：成就图标，按 `IconPath` 路径加载。
 - `Assets/RemoteContent`：Addressables 远程资源入口（名片、牌面、礼物包、物品图标集、牌面预览集）。礼物 Lua 源码在 `Assets/Scripts/UI/Gifts/Lua/`。
 - `Assets/Prefabs`：`Manager/` 为入口管理器 prefab，`UI/` 为 Canvas、面板与共享控件，`Gifts/` 为礼物特效和礼物菜单。

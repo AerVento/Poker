@@ -16,7 +16,7 @@ namespace Framework.Configs
     /// <summary>
     /// A manager to easily load the data structure with <see cref="ConfigAttribute"/> attribute.
     /// </summary>
-    public static class ConfigManager 
+    public static partial class ConfigManager 
     {
         /// <summary>
         /// The buffer to contain loaded configs.
@@ -37,6 +37,14 @@ namespace Framework.Configs
                 new RectConverter(),
             },
             Formatting = Formatting.Indented,
+            // Configuration field names are lowercase words joined by hyphens ("max-quantity"); enum values keep their C# names.
+            ContractResolver = new Newtonsoft.Json.Serialization.DefaultContractResolver
+            {
+                NamingStrategy = new Newtonsoft.Json.Serialization.KebabCaseNamingStrategy()
+            },
+            DateParseHandling = DateParseHandling.None,
+            ObjectCreationHandling = ObjectCreationHandling.Replace,
+            MissingMemberHandling = MissingMemberHandling.Error,
         };
 
         /// <summary>
@@ -107,21 +115,7 @@ namespace Framework.Configs
         /// <returns>The data structure loaded.</returns>
         /// <exception cref="ArgumentException">Thrown if the type T has no attribute of ConfigAttribute on it.</exception>
         /// <exception cref="FileNotFoundException">Thrown if cannot find the file at given path..</exception>
-        public static T Load<T>()
-        {
-            Type type = typeof(T);
-
-            if(_buffer.ContainsKey(type))
-                return (T)_buffer[type];
-
-            var attribute = GetAttribute(type);
-            string json = ReadAllText(attribute.Path);
-            T result = JsonConvert.DeserializeObject<T>(json, _settings);
-            
-            if(result == null)
-                Debug.LogError($"Cannot deserialize the json text to {type}. The raw text is below: \n" + json);
-            return result;
-        }
+        public static T Load<T>() => (T)Load(typeof(T));
 
         /// <summary>
         /// Load a configuration. If the configuration doesn't exist, return default value. Otherwise, return the loaded configuration.
@@ -133,29 +127,10 @@ namespace Framework.Configs
         /// <exception cref="ArgumentException">Thrown if the type T has no attribute of ConfigAttribute on it.</exception>
         public static bool Load<T>(T defaultValue, out T result)
         {
-            Type type = typeof(T);
-
-            if (_buffer.ContainsKey(type))
-            {
-                result = (T)_buffer[type];
-                return true;
-            }
-
-            var attribute = GetAttribute(type);
-            var path = GetPath(attribute.Path);
-            
-            if (File.Exists(path))
-            {
-                string json = ReadAllTextAtPath(path);
-                result = JsonConvert.DeserializeObject<T>(json);
-                
-                if (result == null)
-                    Debug.LogError($"Cannot deserialize the json text to {type}. The raw text is below: \n" + json);
-                return result != null;
-            }
-            
-            result = defaultValue;
-            return false;
+            var path = GetPath(GetAttribute(typeof(T)).Path);
+            if (!File.Exists(path)) { result = defaultValue; return false; }
+            result = LoadAtPath<T>(path);
+            return true;
         }
 
         /// <summary>
@@ -164,18 +139,7 @@ namespace Framework.Configs
         /// <typeparam name="T">The type of data structure.</typeparam>
         /// <param name="config">The data structure need to be saved.</param>
         /// <exception cref="ArgumentException">Thrown if the type T has no attribute of ConfigAttribute on it.</exception>
-        public static void Save<T>(T config)
-        {
-            var attribute = GetAttribute(typeof(T));
-            string path = GetPath(attribute.Path);
-            
-            string directoryPath = Path.GetDirectoryName(path);
-            if (!Directory.Exists(directoryPath))
-                Directory.CreateDirectory(directoryPath);
-
-            string json = JsonConvert.SerializeObject(config, _settings);
-            WriteAllTextAtPath(path, json);
-        }
+        public static void Save<T>(T config) => Save(typeof(T), config);
 
         private static ConfigAttribute GetAttribute(Type type)
         {
@@ -199,14 +163,14 @@ namespace Framework.Configs
 
 #if UNITY_EDITOR
         /// <summary>
-        /// For all type in assembly of <see cref="ConfigAttribute"/>, create default value of config file at given path.
+        /// Create missing default files for attributed types across all loaded assemblies.
         /// </summary>
         [MenuItem("Utils/Configs/Create Config File")]
         public static void CreateConfigFiles()
         {
-            Assembly assembly = Assembly.GetAssembly(typeof(ConfigAttribute));
+            var types = UnityEditor.TypeCache.GetTypesWithAttribute<ConfigAttribute>();
             
-            foreach(var type in assembly.GetTypes())
+            foreach(var type in types)
             {
                 var attribute = type.GetCustomAttribute<ConfigAttribute>();
                 
@@ -226,12 +190,7 @@ namespace Framework.Configs
                 if (!Directory.Exists(directoryPath))
                     Directory.CreateDirectory(directoryPath);
 
-                // Create a instance with default constructor
-                object instance = Activator.CreateInstance(type);
-                
-                // Serialize
-                string json = JsonConvert.SerializeObject(instance, _settings);
-                WriteAllTextAtPath(path, json);
+                CreateFile(type);
                 Debug.Log($"Successfully create config file for type {type} at path {path}.");
             }
 

@@ -30,15 +30,11 @@ namespace Game.Content
         private static IRemoteBundleStore _store;
         private static RemoteContentRecordBook _records;
         private static RemoteContentCatalog _catalog;
-        public static string BaseUrl => _baseUrl;
-        public static int ResidentCount => Entries.Count;
-        /// <summary>The accepted content version, or null before a remote catalog has been loaded.</summary>
-        public static string ContentVersion => _catalog?.Version.Version;
 
         /// <summary>A newer version of the address is ready. Holders should release their lease and acquire again.</summary>
         public static event Action<string> Updated;
 
-        // Addresses keep product IDs ("cardfaces/jewel-court"); the source asset files use PascalCase names.
+        // Addresses use lowercase content IDs ("cardfaces/jewel-court"); the source asset files use PascalCase names.
         public static string SourcePath(string address)
         {
             var slash = address.LastIndexOf('/');
@@ -48,8 +44,8 @@ namespace Game.Content
         }
 
         public static bool IsReady(string address) => string.IsNullOrEmpty(address) ||
-            Entries.TryGetValue(address, out var entry) && !entry.Retired && entry.Finished && entry.Handle.IsValid() &&
-            entry.Handle.Status == AsyncOperationStatus.Succeeded;
+            Entries.TryGetValue(address, out var entry) && !entry.Retired && entry.Finished && (entry.LocalAsset != null ||
+            entry.Handle.IsValid() && entry.Handle.Status == AsyncOperationStatus.Succeeded);
 
         internal sealed class Entry
         {
@@ -59,6 +55,8 @@ namespace Game.Content
             public double ReleasedAt;
             public RemoteContentRecord Record;
             public AsyncOperationHandle Handle;
+            /// <summary>Editor only: the source asset loaded directly instead of from a bundle.</summary>
+            public UnityEngine.Object LocalAsset;
             public readonly UniTaskCompletionSource<UnityEngine.Object> Ready = new UniTaskCompletionSource<UnityEngine.Object>();
             public bool Finished;
             // A newer version is ready: no new users, unloaded as soon as the last lease is released.
@@ -150,6 +148,14 @@ namespace Game.Content
             UnityEngine.Object asset = null;
             try
             {
+#if UNITY_EDITOR
+                if (ReadsLocalAssets)
+                {
+                    asset = LoadLocalAsset(entry);
+                    if (asset == null) Debug.LogWarning("Remote content source asset is missing: " + SourcePath(entry.Address));
+                    return;
+                }
+#endif
                 if (await Initialize())
                 {
                     var latest = _catalog.Find(entry.Address);
@@ -267,8 +273,8 @@ namespace Game.Content
             get
             {
 #if UNITY_EDITOR
-                // Editor Play Mode loads the Windows content build regardless of the active build target.
-                const string platform = "StandaloneWindows64";
+                // Editor Play Mode reads the published WebGL content, the only platform the content server hosts.
+                const string platform = "WebGL";
 #else
                 var platform = PlatformMappingService.GetPlatformPathSubFolder();
 #endif
@@ -328,7 +334,8 @@ namespace Game.Content
             entry.ReleasedAt = Time.realtimeSinceStartupAsDouble;
             if (entry.Users > 0 || !entry.Finished) return;
             // Replaced versions are unloaded at once instead of idling in memory.
-            if (entry.Retired || !entry.Handle.IsValid() || entry.Handle.Status != AsyncOperationStatus.Succeeded) Remove(entry);
+            if (entry.Retired || entry.LocalAsset == null && (!entry.Handle.IsValid() || entry.Handle.Status != AsyncOperationStatus.Succeeded))
+                Remove(entry);
         }
 
         private static void Remove(Entry entry)
@@ -336,6 +343,7 @@ namespace Game.Content
             if (Entries.TryGetValue(entry.Address, out var current) && current == entry) Entries.Remove(entry.Address);
             if (entry.Handle.IsValid()) Addressables.Release(entry.Handle);
             entry.Handle = default;
+            entry.LocalAsset = null;
             entry.Removed = true;
         }
 

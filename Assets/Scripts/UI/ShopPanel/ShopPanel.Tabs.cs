@@ -9,6 +9,7 @@ namespace Game.UI
 
     public sealed partial class ShopPanel
     {
+        [SerializeField] private Button _slotMachineButton;
         [SerializeField] private Button _itemsTab;
         [SerializeField] private Button _namecardsTab;
         [SerializeField] private Button _switchMode;
@@ -31,25 +32,23 @@ namespace Game.UI
 
         private void EnableTabs()
         {
+            _slotMachineButton.onClick.AddListener(OpenSlotMachine);
             _itemsTab.onClick.AddListener(ShowItems);
             if (_cardFacesTab != null) _cardFacesTab.onClick.AddListener(ShowCardFaces);
-            if (_cardFacesView != null) _cardFacesView.WalletChanged += OnCardFaceWalletChanged;
             _namecardsTab.onClick.AddListener(ShowNamecards);
             _switchMode.onClick.AddListener(SwitchMode);
             _itemsView.ShopRequested += ShowShop;
-            _itemsView.SnapshotChanged += OnItemSnapshotChanged;
             Open(ShopPageMode.Shop);
         }
 
         private void DisableTabs()
         {
+            _slotMachineButton.onClick.RemoveListener(OpenSlotMachine);
             _itemsTab.onClick.RemoveListener(ShowItems);
             if (_cardFacesTab != null) _cardFacesTab.onClick.RemoveListener(ShowCardFaces);
-            if (_cardFacesView != null) _cardFacesView.WalletChanged -= OnCardFaceWalletChanged;
             _namecardsTab.onClick.RemoveListener(ShowNamecards);
             _switchMode.onClick.RemoveListener(SwitchMode);
             _itemsView.ShopRequested -= ShowShop;
-            _itemsView.SnapshotChanged -= OnItemSnapshotChanged;
             _itemsView.ResetSession();
         }
 
@@ -58,6 +57,7 @@ namespace Game.UI
         {
             CloseConfirmation();
             Mode = mode;
+            _slotMachineButton.gameObject.SetActive(mode == ShopPageMode.Shop);
             _page = 0;
             _itemsView.SetMode(mode);
             SelectTab(ShopTab.Items);
@@ -96,7 +96,6 @@ namespace Game.UI
             {
                 _title.text = "牌面商店";
                 _subtitle.text = "挑选你的牌面，收藏你的风格。";
-                if (_online && _cardFacesView != null) _cardFacesView.BeginOnline();
             }
         }
 
@@ -107,27 +106,16 @@ namespace Game.UI
         }
 
         public CardFaceBrowserView CardFacesView => _cardFacesView;
-        public void ReceiveCardFaces(Game.Network.CardFaceShopResponse response) => _cardFacesView?.Receive(response);
-        private void OnCardFaceWalletChanged(uint dollars, uint availableChips, bool canExchange)
+        private void ShowCardFaces() => SelectTab(ShopTab.CardFaces);
+        private void OpenSlotMachine()
         {
             CloseConfirmation();
-            _dollars = dollars;
-            _availableChips = availableChips;
-            _canExchange = canExchange;
-            _itemsView.SetWallet(dollars, availableChips, canExchange, false);
-            Redraw();
+            Framework.UI.UIManager.Instance.PushPanel<SlotMachinePanel>();
         }
-        private void ShowCardFaces() => SelectTab(ShopTab.CardFaces);
+
         private void ShowItems() => SelectTab(ShopTab.Items);
         private void ShowNamecards() => SelectTab(ShopTab.Namecards);
         private void ShowShop() => Open(ShopPageMode.Shop);
         private void SwitchMode() => Open(Mode == ShopPageMode.Shop ? ShopPageMode.Collection : ShopPageMode.Shop);
-
-        private void OnItemSnapshotChanged(ItemInventorySnapshot snapshot)
-        {
-            CloseConfirmation();
-            _dollars = snapshot.Balance;
-            Redraw();
-        }
     }
 }

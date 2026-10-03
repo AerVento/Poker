@@ -32,6 +32,6 @@
 
 ## 上架
 
-商品 SO 默认上架，售价 $50,000；部署后可用 `Configs/Shop/CardFaces.json` 覆盖，详见 [牌面](../../../Docs/Systems/CardFaces.md)。客户端商品 SO 不控制成交价或所有权。
+物品 ID `cardface-cat-court`，名称与介绍在 `Configs/Items/Items.json`，远程地址在 `Configs/Items/CardFaces.json`，售价 $50,000 在 `Configs/Shop/Shop.json`，详见 [牌面](../../../Docs/Systems/CardFaces.md)。
 
 本次资产制作不向账号发放物品，不修改已装备牌面，不修改线上服务器配置。

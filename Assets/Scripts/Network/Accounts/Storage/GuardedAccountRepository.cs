@@ -6,7 +6,7 @@ namespace Game.Network.Accounts
     // Expected business rejections are return values. Unexpected repository failures stop the server.
     public sealed partial class GuardedAccountRepository : IHandAccountRepository,
         IPasswordAccountRepository, ISessionAccountRepository, ILeaderboardRepository,
-        INamecardRepository, IItemRepository, IServiceYearsRepository, IGiftRepository, IStoredProductRepository
+        IItemRepository, IServiceYearsRepository, IStoredItemRepository
     {
         private readonly IHandAccountRepository _inner;
         private readonly IPasswordAccountRepository _passwords;
@@ -14,7 +14,6 @@ namespace Game.Network.Accounts
         private readonly Action<Exception> _onFailure;
 
         public bool HasFailed { get; private set; }
-        internal IHandAccountRepository InnerRepository => _inner;
 
         public GuardedAccountRepository(IHandAccountRepository inner, Action<Exception> onFailure)
         {
@@ -45,9 +44,9 @@ namespace Game.Network.Accounts
             Execute(() => { _inner.Initialize(); return true; });
         }
 
-        public StoredProductIds ReadStoredProductIds()
+        public string[] ReadStoredItemIds()
         {
-            return _inner is IStoredProductRepository products ? Execute(products.ReadStoredProductIds) : new StoredProductIds();
+            return _inner is IStoredItemRepository items ? Execute(items.ReadStoredItemIds) : System.Array.Empty<string>();
         }
 
         public AccountItemInventory ReadItems(string accountId)
@@ -55,29 +54,24 @@ namespace Game.Network.Accounts
             return Execute(() => ((IItemRepository)_inner).ReadItems(accountId));
         }
 
-        public ItemChangeExecution ChangeItem(string accountId, string operationId, ItemShopAction action,
-            string itemId, uint quantity, uint quotedPrice, string catalogRevision, ItemPurchaseRuntime runtime, bool inRoom = false)
+        public ItemChangeExecution PurchaseItem(string accountId, string operationId, string itemId, uint quantity,
+            uint quotedPrice, string catalogRevision, ItemRules rules, bool authorizeChipConversion = false, uint authorizedShortfall = 0)
         {
-            return Execute(() => ((IItemRepository)_inner).ChangeItem(accountId, operationId, action,
-                itemId, quantity, quotedPrice, catalogRevision, runtime, inRoom));
+            return Execute(() => ((IItemRepository)_inner).PurchaseItem(accountId, operationId, itemId, quantity,
+                quotedPrice, catalogRevision, rules, authorizeChipConversion, authorizedShortfall));
         }
 
-        public GiftUseExecution ConsumeGiftBatch(string accountId, string operationId,
-            IReadOnlyList<GiftUseCommand> commands, ItemPurchaseRuntime runtime)
+        public ItemActionResult EquipItem(string accountId, string operationId, string itemId, ItemRules rules)
         {
-            return Execute(() => ((IGiftRepository)_inner).ConsumeGiftBatch(accountId, operationId, commands, runtime));
+            return Execute(() => ((IItemRepository)_inner).EquipItem(accountId, operationId, itemId, rules));
         }
 
-        public NamecardInventory ReadNamecards(string accountId)
+        public ItemConsumeExecution ConsumeItems(string accountId, string operationId, ItemConsumeMethod method,
+            IReadOnlyList<ItemConsumeCommand> commands, string catalogRevision, ItemRules rules, ItemUseLocation location,
+            bool authorizeChipConversion = false, uint authorizedShortfall = 0)
         {
-            return Execute(() => ((INamecardRepository)_inner).ReadNamecards(accountId));
-        }
-
-        public ShopResult ChangeNamecard(string accountId, string operationId, ShopAction action,
-            string productId, string catalogRevision, NamecardServerCatalog catalog)
-        {
-            return Execute(() => ((INamecardRepository)_inner).ChangeNamecard(
-                accountId, operationId, action, productId, catalogRevision, catalog));
+            return Execute(() => ((IItemRepository)_inner).ConsumeItems(accountId, operationId, method, commands,
+                catalogRevision, rules, location, authorizeChipConversion, authorizedShortfall));
         }
 
         public Dictionary<string, ulong> ReadServiceYears(string[] accountIds)

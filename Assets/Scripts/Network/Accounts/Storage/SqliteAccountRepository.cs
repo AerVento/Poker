@@ -14,7 +14,7 @@ namespace Game.Network.Accounts
         IPasswordAccountRepository,
         ILeaderboardRepository
     {
-        public const int SchemaVersion = 13;
+        public const int SchemaVersion = 17;
 
         private static readonly object RuntimeInitializationLock = new object();
         private static bool _runtimeInitialized;
@@ -22,6 +22,9 @@ namespace Game.Network.Accounts
         private readonly object _syncRoot = new object();
         private readonly string _databasePath;
         private readonly string _connectionString;
+        private ContractDefinition[] _contracts = Array.Empty<ContractDefinition>();
+        private Reward _starterGrants = Reward.Empty;
+        private IReadOnlyDictionary<string, uint> _itemLimits = new Dictionary<string, uint>();
 
         public SqliteAccountRepository(string databasePath)
         {
@@ -36,6 +39,18 @@ namespace Game.Network.Accounts
                 Cache = SqliteCacheMode.Shared,
             };
             _connectionString = builder.ToString();
+        }
+
+        /// <summary>The item configuration behind service years and the grants every new account receives.</summary>
+        public void ConfigureItems(GameCatalog catalog, Reward starterGrants)
+        {
+            if (catalog == null) throw new ArgumentNullException(nameof(catalog));
+            lock (_syncRoot)
+            {
+                _contracts = catalog.Contracts.ToArray();
+                _starterGrants = starterGrants ?? Reward.Empty;
+                _itemLimits = catalog.Items.ToDictionary(item => item.Id, item => item.MaxQuantity, StringComparer.Ordinal);
+            }
         }
 
         public void Initialize()
@@ -98,6 +113,18 @@ namespace Game.Network.Accounts
 
                     if (version < 13)
                         CreateWalletSchema(connection, transaction);
+
+                    if (version < 14)
+                        CreateSlotLotterySchema(connection, transaction);
+
+                    if (version < 15)
+                        MigrateToUnifiedItems(connection, transaction);
+
+                    if (version < 16)
+                        MigrateTaskDocuments(connection, transaction);
+
+                    if (version < 17)
+                        CreateSlotPitySchema(connection, transaction);
 
                     SetSchemaVersion(connection, transaction, SchemaVersion);
 
@@ -243,25 +270,15 @@ VALUES (
                             command.ExecuteNonQuery();
                         }
 
-                        InsertLedger(
-                            connection,
-                            transaction,
-                            Guid.NewGuid().ToString("N"),
-                            "register:" + account.AccountId,
-                            account.AccountId,
-                            "RegistrationGrant",
-                            account.Chips,
-                            0,
-                            account.Chips,
-                            null,
-                            null,
-                            account.CreatedAtUtc);
-
+                        // Opening balances keep the ledgers reconcilable; StarterGrants.json then adds money and items.
+                        InsertLedger(connection, transaction, Guid.NewGuid().ToString("N"), "register:" + account.AccountId,
+                            account.AccountId, "RegistrationGrant", account.Chips, 0, account.Chips, null, null, account.CreatedAtUtc);
                         InsertDollarLedger(connection, transaction, Guid.NewGuid().ToString("N"),
                             "register-dollars:" + account.AccountId, account.AccountId, "RegistrationGrant",
                             account.Dollars, 0, account.Dollars, null, null, account.CreatedAtUtc);
-                        RecordAssetsChanged(connection, transaction, account.AccountId, "register:" + account.AccountId,
-                            "registration", account.CreatedAtUtc);
+                        if (ApplyReward(connection, transaction, account, _starterGrants, _itemLimits,
+                            "starter:" + account.AccountId, "StarterGrant", out _) != RewardGrantStatus.Success)
+                            throw new InvalidOperationException("Starter grants could not be applied to a new account.");
 
                         transaction.Commit();
                         return CreateAccountResult.Created;

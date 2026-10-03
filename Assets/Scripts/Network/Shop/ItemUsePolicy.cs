@@ -20,24 +20,18 @@ namespace Game.Network.Accounts
         StartedRoom = 1 << 2,
     }
 
-    public enum ItemUseKind : byte
-    {
-        Standard,
-        Gift,
-    }
-
     public sealed class ItemUseContext
     {
         public string AccountId { get; }
         public uint BalanceBefore { get; }
-        public ItemPurchaseProduct Product { get; }
+        public ItemRule Item { get; }
         public uint OwnedQuantity { get; }
 
-        public ItemUseContext(string accountId, uint balanceBefore, ItemPurchaseProduct product, uint ownedQuantity)
+        public ItemUseContext(string accountId, uint balanceBefore, ItemRule item, uint ownedQuantity)
         {
             AccountId = accountId;
             BalanceBefore = balanceBefore;
-            Product = product;
+            Item = item;
             OwnedQuantity = ownedQuantity;
         }
     }
@@ -93,24 +87,19 @@ namespace Game.Network.Accounts
         public IReadOnlyList<IItemUseEffect> Effects { get; }
         public uint Cost { get; }
         public ItemUseLocationMask AllowedLocations { get; }
-        public ItemUseKind Kind { get; }
 
         public ItemUsePolicy(IEnumerable<IItemUseCondition> conditions, IEnumerable<IItemUseEffect> effects,
-            ItemUseLocationMask allowedLocations = ItemUseLocationMask.OutsideRoom,
-            ItemUseKind kind = ItemUseKind.Standard)
+            ItemUseLocationMask allowedLocations = ItemUseLocationMask.OutsideRoom)
         {
             var checks = (conditions ?? Array.Empty<IItemUseCondition>()).ToArray();
             var plans = (effects ?? Array.Empty<IItemUseEffect>()).ToArray();
             if (checks.Length > 16 || plans.Length > 16 || allowedLocations == ItemUseLocationMask.None ||
-                !Enum.IsDefined(typeof(ItemUseKind), kind) ||
                 checks.Any(c => c?.Descriptor == null) || plans.Any(e => e == null || e.Amount == 0 || e.Version != 1) ||
-                (kind == ItemUseKind.Standard && plans.Length == 0) ||
-                (kind == ItemUseKind.Gift && plans.Length != 0))
+                plans.Length == 0)
                 throw new ArgumentException("Invalid item use policy.");
             Conditions = Array.AsReadOnly(checks);
             Effects = Array.AsReadOnly(plans);
             AllowedLocations = allowedLocations;
-            Kind = kind;
             foreach (var effect in plans) Cost = checked(Cost + effect.Amount);
         }
 
@@ -125,17 +114,5 @@ namespace Game.Network.Accounts
             };
             return (AllowedLocations & flag) != 0;
         }
-    }
-
-    public sealed class ItemUseRegistry
-    {
-        private readonly Dictionary<string, ItemUsePolicy> _policies = new Dictionary<string, ItemUsePolicy>(StringComparer.Ordinal);
-        public void Register(string itemId, ItemUsePolicy policy)
-        {
-            if (!NamecardServerCatalog.IsValidId(itemId) || policy == null || _policies.ContainsKey(itemId))
-                throw new ArgumentException("Item use registrations require a unique valid ID and policy.");
-            _policies.Add(itemId, policy);
-        }
-        internal ItemUsePolicy Get(string itemId) => _policies.TryGetValue(itemId, out var policy) ? policy : null;
     }
 }

@@ -128,7 +128,6 @@ namespace Game.Network
             _gameManager.OnGameStageEnded += OnGameStageEnd;
             _gameManager.OnRoomRoundEnded += OnRoomRoundEnd;
             _gameManager.OnRoundResultRevealed += OnRoundResultRevealed;
-            _gameManager.OnRoomGameOver += OnGameOver;
         }
 
         public override void Start()
@@ -258,12 +257,9 @@ namespace Game.Network
             RegisterResultServerHandlers();
             RegisterWalletServerHandlers();
             RegisterLeaderboardServerHandler();
-            RegisterShopServerHandlers();
-            RegisterCardFaceShopServerHandlers();
             RegisterItemServerHandlers();
-            RegisterGiftServerHandlers();
             RegisterCollectionServerHandlers();
-            InitializeItemGrants();
+            RegisterSlotLotteryServerHandlers();
             RegisterDailyTaskServerHandlers();
             RegisterAchievementServerHandlers();
             if (_serverStorageFailed) return;
@@ -282,15 +278,14 @@ namespace Game.Network
         public override void OnStopServer()
         {
             _serverLifecycleVersion++;
+            _slotRequests.Clear();
+            _slotCatalog = null;
             _dailyTaskRequestSequences.Clear();
             _leaderboardRequests.Clear();
-            _shopRequests.Clear();
             _itemRequests.Clear();
             ClearGiftServer();
-            _itemRuntime = null;
-            ClearItemGrants();
+            _itemRules = null;
             ClearAchievementServer();
-            ItemPurchaseEvents.Clear();
             _configuredTasks = null;
             base.OnStopServer();
         }
@@ -356,15 +351,13 @@ namespace Game.Network
         public override void OnServerDisconnect(NetworkConnectionToClient conn)
         {
             _walletRequests.Remove(conn);
+            _slotRequests.Remove(conn);
             _dailyTaskRequestSequences.Remove(conn);
             foreach (LeaderboardKind kind in Enum.GetValues(typeof(LeaderboardKind)))
                 _leaderboardRequests.Remove((conn, kind));
             _collectionRequests.Remove(conn);
-            _shopRequests.Remove(conn);
-            _cardFaceShopRequests.Remove(conn);
             _itemRequests.Remove(conn);
-            _giftUseRequests.Remove(conn);
-            _giftInventoryRequests.Remove(conn);
+            _giftRequests.Remove(conn);
             _achievementRequests.Remove(conn);
             _achievementSent.Remove(conn);
             _achievementDirtySent.Remove(conn);
@@ -420,10 +413,9 @@ namespace Game.Network
             NetworkClient.RegisterHandler<AccountBalanceSync>(AccountBalanceSyncHandler, requireAuthentication: false);
             RegisterResultClientHandlers();
             RegisterWalletClientHandlers();
+            RegisterSlotLotteryClientHandlers();
             RegisterDailyTaskClientHandlers();
             RegisterLeaderboardClientHandler();
-            RegisterShopClientHandlers();
-            RegisterCardFaceShopClientHandlers();
             RegisterItemClientHandlers();
             RegisterGiftClientHandlers();
             RegisterCollectionClientHandlers();
@@ -542,17 +534,9 @@ namespace Game.Network
             if (response.Code != AccountAuthenticationCode.Success)
                 return;
 
-            var destination = LoginPanel.Instance != null && !response.HasLastRoom
-                ? LoginPanel.Instance.DestinationAfterLogin : LoginDestination.Lobby;
             ClearClientRoomNavigation();
             BeginAchievementClientSession();
-            if (destination != LoginDestination.Lobby)
-            {
-                UIManager.Instance.ResetPanels<TitlePanel>();
-                TitlePanel.ShowAccountPage(destination);
-            }
-            else
-                OpenLobby();
+            OpenLobby();
 
             if (!response.HasLastRoom)
             {
@@ -843,11 +827,6 @@ namespace Game.Network
             RoomListPanel.Instance?.RefreshAccountStatus();
             GamePanel.Instance?.SetAccountChips(message.Chips);
             GamePanel.Instance?.SetAccountDollars(message.Dollars);
-        }
-
-        private static void LeaveRoomAfterHand(int roomId)
-        {
-            (singleton as NetworkRoom)?.RequestLeaveRoom(roomId);
         }
 
         public bool RequestLeaveRoom(int roomId, bool cancelPending = false, string expectedHandId = null,
@@ -1633,7 +1612,6 @@ namespace Game.Network
                 RoomListPanel.Instance.Rooms = response.RoomList;
         }
 
-
         private void RoundResultNotificationHandler(RoundResultNotification message)
         {
             if (!HasAuthenticatedClient || _activeClientRoomId != message.RoomId) return;
@@ -1781,15 +1759,6 @@ namespace Game.Network
 
             BroadcastInterHandCountdown(roomId, false, 0);
             BroadcastGameInfo(roomId);
-        }
-        private void OnGameOver(int roomId, GameResult result)
-        {
-            var gameInfo = _gameManager.GetGameInfo(roomId);
-            if (gameInfo == null)
-                return;
-
-            gameInfo.Timer.Stop();
-            ReturnRoomToLobby(roomId);
         }
 
         private void BroadcastRoomInfo(RoomInfo room, string exceptPlayer = null)
@@ -1969,5 +1938,4 @@ namespace Game.Network
         #endregion
     }
 }
-
 

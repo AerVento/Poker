@@ -88,10 +88,6 @@ namespace Game.Network
         // Seat numbers are a ring, independent of the maximum number of seated players.
         public int NextSeatIndex { get; set; }
 
-        [JsonIgnore]
-        public double EmptySeatRatio => NextSeatIndex == 0 ? 0 :
-            (double)(NextSeatIndex - Seats.Count) / NextSeatIndex;
-
         /// <summary>
         /// ³õÊ¼³ïÂë
         /// </summary>

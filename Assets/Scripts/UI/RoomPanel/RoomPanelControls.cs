@@ -18,8 +18,6 @@ namespace Game.UI
         [SerializeField] private Button _dailyTasksButton;
         [SerializeField] private Button _achievementsButton;
         [SerializeField] private Button _exchangeButton;
-        [SerializeField] private TMP_Text _dollars;
-        [SerializeField] private TMP_Text _chips;
 
         private NetworkRoom _network;
         private bool _requestPending;
@@ -110,15 +108,6 @@ namespace Game.UI
                 _achievementsButton.interactable = _network?.CanViewAchievements == true;
             if (_exchangeButton != null)
                 _exchangeButton.interactable = _network?.CanOpenWallet == true;
-
-            if (GameController.Available)
-            {
-                var state = GameController.Instance.State;
-                if (_dollars != null)
-                    _dollars.text = $"${ChipAmountFormatter.Format(state.Dollars)}";
-                if (_chips != null)
-                    _chips.text = $"${ChipAmountFormatter.Format(state.Chips)}";
-            }
         }
 
         private void ChangeParticipation()

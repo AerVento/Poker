@@ -1,0 +1,74 @@
+[
+  {
+    "item-id": "namecard-default",
+    "artwork": ""
+  },
+  {
+    "item-id": "namecard-galaxy",
+    "artwork": "namecards/galaxy"
+  },
+  {
+    "item-id": "namecard-ember",
+    "artwork": "namecards/ember"
+  },
+  {
+    "item-id": "namecard-neon",
+    "artwork": "namecards/neon"
+  },
+  {
+    "item-id": "namecard-gilded",
+    "artwork": "namecards/gilded"
+  },
+  {
+    "item-id": "namecard-frost",
+    "artwork": "namecards/frost"
+  },
+  {
+    "item-id": "namecard-abyss",
+    "artwork": "namecards/abyss"
+  },
+  {
+    "item-id": "namecard-jade",
+    "artwork": "namecards/jade"
+  },
+  {
+    "item-id": "namecard-sakura",
+    "artwork": "namecards/sakura"
+  },
+  {
+    "item-id": "namecard-clockwork",
+    "artwork": "namecards/clockwork"
+  },
+  {
+    "item-id": "namecard-eclipse",
+    "artwork": "namecards/eclipse"
+  },
+  {
+    "item-id": "namecard-prism",
+    "artwork": "namecards/prism"
+  },
+  {
+    "item-id": "namecard-twilight-duo",
+    "artwork": "namecards/twilight-duo"
+  },
+  {
+    "item-id": "namecard-devil-service",
+    "artwork": "namecards/devil-service"
+  },
+  {
+    "item-id": "namecard-archdevil-service",
+    "artwork": "namecards/archdevil-service"
+  },
+  {
+    "item-id": "namecard-satan-service",
+    "artwork": "namecards/satan-service"
+  },
+  {
+    "item-id": "namecard-straight-flush",
+    "artwork": "namecards/straight-flush"
+  },
+  {
+    "item-id": "namecard-royal-straight-flush",
+    "artwork": "namecards/royal-straight-flush"
+  }
+]

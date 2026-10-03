@@ -92,7 +92,7 @@ JOIN achievement_event_receipts r ON r.event_id=e.event_id WHERE r.consumed=0 OR
                 command.Parameters.AddWithValue("$account", accountId);
                 command.CommandText = "SELECT document FROM achievement_accounts WHERE account_id=$account;";
                 if (command.ExecuteScalar() is string json)
-                    document = JsonSerializer.Deserialize<AchievementDocument>(json) ?? throw new InvalidOperationException("Invalid achievement document.");
+                    document = ReadAchievementDocument(json);
                 var consumed = false;
                 if (eventId != null)
                 {
@@ -137,63 +137,12 @@ ON CONFLICT(account_id) DO UPDATE SET document=excluded.document;";
             public override AchievementResult Grant(Reward reward, IReadOnlyDictionary<string, uint> limits, string claimKey)
             {
                 if (!CanClaim) return AchievementResult.OutsideRoomRequired;
-                if ((ulong)Account.Dollars + reward.Chip > uint.MaxValue) return AchievementResult.BalanceLimit;
-                var owned = ReadItemStacks(_connection, _transaction, Account.AccountId).ToDictionary(i => i.ItemId, i => i.Quantity);
-                foreach (var item in reward.Items)
-                {
-                    if (NamecardItemId.TryToNamecardId(item.ItemId, out _))
-                    {
-                        // Permanent cosmetics are idempotent. Existing ownership must not block the dollar reward.
-                        if (!limits.TryGetValue(item.ItemId, out var namecardLimit) || namecardLimit != 1 || item.Quantity != 1)
-                            return AchievementResult.ItemLimit;
-                        continue;
-                    }
-                    owned.TryGetValue(item.ItemId, out var count);
-                    if (!limits.TryGetValue(item.ItemId, out var maximum) || (ulong)count + item.Quantity > maximum)
-                        return AchievementResult.ItemLimit;
-                }
-                // Reward.Chip is retained in old JSON snapshots; redemptions now always credit dollars.
-                var before = Account.Dollars;
-                var after = checked(before + reward.Chip);
-                using (var update = _connection.CreateCommand())
-                {
-                    update.Transaction = _transaction;
-                    update.CommandText = @"UPDATE player_accounts SET dollars=$chips,version=version+1,updated_at_utc=$now
-WHERE account_id=$account AND version=$version;";
-                    update.Parameters.AddWithValue("$chips", (long)after);
-                    update.Parameters.AddWithValue("$now", FormatDateTime(DateTime.UtcNow));
-                    update.Parameters.AddWithValue("$account", Account.AccountId);
-                    update.Parameters.AddWithValue("$version", Account.Version);
-                    if (update.ExecuteNonQuery() != 1) throw new InvalidOperationException("Achievement reward account version changed.");
-                }
-                foreach (var item in reward.Items)
-                {
-                    using var update = _connection.CreateCommand();
-                    update.Transaction = _transaction;
-                    update.Parameters.AddWithValue("$account", Account.AccountId);
-                    if (NamecardItemId.TryToNamecardId(item.ItemId, out var namecardId))
-                    {
-                        // Use the shop's ownership table in the same transaction as dollars and claim state.
-                        update.CommandText = @"INSERT INTO account_namecards(account_id,product_id,purchased_at_utc)
-VALUES($account,$product,$now) ON CONFLICT(account_id,product_id) DO NOTHING;";
-                        update.Parameters.AddWithValue("$product", namecardId);
-                        update.Parameters.AddWithValue("$now", FormatDateTime(DateTime.UtcNow));
-                    }
-                    else
-                    {
-                        update.CommandText = @"INSERT INTO account_items(account_id,item_id,quantity) VALUES($account,$item,$count)
-ON CONFLICT(account_id,item_id) DO UPDATE SET quantity=quantity+excluded.quantity;";
-                        update.Parameters.AddWithValue("$item", item.ItemId);
-                        update.Parameters.AddWithValue("$count", (long)item.Quantity);
-                    }
-                    update.ExecuteNonQuery();
-                }
-                if (reward.Items.Any(item => !NamecardItemId.TryToNamecardId(item.ItemId, out _)))
-                    RecordInventoryChanged(_connection, _transaction, Account.AccountId, claimKey, "achievement-reward", DateTime.UtcNow);
-                InsertDollarLedger(_connection, _transaction, Guid.NewGuid().ToString("N"), claimKey, Account.AccountId,
-                    "AchievementReward", reward.Chip, before, after, null, null, DateTime.UtcNow);
-                Account.Dollars = after;
-                Account.Version++;
+                var result = ApplyReward(_connection, _transaction, Account, reward, limits, claimKey,
+                    "AchievementReward", out var granted);
+                if (result != RewardGrantStatus.Success)
+                    return result == RewardGrantStatus.ActiveHand ? AchievementResult.OutsideRoomRequired :
+                        result == RewardGrantStatus.BalanceLimit ? AchievementResult.BalanceLimit : AchievementResult.ItemLimit;
+                GrantedReward = granted;
                 Changed = true;
                 return AchievementResult.Success;
             }

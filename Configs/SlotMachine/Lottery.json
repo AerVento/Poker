@@ -1,0 +1,278 @@
+{
+  "enabled": true,
+  "cost-dollars": 1000,
+  "none-weight": 1300,
+  "pity-draws": 10,
+  "small": {
+    "weight": 583,
+    "rewards": [
+      {
+        "weight": 22,
+        "reward": [
+          {
+            "kind": "Dollars",
+            "quantity": 500
+          }
+        ]
+      },
+      {
+        "weight": 12,
+        "reward": [
+          {
+            "kind": "Dollars",
+            "quantity": 1000
+          }
+        ]
+      },
+      {
+        "weight": 6,
+        "reward": [
+          {
+            "kind": "Dollars",
+            "quantity": 3000
+          }
+        ]
+      },
+      {
+        "weight": 15,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 20,
+            "item-id": "rotten-egg"
+          }
+        ]
+      },
+      {
+        "weight": 12,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 10,
+            "item-id": "champagne"
+          }
+        ]
+      },
+      {
+        "weight": 12,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 10,
+            "item-id": "gunfire"
+          }
+        ]
+      },
+      {
+        "weight": 12,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 10,
+            "item-id": "cigar"
+          }
+        ]
+      },
+      {
+        "weight": 9,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 1,
+            "item-id": "swiss-bank-note"
+          }
+        ]
+      }
+    ]
+  },
+  "medium": {
+    "weight": 105,
+    "rewards": [
+      {
+        "weight": 38,
+        "reward": [
+          {
+            "kind": "Dollars",
+            "quantity": 3000
+          }
+        ]
+      },
+      {
+        "weight": 22,
+        "reward": [
+          {
+            "kind": "Dollars",
+            "quantity": 5000
+          }
+        ]
+      },
+      {
+        "weight": 10,
+        "reward": [
+          {
+            "kind": "Dollars",
+            "quantity": 15000
+          }
+        ]
+      },
+      {
+        "weight": 40,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 40,
+            "item-id": "rotten-egg"
+          },
+          {
+            "kind": "Item",
+            "quantity": 15,
+            "item-id": "champagne"
+          },
+          {
+            "kind": "Item",
+            "quantity": 15,
+            "item-id": "gunfire"
+          }
+        ]
+      },
+      {
+        "weight": 40,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 15,
+            "item-id": "cigar"
+          },
+          {
+            "kind": "Item",
+            "quantity": 15,
+            "item-id": "champagne"
+          },
+          {
+            "kind": "Item",
+            "quantity": 3,
+            "item-id": "swiss-bank-note"
+          }
+        ]
+      },
+      {
+        "weight": 30,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 5,
+            "item-id": "swiss-bank-note"
+          }
+        ]
+      },
+      {
+        "weight": 3,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 1,
+            "item-id": "cardface-cat-court"
+          }
+        ]
+      },
+      {
+        "weight": 3,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 1,
+            "item-id": "cardface-jewel-court"
+          }
+        ]
+      },
+      {
+        "weight": 3,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 1,
+            "item-id": "namecard-prism"
+          }
+        ]
+      },
+      {
+        "weight": 3,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 1,
+            "item-id": "namecard-twilight-duo"
+          }
+        ]
+      },
+      {
+        "weight": 3,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 1,
+            "item-id": "namecard-galaxy"
+          }
+        ]
+      }
+    ]
+  },
+  "grand": {
+    "weight": 12,
+    "rewards": [
+      {
+        "weight": 5,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 1,
+            "item-id": "cardface-gensokyo"
+          }
+        ]
+      },
+      {
+        "weight": 1,
+        "reward": [
+          {
+            "kind": "Dollars",
+            "quantity": 30000
+          }
+        ]
+      },
+      {
+        "weight": 1,
+        "reward": [
+          {
+            "kind": "Dollars",
+            "quantity": 80000
+          }
+        ]
+      },
+      {
+        "weight": 2,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 20,
+            "item-id": "swiss-bank-note"
+          },
+          {
+            "kind": "Item",
+            "quantity": 30,
+            "item-id": "cigar"
+          },
+          {
+            "kind": "Item",
+            "quantity": 30,
+            "item-id": "champagne"
+          },
+          {
+            "kind": "Item",
+            "quantity": 30,
+            "item-id": "gunfire"
+          }
+        ]
+      }
+    ]
+  }
+}

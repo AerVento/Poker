@@ -1,13 +1,13 @@
 # 远程资源
 
-名片、非经典牌面、礼物特效（Lua 脚本与美术）、全部物品图标和牌面小预览都是远程内容：从资源网站按需下载，不在 WebGL 页面里。发布平台只有 WebGL；Windows 构建只用于 Editor 开发验证。
+名片、非经典牌面、礼物特效（Lua 脚本与美术）、全部物品图标和牌面小预览都是远程内容：从资源网站按需下载，不在 WebGL 页面里。发布平台只有 WebGL。
 
 ## 范围
 
 - Addressables 固定为 1.21.21，Unity 保持 2022.3.52f1c1。
-- 每个商品一个 LZ4 包：17 款非默认名片、3 套非经典牌面、4 种礼物；另有两个公共包：物品图标 `icons/items`、牌面预览 `previews/cardfaces`。
-- 本地保留：默认名片、经典牌面与其预览、礼物菜单的默认图标、牌面显示 prefab（`Assets/Resources/SO/ShopLocalArt.asset`），以及商品之外的界面。商城和收藏在图标下载前显示卡片自带的宝箱线条占位。商品的名称、介绍和地址来自服务器下发的配置（见 [货币、商店与物品](../Systems/Economy.md)）。
-- 远程入口在 `Assets/RemoteContent/`：`namecards/`、`cardfaces/`、`gifts/`、`icons/Items.asset`、`previews/Cardfaces.asset`。地址保持商品 ID 原样（如 `cardfaces/jewel-court`），文件名为大驼峰，由 `RemoteAssets.SourcePath(address)` 换算。
+- 每个物品一个 LZ4 包：17 款非默认名片、3 套非经典牌面、5 种礼物；另有两个公共包：物品图标 `icons/items`、牌面预览 `previews/cardfaces`。
+- 本地保留：默认名片、经典牌面与其预览、礼物菜单的默认图标、牌面显示 prefab（`Assets/Resources/SO/ShopLocalArt.asset`），以及物品之外的界面。商城和收藏在图标下载前显示卡片自带的宝箱线条占位。物品的名称、介绍和地址来自服务器下发的配置（见 [货币、商店与物品](../Systems/Economy.md)）。
+- 远程入口在 `Assets/RemoteContent/`：`namecards/`、`cardfaces/`、`gifts/`、`icons/Items.asset`、`previews/Cardfaces.asset`。地址使用小写内容 ID（如 `cardfaces/jewel-court`），文件名为大驼峰，由 `RemoteAssets.SourcePath(address)` 换算。
 
 ## 内容版本
 
@@ -74,7 +74,7 @@ catalog=catalog_v1.json
 | `RemoteContentCatalog.cs` | 解析远程目录，记录与加载位置的相互转换 |
 | `RemoteBundleStore.cs`、`RemoteContent.jslib` | WebGL：通过 Unity 自己的 `cachedFetch` 只下载、删除单个缓存条目、读写 `localStorage`；Editor：`Caching` 与 `PlayerPrefs` |
 | `RemoteAssetBinding<T>` | 视图持有资源；新版本就绪时释放旧版本、显示默认外观并重新获取；失败最多三轮，间隔 30 秒 |
-| `ProductArt` | 物品图标与牌面预览两个公共包，整个会话各持有一份 |
+| `ItemArt` | 物品图标与牌面预览两个公共包，整个会话各持有一份 |
 | `Game.PageVersion`、`UI/MsgBox/PageUpdatePrompt.cs` | 页面版本检查与刷新提示 |
 
 `RemoteContent.jslib` 依赖 Unity WebGL 加载器的内部实现（`Module.cachedFetch`、`Module.UnityCache`），升级 Unity 时需要重新验证下载、命中缓存和删除条目。
@@ -83,18 +83,18 @@ catalog=catalog_v1.json
 
 Unity 菜单：
 
-1. `Poker/Remote Artwork/Prepare Catalogs and Groups`：按 `Configs/Shop` 为每个商品注册分组，重建物品图标集和牌面预览集，并运行校验。
+1. `Poker/Remote Artwork/Prepare Catalogs and Groups`：按 `Configs/Items` 的名片、牌面与礼物目录为每款内容注册分组，重建物品图标集和牌面预览集，并运行校验。
 2. `Poker/Remote Artwork/Optimize Texture Imports`：应用远程美术的导入压缩设置，保留源图。
 3. `Poker/Remote Artwork/Validate First Build Dependencies`：检查每个远程入口独立成组、配置中的地址都已准备、图标和预览齐全、页面不引用远程美术（界面主题图和契约图标除外）、礼物脚本可加载且礼物包之间不共享美术、本地经典牌组完整。
 4. 切换到目标平台，执行 `Poker/Remote Artwork/Build for Active Platform`。输出 `Build/RemoteContent/Content/v1/<平台>/`：包、目录、`content-version.txt` 和文件清单 `files.txt`；旧包会被删除。
 5. 可选：WebGL 平台下执行 `Poker/Remote Artwork/Build WebGL Deployment Example`，输出配套的页面到 `Build/RemoteContent/WebGLGame`，配置为读取旁边的 `../Content/v1`。
 
-页面构建不会重新构建内容（`BuildAddressablesWithPlayerBuild` 关闭），但要求当前平台的内容至少构建过一次。页面构建前还会检查商品配置和 xLua 生成代码是否过期。
+页面构建不会重新构建内容（`BuildAddressablesWithPlayerBuild` 关闭），但要求当前平台的内容至少构建过一次。页面构建前还会检查物品配置和 xLua 生成代码是否过期。
 
 ## 发布
 
 - 只改内容（脚本、美术、音效）：构建内容后按顺序上传——先上传所有 `.bundle`，再上传目录文件，最后上传 `content-version.txt`；上传完成后删除网站上不在 `files.txt` 中的旧包。正在下载旧包的页面会按下载失败处理，回到大厅时转到新版本。
-- 只改商品配置：编辑服务器上的 `Configs/Shop/*.json` 并重启服务器；新商品引用的远程内容要先按上一条发布。
+- 只改物品或商城配置：编辑服务器上的 `Configs/Items/*.json`、`Configs/Shop/Shop.json` 并重启服务器；新物品引用的远程内容要先按上一条发布。
 - 改了页面代码：页面、服务端和（格式变化时）内容一起部署，内容仍按上述顺序上传。
 
 网站结构示例：
@@ -114,7 +114,7 @@ https://example.com/poker/
     files.txt
 ```
 
-`client-network.json` 的 `resourceBaseUrl` 为空时使用页面所在目录下的 `Content/v1`；也可以写完整地址（如 `https://assets.example.com/poker/v1`，不含末尾平台名），跨域时资源服务器需返回 CORS 头。目录中 `https://poker-content.invalid` 是构建占位地址，运行时替换为配置地址。正式 HTTPS 页面必须使用 HTTPS 资源地址。
+`client-network.json` 的 `resource-base-url` 为空时使用页面所在目录下的 `Content/v1`；也可以写完整地址（如 `https://assets.example.com/poker/v1`，不含末尾平台名），跨域时资源服务器需返回 CORS 头。目录中 `https://poker-content.invalid` 是构建占位地址，运行时替换为配置地址。正式 HTTPS 页面必须使用 HTTPS 资源地址。
 
 ### 缓存头
 
@@ -141,14 +141,25 @@ location ~ ^/Content/.*\.bundle$ {
 
 `content-version.txt`、`page-version.txt`、`client-network.json` 使用 `no-cache` 或 `no-store`。不存在的文件必须返回 404，不能改写成首页；未生成 gzip/Brotli 文件时不要手工添加 `Content-Encoding`。
 
+## Editor 中的内容来源
+
+菜单 `Poker/Remote Artwork/Editor Content Source` 选择 Editor Play Mode 从哪里读取远程内容（按本机保存在 EditorPrefs，Play Mode 中不能切换）：
+
+| 选项 | 行为 |
+| --- | --- |
+| `Local Assets`（默认） | 直接用 `AssetDatabase` 加载 `Assets/RemoteContent` 中的源资源，全部视为已下载，不访问网络；改图后重新进入 Play Mode 即可看到。 |
+| `Remote Server` | 与 WebGL 页面走同一套流程：从 `client-network.json` 的 `resource-base-url` 读取 `WebGL` 平台的内容版本、目录和内容包，验证下载、缓存与更新。Editor 记录保存在 `PlayerPrefs`，缓存在 Unity `Caching`。 |
+
+远端模式下内容格式必须与 Editor 当前格式一致，否则拒绝该内容并显示默认外观。仓库中的 `client-network.json` 指向已部署的内容服务器 `https://www.aervento.top/games/poker/Content/v1`；WebGL 包内这份文件是开发默认值，线上配置以服务器上的为准。
+
 ## 本地验证
 
-安装 Python 后，在项目根目录运行：
+需要在本机验证未上传的内容时，安装 Python 后在项目根目录运行：
 
 ```powershell
 python Tools/serve_remote_content.py
 ```
 
-这会提供 `http://127.0.0.1:18080/Content/v1/`，只绑定本机。Editor/Windows 中空 `resourceBaseUrl` 默认使用 `http://localhost:18080/Content/v1`；Editor Play Mode 总是读取 `StandaloneWindows64` 内容，需要先在 Windows 平台构建内容。浏览器测试时把 WebGL 页面放在 `Build/RemoteContent` 下并通过同一服务器打开。
+这会提供 `http://127.0.0.1:18080/Content/v1/`，只绑定本机。Editor/Windows 中 `resource-base-url` 为空时默认使用 `http://localhost:18080/Content/v1`；要让 Editor 的远端模式读本机内容，把 `resource-base-url` 临时改为空或该地址，并先在 WebGL 平台构建内容。浏览器测试时把 WebGL 页面放在 `Build/RemoteContent` 下并通过同一服务器打开。
 
 浏览器开发者工具中可以检查：Network 中 `.bundle` 的首次请求与缓存命中、`localStorage` 的 `poker.content.records`，以及 Console 中 `[UnityCache]` 的下载、命中和删除日志。

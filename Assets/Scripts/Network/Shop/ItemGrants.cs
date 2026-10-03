@@ -22,6 +22,6 @@ namespace Game.Network.Accounts
     {
         // Trusted server callers only. Reuse operationId when retrying the same grant.
         ItemGrantExecution GrantItem(string accountId, string itemId, string operationId,
-            uint quantity, ItemIdentityRegistry registry);
+            uint quantity, GameCatalog catalog);
     }
 }

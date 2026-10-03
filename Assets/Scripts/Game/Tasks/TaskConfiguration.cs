@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using System.Text.RegularExpressions;
+using Framework.Configs;
 using Game.Facts;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Game.Tasks
 {
@@ -12,7 +14,6 @@ namespace Game.Tasks
         public string Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public string RawJson { get; set; }
         public int MaxCompletions { get; set; }
         public GameTask Rule { get; set; }
     }
@@ -21,222 +22,167 @@ namespace Game.Tasks
     {
         public string TaskId { get; set; }
         public bool Enabled { get; set; } = true;
-        public int SortOrder { get; set; }
         public int ValidityDays { get; set; } = 1;
         public double Weight { get; set; }
     }
 
+    /// <summary>The task tables loaded at server startup. Assigned tasks refer to these definitions by ID.</summary>
     public sealed class TaskCatalog
     {
-        public string Revision { get; private set; }
         public IReadOnlyDictionary<string, TaskDefinition> Definitions { get; private set; }
+        /// <summary>Fixed tasks in file order, which is also their display order.</summary>
         public IReadOnlyList<TaskPoolEntry> Fixed { get; private set; }
         public IReadOnlyList<TaskPoolEntry> Random { get; private set; }
         public int Capacity { get; private set; }
-        public IReadOnlyDictionary<string, uint> ItemLimits { get; private set; }
+        public Func<string, uint?> CurrentItemLimit { get; private set; }
 
-        public static TaskCatalog Load(string definitions, string fixedPool, string randomPool,
-            Func<string, uint?> itemLimit = null)
+        public static TaskCatalog Build(TaskDefinitionsConfigData master, FixedTasksConfigData fixedPool,
+            RandomTasksConfigData randomPool, Func<string, uint?> itemLimit = null)
         {
-            using var master = JsonDocument.Parse(definitions);
-            using var fixedDoc = JsonDocument.Parse(fixedPool);
-            using var randomDoc = JsonDocument.Parse(randomPool);
-            TaskFactory.Fields(master.RootElement, "schemaVersion", "revision", "tasks");
-            TaskFactory.Fields(fixedDoc.RootElement, "schemaVersion", "revision", "entries");
-            TaskFactory.Fields(randomDoc.RootElement, "schemaVersion", "revision", "capacity", "entries");
-            var revision = master.RootElement.GetProperty("revision").GetString();
-            if (string.IsNullOrWhiteSpace(revision) || revision.Length > 64) throw new ArgumentException("Invalid task revision.");
-            foreach (var doc in new[] { master, fixedDoc, randomDoc })
-                if (doc.RootElement.GetProperty("schemaVersion").GetInt32() != 2 ||
-                    doc.RootElement.GetProperty("revision").GetString() != revision)
-                    throw new ArgumentException("All three task tables require schemaVersion=2 and the same revision.");
             var map = new Dictionary<string, TaskDefinition>(StringComparer.Ordinal);
-            foreach (var element in master.RootElement.GetProperty("tasks").EnumerateArray())
+            foreach (var element in master)
             {
                 TaskDefinition definition;
-                try { definition = TaskFactory.Compile(element.GetRawText()); }
-                catch (Exception error) { throw new ArgumentException("TaskDefinitions.json: " + element.GetRawText() + ": " + error.Message, error); }
+                try { definition = TaskFactory.Compile(element); }
+                catch (Exception error) { throw new ArgumentException("TaskDefinitions.json: " + element?.Id + ": " + error.Message, error); }
                 if (map.ContainsKey(definition.Id)) throw new ArgumentException("Duplicate task ID: " + definition.Id);
                 map.Add(definition.Id, definition);
             }
             if (map.Count > 500) throw new ArgumentException("At most 500 task definitions are supported.");
-            var fixedEntries = ReadEntries(fixedDoc.RootElement, false, map);
-            var randomEntries = ReadEntries(randomDoc.RootElement, true, map);
+            var fixedEntries = ValidateEntries(fixedPool.Select(e => e == null ? null : new TaskPoolEntry { TaskId = e.TaskId, Enabled = e.Enabled }).ToArray(), false, map);
+            var randomEntries = ValidateEntries(randomPool.Entries.Select(e => e == null ? null : new TaskPoolEntry { TaskId = e.TaskId, Enabled = e.Enabled, Weight = e.Weight, ValidityDays = e.ValidityDays }).ToArray(), true, map);
             var overlap = fixedEntries.Select(e => e.TaskId).Intersect(randomEntries.Select(e => e.TaskId)).FirstOrDefault();
             if (overlap != null) throw new ArgumentException("FixedTasks.json / RandomTasks.json duplicate task: " + overlap);
-            var capacity = randomDoc.RootElement.GetProperty("capacity").GetInt32();
+            var capacity = randomPool.Capacity;
             if (capacity < 0 || capacity > 100) throw new ArgumentException("RandomTasks.json capacity must be 0..100.");
-            var limits = new Dictionary<string, uint>(StringComparer.Ordinal);
             foreach (var definition in map.Values)
-            foreach (var item in definition.Rule.GetReward().Items)
             {
-                var limit = itemLimit == null ? uint.MaxValue : itemLimit(item.ItemId);
-                if (!limit.HasValue || limit.Value < item.Quantity)
-                    throw new ArgumentException("Task " + definition.Id + " reward has an unknown item or exceeds its limit: " + item.ItemId);
-                limits[item.ItemId] = limit.Value;
+                definition.Rule.GetReward().Validate(itemLimit ?? (_ => uint.MaxValue));
+                foreach (var item in definition.Rule.GetReward().Items)
+                    if (itemLimit != null && !itemLimit(item.ItemId).HasValue)
+                        throw new ArgumentException("Task " + definition.Id + " reward has an unknown item: " + item.ItemId);
             }
             return new TaskCatalog
             {
-                Revision = revision, Definitions = map, Fixed = fixedEntries, Random = randomEntries,
-                Capacity = capacity, ItemLimits = limits
+                Definitions = map, Fixed = fixedEntries, Random = randomEntries, Capacity = capacity, CurrentItemLimit = itemLimit
             };
         }
 
-        private static TaskPoolEntry[] ReadEntries(JsonElement root, bool random, IDictionary<string, TaskDefinition> definitions)
+        private static TaskPoolEntry[] ValidateEntries(TaskPoolEntry[] entries, bool random, IDictionary<string, TaskDefinition> definitions)
         {
-            var result = new List<TaskPoolEntry>();
             var ids = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var row in root.GetProperty("entries").EnumerateArray())
+            foreach (var entry in entries)
             {
-                TaskFactory.Fields(row, random ? new[] { "taskId", "enabled", "weight", "validityDays" }
-                    : new[] { "taskId", "enabled", "sortOrder" });
-                var id = row.GetProperty("taskId").GetString();
-                if (id == null || !definitions.ContainsKey(id) || !ids.Add(id))
-                    throw new ArgumentException("Unknown or duplicate pool task ID: " + id);
-                var entry = new TaskPoolEntry { TaskId = id, Enabled = row.GetProperty("enabled").GetBoolean() };
+                if (entry == null || entry.TaskId == null || !definitions.ContainsKey(entry.TaskId) || !ids.Add(entry.TaskId))
+                    throw new ArgumentException("Unknown or duplicate pool task ID: " + entry?.TaskId);
                 if (random)
                 {
-                    entry.ValidityDays = TaskFactory.Positive(row.GetProperty("validityDays"), 3650);
-                    entry.Weight = row.GetProperty("weight").GetDouble();
+                    if (entry.ValidityDays < 1 || entry.ValidityDays > 3650) throw new ArgumentException("Expected validity-days 1..3650.");
                     if (double.IsNaN(entry.Weight) || double.IsInfinity(entry.Weight) || entry.Weight < 0)
-                        throw new ArgumentException("Random task weight must be finite and nonnegative: " + id);
-                    if (definitions[id].Rule.IsDirectClaim && entry.ValidityDays != 1)
-                        throw new ArgumentException("Direct-claim tasks must expire after one business day: " + id);
+                        throw new ArgumentException("Random task weight must be finite and nonnegative: " + entry.TaskId);
+                    if (definitions[entry.TaskId].Rule.IsDirectClaim && entry.ValidityDays != 1)
+                        throw new ArgumentException("Direct-claim tasks must expire after one business day: " + entry.TaskId);
                 }
-                else entry.SortOrder = row.GetProperty("sortOrder").GetInt32();
-                result.Add(entry);
             }
-            return result.ToArray();
+            return entries;
         }
     }
 
     public static class TaskFactory
     {
-        public static readonly string[] TypeNames =
-        {
-            "DirectClaim", "DirectClaimWhenLesserThan", "DirectClaimWhenAtMost", "PlayHands",
-            "FormPattern", "WinHands", "WinWithPattern", "CountHands", "AllObjectives"
-        };
+        public static readonly string[] TypeNames = Enum.GetNames(typeof(TaskConfigKind));
 
-        public static TaskDefinition Compile(string json)
+        // params holds the positional arguments of the rule type; the reward is a field of its own.
+        public static TaskDefinition Compile(TaskConfigEntry entry)
         {
-            using var document = JsonDocument.Parse(json);
-            var root = document.RootElement;
-            Fields(root, "id", "name", "description", "type", "params", "maxCompletions");
-            var id = root.GetProperty("id").GetString();
-            if (!ValidId(id)) throw new ArgumentException("Invalid task ID.");
-            var name = root.GetProperty("name").GetString();
-            if (string.IsNullOrWhiteSpace(name) || name.Length > 100) throw new ArgumentException("Task name must be 1..100 characters.");
-            var type = root.GetProperty("type").GetString();
-            var parameters = root.GetProperty("params").EnumerateArray().ToArray();
-            var count = type switch
+            if (entry == null) throw new ArgumentException("Task entry cannot be null.");
+            if (!ValidId(entry.Id)) throw new ArgumentException("Invalid task ID.");
+            if (string.IsNullOrWhiteSpace(entry.Name) || entry.Name.Length > 100) throw new ArgumentException("Task name must be 1..100 characters.");
+            var parameters = entry.Parameters ?? Array.Empty<JToken>();
+            var count = entry.Type switch
             {
-                "DirectClaim" => 1,
-                "DirectClaimWhenLesserThan" or "DirectClaimWhenAtMost" or "PlayHands" or "WinHands" or "AllObjectives" => 2,
-                "FormPattern" or "WinWithPattern" or "CountHands" => 3,
-                _ => throw new ArgumentException("Unknown task type: " + type)
+                TaskConfigKind.DirectClaim => 0,
+                TaskConfigKind.DirectClaimWhenLesserThan or TaskConfigKind.DirectClaimWhenAtMost or TaskConfigKind.PlayHands or
+                    TaskConfigKind.WinHands or TaskConfigKind.AllObjectives => 1,
+                TaskConfigKind.FormPattern or TaskConfigKind.WinWithPattern or TaskConfigKind.CountHands => 2,
+                _ => throw new ArgumentException("Unknown task type: " + entry.Type)
             };
-            if (parameters.Length != count) throw new ArgumentException(type + " params requires exactly " + count + " arguments.");
-            var reward = ReadReward(parameters[0]);
-            GameTask rule = type switch
+            if (parameters.Length != count) throw new ArgumentException(entry.Type + " params requires exactly " + count + " arguments.");
+            var reward = RewardConfig.ToReward(entry.Reward);
+            GameTask rule = entry.Type switch
             {
-                "DirectClaim" => new DirectClaim(reward),
-                "DirectClaimWhenLesserThan" => new DirectClaimWhenLesserThan(reward, parameters[1].GetUInt32()),
-                "DirectClaimWhenAtMost" => new DirectClaimWhenAtMost(reward, parameters[1].GetUInt32()),
-                "PlayHands" => new PlayHands(reward, Positive(parameters[1])),
-                "WinHands" => new WinHands(reward, Positive(parameters[1])),
-                "FormPattern" => new FormPattern(reward, ReadPattern(parameters[1]), Positive(parameters[2])),
-                "WinWithPattern" => new WinWithPattern(reward, ReadPattern(parameters[1]), Positive(parameters[2])),
-                "CountHands" => new CountHands(reward, Positive(parameters[1]), ReadConditions(parameters[2])),
-                "AllObjectives" => new AllObjectives(reward, ReadObjectives(parameters[1])),
+                TaskConfigKind.DirectClaim => new DirectClaim(reward),
+                TaskConfigKind.DirectClaimWhenLesserThan => new DirectClaimWhenLesserThan(reward, Read<uint>(parameters[0])),
+                TaskConfigKind.DirectClaimWhenAtMost => new DirectClaimWhenAtMost(reward, Read<uint>(parameters[0])),
+                TaskConfigKind.PlayHands => new PlayHands(reward, Positive(parameters[0])),
+                TaskConfigKind.WinHands => new WinHands(reward, Positive(parameters[0])),
+                TaskConfigKind.FormPattern => new FormPattern(reward, ReadPattern(parameters[0]), Positive(parameters[1])),
+                TaskConfigKind.WinWithPattern => new WinWithPattern(reward, ReadPattern(parameters[0]), Positive(parameters[1])),
+                TaskConfigKind.CountHands => new CountHands(reward, Positive(parameters[0]), ReadConditions(parameters[1])),
+                TaskConfigKind.AllObjectives => new AllObjectives(reward, ReadObjectives(parameters[0])),
                 _ => throw new ArgumentException("Unknown task type.")
             };
-            var description = root.TryGetProperty("description", out var text) ? text.GetString() : rule.Description;
-            if (description == null || description.Length > 500) throw new ArgumentException("Task description exceeds 500 characters.");
-            return new TaskDefinition
-            {
-                Id = id, Name = name, Description = description, Rule = rule, RawJson = root.GetRawText(),
-                MaxCompletions = Positive(root.GetProperty("maxCompletions"), 1000)
-            };
+            // An omitted description is generated from the rule.
+            var description = entry.Description ?? rule.Description;
+            if (description.Length > 500) throw new ArgumentException("Task description exceeds 500 characters.");
+            if (entry.MaxCompletions < 1 || entry.MaxCompletions > 1000) throw new ArgumentException("max-completions must be 1..1000.");
+            return new TaskDefinition { Id = entry.Id, Name = entry.Name, Description = description, Rule = rule, MaxCompletions = entry.MaxCompletions };
         }
 
-        public static Reward ReadReward(JsonElement value)
-        {
-            if (value.ValueKind == JsonValueKind.Number) return new Reward(value.GetUInt32());
-            Fields(value, "chip", "items");
-            var items = new List<ItemStack>();
-            foreach (var item in value.GetProperty("items").EnumerateArray())
-            {
-                Fields(item, "itemId", "count");
-                var id = item.GetProperty("itemId").GetString();
-                if (!ValidId(id)) throw new ArgumentException("Invalid reward item ID.");
-                items.Add(new ItemStack(id, item.GetProperty("count").GetUInt32()));
-            }
-            if (items.Count > 100) throw new ArgumentException("At most 100 reward item entries.");
-            return new Reward(value.GetProperty("chip").GetUInt32(), items);
-        }
+        // Parameters go through the same field and type checks as whole configuration files.
+        private static T Read<T>(JToken value) => ConfigManager.Deserialize<T>((value ?? JValue.CreateNull()).ToString(Formatting.None));
 
-        private static ObjectivePlan[] ReadObjectives(JsonElement array)
+        private static ObjectivePlan[] ReadObjectives(JToken array)
         {
             var objectives = new List<ObjectivePlan>();
-            foreach (var value in array.EnumerateArray())
+            foreach (var value in Read<TaskObjectiveConfigData[]>(array))
             {
-                Fields(value, "id", "type", "params");
-                if (value.GetProperty("type").GetString() != "CountDistinctHands") throw new ArgumentException("Unsupported objective type.");
-                var id = value.GetProperty("id").GetString();
-                if (!ValidId(id)) throw new ArgumentException("Invalid objective ID.");
-                var args = value.GetProperty("params").EnumerateArray().ToArray();
+                if (value == null || value.Type != TaskObjectiveKind.CountDistinctHands) throw new ArgumentException("Unsupported objective type.");
+                if (!ValidId(value.Id)) throw new ArgumentException("Invalid objective ID.");
+                var args = value.Parameters ?? Array.Empty<JToken>();
                 if (args.Length != 2) throw new ArgumentException("CountDistinctHands params requires target and conditions.");
-                objectives.Add(new ObjectivePlan(id, Positive(args[0]), ReadConditions(args[1])));
+                objectives.Add(new ObjectivePlan(value.Id, Positive(args[0]), ReadConditions(args[1])));
             }
             if (objectives.Count == 0 || objectives.Count > 8) throw new ArgumentException("Expected 1..8 objectives.");
             return objectives.ToArray();
         }
 
-        private static IHandCondition[] ReadConditions(JsonElement array)
+        private static IHandCondition[] ReadConditions(JToken array)
         {
             var result = new List<IHandCondition>();
             var seen = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var value in array.EnumerateArray())
+            foreach (var value in Read<TaskConditionConfigData[]>(array))
             {
-                Fields(value, "type", "params");
-                var type = value.GetProperty("type").GetString();
-                var args = value.GetProperty("params").EnumerateArray().ToArray();
+                var args = value?.Parameters ?? Array.Empty<JToken>();
                 IHandCondition condition;
-                if (type == "PatternObserved" && args.Length == 1) condition = new PatternObservedCondition(ReadPattern(args[0]));
-                else if (type == "Won" && args.Length == 0) condition = new WonCondition();
-                else if (type == "HandSettled" && args.Length == 0) condition = new HandSettledCondition();
-                else throw new ArgumentException("Unknown condition or invalid params: " + type);
-                if (!seen.Add(condition.Description)) throw new ArgumentException("Duplicate condition: " + type);
+                if (value?.Type == TaskConditionKind.PatternObserved && args.Length == 1) condition = new PatternObservedCondition(ReadPattern(args[0]));
+                else if (value?.Type == TaskConditionKind.Won && args.Length == 0) condition = new WonCondition();
+                else if (value?.Type == TaskConditionKind.HandSettled && args.Length == 0) condition = new HandSettledCondition();
+                else throw new ArgumentException("Unknown condition or invalid params: " + value?.Type);
+                if (!seen.Add(condition.Description)) throw new ArgumentException("Duplicate condition: " + value.Type);
                 result.Add(condition);
             }
             if (result.Count == 0 || result.Count > 10) throw new ArgumentException("Expected 1..10 conditions.");
             return result.ToArray();
         }
 
-        public static FormedPattern ReadPattern(JsonElement value)
+        public static FormedPattern ReadPattern(JToken value)
         {
-            var name = value.GetString();
+            var name = value?.Type == JTokenType.String ? value.Value<string>() : null;
             if (!Enum.TryParse(name, false, out FormedPattern pattern) || pattern == FormedPattern.None ||
                 !Enum.IsDefined(typeof(FormedPattern), pattern) || pattern.ToString() != name)
                 throw new ArgumentException("Unsupported pattern: " + name);
             return pattern;
         }
-        public static int Positive(JsonElement value, int maximum = 100000)
+
+        public static int Positive(JToken value, int maximum = 100000)
         {
-            var number = value.GetInt32();
+            var number = Read<int>(value);
             if (number < 1 || number > maximum) throw new ArgumentException("Expected positive integer <= " + maximum);
             return number;
         }
+
         public static bool ValidId(string id) => id != null && Regex.IsMatch(id, "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$");
-        internal static void Fields(JsonElement value, params string[] allowed)
-        {
-            if (value.ValueKind != JsonValueKind.Object) throw new ArgumentException("Expected JSON object.");
-            var seen = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var field in value.EnumerateObject())
-                if (!allowed.Contains(field.Name) || !seen.Add(field.Name))
-                    throw new ArgumentException("Unknown or duplicate field: " + field.Name);
-        }
     }
 
     public interface IWeightedTaskSelector

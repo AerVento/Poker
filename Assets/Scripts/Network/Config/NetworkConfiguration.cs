@@ -109,40 +109,11 @@ namespace Game.Network
 
     public static class NetworkConfiguration
     {
-        public static ClientNetworkConfiguration ParseClient(string json)
-        {
-            using var document = Parse(json);
-            var root = document.RootElement;
-            ValidateFields(root, "serverHost", "serverPort", "useSsl", "connectTimeoutSeconds", "resourceBaseUrl");
-            var host = ReadString(root, "serverHost");
-            if (string.IsNullOrWhiteSpace(host) || host.Trim() != host ||
-                host.IndexOfAny(new[] { '/', '\\', '@', '?', '#', ' ', '\t', '\r', '\n' }) >= 0 ||
-                Uri.CheckHostName(host) == UriHostNameType.Unknown)
-            {
-                throw new InvalidDataException("serverHost must be a host name or IP address without a scheme, port or path.");
-            }
+        public static ClientNetworkConfiguration ParseClient(string json) =>
+            ConfigurationValidation.Build(Framework.Configs.ConfigManager.Deserialize<ClientNetworkConfigData>(json));
 
-            return new ClientNetworkConfiguration(host,
-                (ushort)ReadInteger(root, "serverPort", 1, ushort.MaxValue),
-                ReadBoolean(root, "useSsl"), ReadInteger(root, "connectTimeoutSeconds", 1, 300),
-                ReadString(root, "resourceBaseUrl", optional: true));
-        }
-
-        public static ServerNetworkConfiguration ParseServer(string json)
-        {
-            using var document = Parse(json);
-            var root = document.RootElement;
-            ValidateFields(root, "listenPort", "useSsl", "path", "password", "maxConnections");
-            var useSsl = ReadBoolean(root, "useSsl");
-            var path = ReadString(root, "path", optional: !useSsl);
-            var password = ReadString(root, "password", optional: true);
-            if (useSsl && (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path)))
-                throw new InvalidDataException("SSL path must be an absolute certificate file path.");
-
-            return new ServerNetworkConfiguration(
-                (ushort)ReadInteger(root, "listenPort", 1, ushort.MaxValue), useSsl, path, password,
-                ReadInteger(root, "maxConnections", 1, int.MaxValue));
-        }
+        public static ServerNetworkConfiguration ParseServer(string json) =>
+            ConfigurationValidation.Build(Framework.Configs.ConfigManager.Deserialize<ServerNetworkConfigData>(json));
 
         internal static SimpleWebTransport GetTransport(NetworkManager manager)
         {
@@ -153,60 +124,5 @@ namespace Game.Network
             return transport;
         }
 
-        private static JsonDocument Parse(string json)
-        {
-            if (string.IsNullOrWhiteSpace(json))
-                throw new InvalidDataException("Network configuration is empty.");
-            try
-            {
-                return JsonDocument.Parse(json.TrimStart('\uFEFF'));
-            }
-            catch (JsonException)
-            {
-                // Do not put the JSON or a token from it into logs: server JSON can contain a password.
-                throw new InvalidDataException("Network configuration is not valid JSON.");
-            }
-        }
-
-        private static void ValidateFields(JsonElement root, params string[] allowed)
-        {
-            if (root.ValueKind != JsonValueKind.Object)
-                throw new InvalidDataException("Network configuration must be a JSON object.");
-            var seen = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var property in root.EnumerateObject())
-            {
-                if (Array.IndexOf(allowed, property.Name) < 0 || !seen.Add(property.Name))
-                    throw new InvalidDataException("Network configuration contains an unknown or duplicate field.");
-            }
-        }
-
-        private static string ReadString(JsonElement root, string name, bool optional = false)
-        {
-            if (!root.TryGetProperty(name, out var value))
-            {
-                if (optional)
-                    return string.Empty;
-                throw new InvalidDataException($"Missing required network field: {name}.");
-            }
-            if (value.ValueKind != JsonValueKind.String)
-                throw new InvalidDataException($"Network field {name} must be a string.");
-            return value.GetString();
-        }
-
-        private static bool ReadBoolean(JsonElement root, string name)
-        {
-            if (!root.TryGetProperty(name, out var value) ||
-                (value.ValueKind != JsonValueKind.True && value.ValueKind != JsonValueKind.False))
-                throw new InvalidDataException($"Network field {name} must be true or false.");
-            return value.GetBoolean();
-        }
-
-        private static int ReadInteger(JsonElement root, string name, int minimum, int maximum)
-        {
-            if (!root.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.Number ||
-                !value.TryGetInt32(out var number) || number < minimum || number > maximum)
-                throw new InvalidDataException($"Network field {name} must be an integer from {minimum} to {maximum}.");
-            return number;
-        }
     }
 }

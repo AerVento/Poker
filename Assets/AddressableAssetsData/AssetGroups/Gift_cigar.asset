@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Gift_cigar
+  m_EditorClassIdentifier: 
+  m_GroupName: Gift_cigar
+  m_Data:
+    m_SerializedData: []
+  m_GUID: a2c37924481196846ad66ff50781ac42
+  m_SerializeEntries:
+  - m_GUID: 75a17919d5ce1fe44b6549f7c761f1fd
+    m_Address: gifts/cigar
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 8d0b2af6b70451145a85efb7d3a9fece, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 63b360f991c6b43459fc480babd86d54, type: 2}
+    - {fileID: 11400000, guid: 30eb9f01f8c0ee04d85586e4ea4b5fa4, type: 2}

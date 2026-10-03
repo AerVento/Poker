@@ -1,0 +1,170 @@
+[
+  {
+    "item-id": "devil-contract",
+    "price": 0,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "archdevil-contract",
+    "price": 0,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "satan-contract",
+    "price": 0,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "rotten-egg",
+    "price": 50,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "champagne",
+    "price": 100,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "gunfire",
+    "price": 100,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "swiss-bank-note",
+    "price": 1000,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "cigar",
+    "price": 100,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "namecard-galaxy",
+    "price": 50000,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "namecard-ember",
+    "price": 20000,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "namecard-neon",
+    "price": 30000,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "namecard-gilded",
+    "price": 30000,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "namecard-frost",
+    "price": 20000,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "namecard-abyss",
+    "price": 20000,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "namecard-jade",
+    "price": 30000,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "namecard-sakura",
+    "price": 40000,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "namecard-clockwork",
+    "price": 10000,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "namecard-eclipse",
+    "price": 30000,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "namecard-prism",
+    "price": 50000,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "namecard-twilight-duo",
+    "price": 50000,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "namecard-devil-service",
+    "price": 0,
+    "listed": true,
+    "purchasable": false
+  },
+  {
+    "item-id": "namecard-archdevil-service",
+    "price": 0,
+    "listed": true,
+    "purchasable": false
+  },
+  {
+    "item-id": "namecard-satan-service",
+    "price": 0,
+    "listed": true,
+    "purchasable": false
+  },
+  {
+    "item-id": "namecard-straight-flush",
+    "price": 0,
+    "listed": true,
+    "purchasable": false
+  },
+  {
+    "item-id": "namecard-royal-straight-flush",
+    "price": 0,
+    "listed": true,
+    "purchasable": false
+  },
+  {
+    "item-id": "cardface-cat-court",
+    "price": 50000,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "cardface-jewel-court",
+    "price": 50000,
+    "listed": true,
+    "purchasable": true
+  },
+  {
+    "item-id": "cardface-gensokyo",
+    "price": 0,
+    "listed": true,
+    "purchasable": false
+  }
+]

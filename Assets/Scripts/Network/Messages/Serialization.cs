@@ -10,6 +10,24 @@ namespace Game.Network
 {
     public static class Serialization
     {
+        public static void WriteReward(this NetworkWriter writer, Reward reward)
+            => writer.WriteString(JsonSerializer.Serialize(reward));
+
+        public static Reward ReadReward(this NetworkReader reader)
+            => JsonSerializer.Deserialize<Reward>(reader.ReadString());
+
+        public static void WriteSlotLotteryDisclosure(this NetworkWriter writer, SlotLotteryDisclosure value)
+            => writer.WriteString(JsonSerializer.Serialize(value));
+
+        public static SlotLotteryDisclosure ReadSlotLotteryDisclosure(this NetworkReader reader)
+            => JsonSerializer.Deserialize<SlotLotteryDisclosure>(reader.ReadString());
+
+        public static void WriteSlotDrawReceipt(this NetworkWriter writer, Accounts.SlotDrawReceipt receipt)
+            => writer.WriteString(JsonSerializer.Serialize(receipt));
+
+        public static Accounts.SlotDrawReceipt ReadSlotDrawReceipt(this NetworkReader reader)
+            => JsonSerializer.Deserialize<Accounts.SlotDrawReceipt>(reader.ReadString());
+
         public static void WriteRoomInfo(this NetworkWriter writer, RoomInfo roomInfo)
         {
             writer.WriteString(JsonSerializer.Serialize(roomInfo));
@@ -50,14 +68,5 @@ namespace Game.Network
             return JsonSerializer.Deserialize<RoundResult>(reader.ReadString());
         }
 
-        public static void WriteGameResult(this NetworkWriter writer, GameResult result)
-        {
-            writer.WriteString(JsonSerializer.Serialize(result));
-        }
-
-        public static GameResult ReadGameResult(this NetworkReader reader)
-        {
-            return JsonSerializer.Deserialize<GameResult>(reader.ReadString());
-        }
     }
 }

@@ -85,8 +85,6 @@ namespace Game.UI
         private uint _bigBlind;
         private bool _showSpectators;
         private TableParticipationStatus _participationStatus;
-        public ClientGameInfo CurrentInfo => _info;
-        public GameInfoSync CurrentSync => _sync;
         public OperationArea OperationArea => _operationArea;
         public bool ShowSpectators => _showSpectators;
         public ClientGameInfo Info
@@ -476,8 +474,6 @@ namespace Game.UI
                 };
             }
         }
-
-
 
     }
 }

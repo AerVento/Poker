@@ -52,6 +52,10 @@
 | 蚀日 / eclipse | 暮紫尘云、暗淡日蚀与低亮度日冕 |
 | 幻晶 / prism | 靛紫晶面、柔和折射与青粉色彩层次 |
 
+## 配套物品图标
+
+每款名片除宽版和紧凑版外，还必须同时制作一张 `Assets/Sprites/Items/Namecards/namecard-<商品ID>.png`，默认款也适用。图标采用统一倾斜圆角名牌卡构图，保留主题主色与简化标志；具体风格、1024×1024 透明 PNG、导入、生成记录和小尺寸验收要求见 [UI 规范第 8.4 节](UIConvention.md)。主题变化时同步更新图标，不能直接缩小名片原画代替。
+
 ## Unity 导入
 
 PNG 使用 Sprite (2D and UI)、Single、Full Rect、Max Size = 1024、关闭 Mip Maps、Wrap Mode = Clamp、Non Power of 2 = None。分别保持 8:3 / 4:3，不能拉伸图片来补救比例或边框。带透明通道的 PNG 打开 Alpha Is Transparency。平台 Override 不能把纹理上限调高；Unity 自动生成的 `.meta` 必须一起保留。

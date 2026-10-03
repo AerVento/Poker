@@ -1,0 +1,13 @@
+{
+  "file": "Assets/Audio/Music/bgm-slot-lounge.wav",
+  "source": "Original local synthesis; no external samples",
+  "style": "Celebratory brass disco, bright major-key hook, claps and driving bass",
+  "bpm": 132,
+  "bars": 16,
+  "seconds": 29.09090702947846,
+  "channels": 2,
+  "loop": "Exact 16-bar circular mix with wrapped note and room tails; no intro or outro fade",
+  "peak_dbfs": -2.85,
+  "rms_dbfs": -17.63,
+  "boundary_jump": 0.003246657042883836
+}

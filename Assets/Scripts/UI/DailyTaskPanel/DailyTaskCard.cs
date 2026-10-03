@@ -57,8 +57,8 @@ namespace Game.UI
             _state = state;
             _title.text = state.Name;
             _description.text = state.Description;
-            _reward.text = $"+ ${state.Reward:N0}" + (state.RewardItems != null && state.RewardItems.Length > 0 ? " + 道具" : "");
-            if (_rewardCurrencyIcon != null) _rewardCurrencyIcon.gameObject.SetActive(state.Reward > 0);
+            _reward.text = RewardText.Describe(state.Reward);
+            if (_rewardCurrencyIcon != null) _rewardCurrencyIcon.gameObject.SetActive(state.Reward?.Dollars > 0);
             DisplayProgress(state);
             EnsureDeleteButton();
             _delete.GetComponentInChildren<TaskActionIcon>().Display(state.CanRefresh);

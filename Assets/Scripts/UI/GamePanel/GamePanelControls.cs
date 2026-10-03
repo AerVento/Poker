@@ -17,8 +17,8 @@ namespace Game.UI
         [SerializeField] private Button _dailyTasksButton;
         [SerializeField] private Button _exchangeButton;
         [SerializeField] private Button _historyButton;
-        [SerializeField] private TMP_Text _dollars;
-        [SerializeField] private TMP_Text _chips;
+        [SerializeField] private BalanceView _dollars;
+        [SerializeField] private BalanceView _chips;
         [SerializeField] private PanelShortcutHandler _shortcuts;
         [SerializeField] private OperationAreaMobileControls _mobileOperations;
 
@@ -89,9 +89,9 @@ namespace Game.UI
         public void PresentWallet(uint dollars, uint chips)
         {
             if (_dollars != null)
-                _dollars.text = $"${ChipAmountFormatter.Format(dollars)}";
+                _dollars.Present(dollars);
             if (_chips != null)
-                _chips.text = $"${ChipAmountFormatter.Format(chips)}";
+                _chips.Present(chips);
         }
 
         private void ShowSpectators(bool show) => _panel?.SetShowSpectators(show);

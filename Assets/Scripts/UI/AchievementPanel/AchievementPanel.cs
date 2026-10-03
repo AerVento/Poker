@@ -129,13 +129,6 @@ namespace Game.UI
             UpdateClaimAll();
         }
 
-        // Compatibility for explicit legacy snapshot requests; normal panel loads never use this protocol.
-        public void ReceiveStatus(AchievementsResponse response)
-        {
-            if (isActiveAndEnabled && response.Result == AchievementResult.Success && response.Offset == 0 && response.NextOffset == -1)
-                Present(response.Achievements ?? Array.Empty<AchievementView>(), _network != null && _network.CanClaimCachedAchievements);
-        }
-
         public void Present(AchievementView[] views, bool canClaim)
         {
             var keepScroll = _views.Length > 0;
@@ -253,9 +246,9 @@ namespace Game.UI
         {
             if (!isActiveAndEnabled || _claimRequest == 0 || response.RequestId != _claimRequest) return;
             _claimRequest = 0;
+            if (response.Result == AchievementResult.Success) ShowClaimRewards(response.GrantedReward);
             _claimFeedback = response.Result == AchievementResult.Success
-                ? (response.GrantedDollars > 0 ? $"领取成功，${response.GrantedDollars:N0} 美金已到账。" : "领取成功。") +
-                    (response.GrantedItems != null && response.GrantedItems.Length > 0 ? " 物品已加入背包。" : "")
+                ? "奖励已领取"
                 : ResultMessage(response.Result);
             ReceiveCache();
         }
@@ -264,14 +257,18 @@ namespace Game.UI
         {
             if (!isActiveAndEnabled || _claimRequest == 0 || response.RequestId != _claimRequest) return;
             _claimRequest = 0;
+            if (response.Result == AchievementResult.Success) ShowClaimRewards(response.GrantedReward);
             _claimFeedback = response.Result == AchievementResult.Success
-                ? $"已领取 {response.ClaimedCount} 项奖励。" +
-                    (response.GrantedDollars > 0 ? $" ${response.GrantedDollars:N0} 美金已到账。" : "") +
-                    (response.GrantedItems != null && response.GrantedItems.Length > 0 ? " 物品已加入背包。" : "")
+                ? $"已领取 {response.ClaimedCount} 项奖励"
                 : response.Result == AchievementResult.AlreadyClaimed || response.Result == AchievementResult.NotComplete
                     ? "当前页签没有可领取奖励。"
                 : ResultMessage(response.Result);
             ReceiveCache();
+        }
+
+        private static void ShowClaimRewards(Reward reward)
+        {
+            if (reward?.Entries.Count > 0) UIManager.Instance.PushPanel<RewardPopupPanel>().Present(reward.Entries);
         }
 
         private static string ResultMessage(AchievementResult result) => result switch
@@ -279,8 +276,8 @@ namespace Game.UI
             AchievementResult.AlreadyClaimed => "这个成就的奖励已经领取。",
             AchievementResult.NotComplete => "尚未达成这个成就。",
             AchievementResult.OutsideRoomRequired => "当前无法领取奖励。",
-            AchievementResult.BalanceLimit => "美金余额已达上限，奖励仍保留待领取。",
-            AchievementResult.ItemLimit => "奖励物品数量已达上限，奖励仍保留待领取。",
+            AchievementResult.BalanceLimit => "货币余额已达上限，奖励仍保留待领取。",
+            AchievementResult.ItemLimit => "奖励物品暂不可用，请稍后重试。",
             AchievementResult.RateLimited => "操作过于频繁，请稍后刷新。",
             AchievementResult.RevisionChanged => "成就状态发生变化，请刷新。",
             _ => "暂时无法读取成就，请刷新重试。"

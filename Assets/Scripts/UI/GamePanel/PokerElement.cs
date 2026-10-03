@@ -33,7 +33,7 @@ namespace Game.UI
 
         private void RefreshAppearance()
         {
-            var product = CardFaceAppearance.Current;
+            var face = CardFaceAppearance.Current;
             if (_visual == null)
             {
                 if (CardFaceAppearance.ViewPrefab != null)
@@ -47,7 +47,7 @@ namespace Game.UI
                 }
             }
             if (isActiveAndEnabled || !Application.isPlaying)
-                _binding.Bind(product != null ? product.Cards : null, cards =>
+                _binding.Bind(face != null ? face.Cards : null, cards =>
                 {
                     if (_visual != null)
                     {

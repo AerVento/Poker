@@ -15,15 +15,63 @@ MonoBehaviour:
   _sprites:
   - _name: archdevil-contract
     _sprite: {fileID: 21300000, guid: 6fe01ed483b05bd4d8b16b8270764926, type: 3}
+  - _name: cardface-cat-court
+    _sprite: {fileID: 21300000, guid: ab73659817344a5faceedb4f710f6f32, type: 3}
+  - _name: cardface-default
+    _sprite: {fileID: 21300000, guid: 401d177cc5ac4495bcd2b3b20d5a4f08, type: 3}
+  - _name: cardface-gensokyo
+    _sprite: {fileID: 21300000, guid: b53ce16a15114b69b5676aeba9af2d5c, type: 3}
+  - _name: cardface-jewel-court
+    _sprite: {fileID: 21300000, guid: 7d534cab7ca24065aed901a45fcf425b, type: 3}
+  - _name: cardface-minimal
+    _sprite: {fileID: 21300000, guid: bf18265a3c5b48149c973dad3b73f783, type: 3}
   - _name: champagne
     _sprite: {fileID: 21300000, guid: a59c667039f90254a8ec257297d7cd75, type: 3}
+  - _name: cigar
+    _sprite: {fileID: 21300000, guid: 0928a4c302b6e5a40aec2ae596ccddec, type: 3}
   - _name: devil-contract
     _sprite: {fileID: 21300000, guid: 06ef7464262f376448e1146618b34ff7, type: 3}
   - _name: gunfire
     _sprite: {fileID: 21300000, guid: 19d8e4d69e3ea8847a3a3b4a341eb2d1, type: 3}
+  - _name: namecard-abyss
+    _sprite: {fileID: 21300000, guid: 1d0e26f81aa04f24957306621233b77b, type: 3}
+  - _name: namecard-archdevil-service
+    _sprite: {fileID: 21300000, guid: 4c1a8f8c28294ac2a4648f8ec16f6de5, type: 3}
+  - _name: namecard-clockwork
+    _sprite: {fileID: 21300000, guid: b7f8592b7d9f4aa093c11bb6f2f68562, type: 3}
+  - _name: namecard-default
+    _sprite: {fileID: 21300000, guid: 0bbb243c061b4925bcbb4677d879d2cd, type: 3}
+  - _name: namecard-devil-service
+    _sprite: {fileID: 21300000, guid: 20ecb3c1b99a42518ed4e5a45479df40, type: 3}
+  - _name: namecard-eclipse
+    _sprite: {fileID: 21300000, guid: 4e3c5b9b70024cbc84198a7b553224f5, type: 3}
+  - _name: namecard-ember
+    _sprite: {fileID: 21300000, guid: 839161a645a443918483682cfac72439, type: 3}
+  - _name: namecard-frost
+    _sprite: {fileID: 21300000, guid: 6daa830fdc9a44fc82a8533a2ecab5a0, type: 3}
+  - _name: namecard-galaxy
+    _sprite: {fileID: 21300000, guid: 013955e7f85b4e65b8f7b086293e9d2a, type: 3}
+  - _name: namecard-gilded
+    _sprite: {fileID: 21300000, guid: 4206fb106cdf4cec8243e022175d2656, type: 3}
+  - _name: namecard-jade
+    _sprite: {fileID: 21300000, guid: bb784bec7c754e468fd6bb9f4db9c366, type: 3}
+  - _name: namecard-neon
+    _sprite: {fileID: 21300000, guid: 11f46d27fe774c34b3a68d8402c09e45, type: 3}
+  - _name: namecard-prism
+    _sprite: {fileID: 21300000, guid: 18bbfddd020f4f9fa38bd4ac56743f28, type: 3}
+  - _name: namecard-royal-straight-flush
+    _sprite: {fileID: 21300000, guid: 9640f481367e47d990789d54e0d62c34, type: 3}
+  - _name: namecard-sakura
+    _sprite: {fileID: 21300000, guid: 68e6b1de21bb41a2bbf5e38acb9676c4, type: 3}
+  - _name: namecard-satan-service
+    _sprite: {fileID: 21300000, guid: 23fa6d3c0c9f4946b209bc948f946d31, type: 3}
+  - _name: namecard-straight-flush
+    _sprite: {fileID: 21300000, guid: 4cab9d2b324e4f29b5e25bcd5a25c249, type: 3}
+  - _name: namecard-twilight-duo
+    _sprite: {fileID: 21300000, guid: 6c3fdc6eb2be4c73a3c057863fc11230, type: 3}
   - _name: rotten-egg
     _sprite: {fileID: 21300000, guid: a07c03253ada8594682f2caf8ef3f7b1, type: 3}
   - _name: satan-contract
     _sprite: {fileID: 21300000, guid: c7646dfb210fbec41856138a8f259da9, type: 3}
   - _name: swiss-bank-note
-    _sprite: {fileID: -2342394708266683031, guid: baad4df9377a9894498a037a04de2d1f, type: 3}
+    _sprite: {fileID: 21300000, guid: baad4df9377a9894498a037a04de2d1f, type: 3}

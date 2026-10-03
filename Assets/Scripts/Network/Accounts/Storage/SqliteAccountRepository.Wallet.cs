@@ -4,7 +4,7 @@ using Microsoft.Data.Sqlite;
 
 namespace Game.Network.Accounts
 {
-    public sealed partial class SqliteAccountRepository : IWalletRepository, IWalletPaymentRepository
+    public sealed partial class SqliteAccountRepository : IWalletRepository
     {
         private static void CreateWalletSchema(SqliteConnection connection, SqliteTransaction transaction)
         {

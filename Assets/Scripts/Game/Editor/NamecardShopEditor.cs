@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 using Framework.UI;
 using Game.Network;
@@ -7,7 +8,7 @@ using UnityEngine;
 
 namespace Game.Editor
 {
-    // Remote namecard artwork shows the frame and text-safe guides; names and prices are in Configs/Shop/Namecards.json.
+    // Remote namecard artwork shows the frame and text-safe guides; names are in Configs/Items/Items.json, art addresses in Configs/Items/Namecards.json and prices in Configs/Shop/Shop.json.
     [CustomEditor(typeof(Game.Content.NamecardArtworkSO))]
     public sealed class NamecardArtworkEditor : UnityEditor.Editor
     {
@@ -53,32 +54,34 @@ namespace Game.Editor
                 return;
             if (UIManager.Instance.ContainsPanel<ShopPanel>())
                 UIManager.Instance.PopPanel<ShopPanel>();
-            // Offline preview: show the products from Configs/Shop as if the server had sent them.
-            if (!ClientShopCatalog.IsAvailable)
-                ClientShopCatalog.Apply(ClientShopCatalog.ToMessage(ShopConfiguration.Load()));
+            // Offline preview: show the catalog from Configs as if the server had sent it.
+            if (!ClientCatalog.IsAvailable)
+                ClientCatalog.Apply(ClientCatalog.ToMessage(CatalogConfiguration.Load()));
             var panel = UIManager.Instance.PushPanel<ShopPanel>();
             panel.SelectTab(ShopTab.Namecards);
-            var owned = new HashSet<string> { "galaxy", "neon" };
+            var owned = new HashSet<string> { NamecardDefinition.DefaultItemId, "namecard-galaxy", "namecard-neon" };
             uint previewBalance = 500000;
             string equipped = string.Empty;
             System.Action refresh = () =>
             {
-                panel.SetAccountView("Poker Player", previewBalance, owned, equipped, true);
+                panel.SetInventory("Poker Player", new InventorySnapshot(owned.Select(id => new ItemStack(id, 1)),
+                    dollars: previewBalance, equippedNamecard: equipped, canAct: true, canEquip: true));
                 panel.SetFeedback("界面预览 · 示例账户与库存，仅在本次预览中有效");
             };
-            panel.PurchaseRequested += product =>
+            panel.PurchaseRequested += id =>
             {
-                if (product.IsDefault || owned.Contains(product.Id) || previewBalance < product.Price)
+                var price = ClientCatalog.FindOffer(id)?.Price ?? uint.MaxValue;
+                if (owned.Contains(id) || previewBalance < price)
                     return;
-                previewBalance -= product.Price;
-                owned.Add(product.Id);
+                previewBalance -= price;
+                owned.Add(id);
                 refresh();
             };
             panel.EquipRequested += id =>
             {
-                if (!string.IsNullOrEmpty(id) && !owned.Contains(id))
+                if (!owned.Contains(id))
                     return;
-                equipped = id;
+                equipped = id == NamecardDefinition.DefaultItemId ? string.Empty : id;
                 refresh();
             };
             refresh();

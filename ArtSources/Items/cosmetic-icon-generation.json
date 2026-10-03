@@ -1,0 +1,330 @@
+{
+  "tool": "Built-in image_gen (no CLI)",
+  "date": "2026-10-02",
+  "format": "1024 x 1024 RGBA PNG; genuine alpha; original generated PNG retained; uniform bicubic size export only",
+  "styleReferences": [
+    "Assets/Sprites/Items/Contracts/devil-contract.png",
+    "Assets/Sprites/Items/Gifts/champagne.png",
+    "ArtSources/Items/contract-icon-generation.json"
+  ],
+  "assets": [
+    {
+      "id": "namecard-default",
+      "name": "墨绿圆角卡、几何菱形",
+      "path": "Assets/Sprites/Items/Namecards/namecard-default.png",
+      "generationPrompt": "Use case: stylized-concept. Generate one Poker game inventory item icon, namecard-default. 1024x1024 square PNG, actual transparent background alpha=0 outside object. One horizontal rounded nameplate card, width about 78% canvas and height 43%, tilted counterclockwise 10 degrees, modest visible thickness, thick decorative rounded border. Same cartoon game UI art as a fantasy contract inventory icon: bold clean dark outlines, simple two-tone cel shading, large readable shapes, no realistic microtextures. Theme: classic muted forest green card with restrained dark teal thick rounded rim, simple broad satin-like green inset, a small central geometric green diamond emblem as simplified classic identity. No text letters numbers signature or writing, no people. All elements safely within canvas with at least 10% margin. Isolated object, no backdrop, floor shadow, aura, checkerboard, external enclosing frame. Clear at 64px.",
+      "inputReferences": [],
+      "themeReferences": [
+        "Assets/Sprites/UITheme/player-idle.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-default.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+    },
+    {
+      "id": "namecard-galaxy",
+      "name": "紫蓝星云、旋涡星河",
+      "path": "Assets/Sprites/Items/Namecards/namecard-galaxy.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-galaxy. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: deep indigo and violet, a large spiral galaxy and three broad star sparkles, silver violet rim. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/galaxy-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-galaxy.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-6a873d57-eca5-45e6-a3ad-a7960f0d0b8b.png"
+    },
+    {
+      "id": "namecard-ember",
+      "name": "黑曜石、橙红熔岩",
+      "path": "Assets/Sprites/Items/Namecards/namecard-ember.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-ember. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: charcoal obsidian plates and broad orange-red lava cracks, black red rim. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/ember-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-ember.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-aa0dd367-9b2a-42d9-b88b-3a3bf3b6c065.png"
+    },
+    {
+      "id": "namecard-neon",
+      "name": "青紫霓虹、城市光轨",
+      "path": "Assets/Sprites/Items/Namecards/namecard-neon.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-neon. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: indigo face, cyan left and magenta right rim, simple angular cyberpunk skyline and broad cyan pink light trails. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/neon-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-neon.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-b7ec3f2e-3dd7-42d9-a884-2bedd890f91a.png"
+    },
+    {
+      "id": "namecard-gilded",
+      "name": "墨绿缎面、金色叶饰",
+      "path": "Assets/Sprites/Items/Namecards/namecard-gilded.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-gilded. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: deep emerald, broad gold Art Deco fan leaf emblem, thick antique gold rim. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/gilded-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-gilded.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-6696f2fa-19f4-46a1-8b77-223e960ceeb2.png"
+    },
+    {
+      "id": "namecard-frost",
+      "name": "冰晶、极光、雪峰",
+      "path": "Assets/Sprites/Items/Namecards/namecard-frost.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-frost. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: dark icy blue, one large cyan ice crystal over two simple mountain peaks and aurora ribbon, silver ice rim. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/frost-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-frost.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-c088c499-ccbd-425e-b9cd-c25c6aab491e.png"
+    },
+    {
+      "id": "namecard-abyss",
+      "name": "幽蓝深海、水母",
+      "path": "Assets/Sprites/Items/Namecards/namecard-abyss.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-abyss. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: deep ocean navy, one luminous cyan jellyfish emblem with few thick tentacles, silver blue rim. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/abyss-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-abyss.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-9bdcc0df-b383-4a96-b759-2a15f12e8ccd.png"
+    },
+    {
+      "id": "namecard-jade",
+      "name": "青玉龙、云纹",
+      "path": "Assets/Sprites/Items/Namecards/namecard-jade.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-jade. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: muted jade green, one coiled Chinese dragon silhouette and two cloud curls, antique gold jade rim. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/jade-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-jade.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-664edead-80ca-44a5-a981-749301d13eb8.png"
+    },
+    {
+      "id": "namecard-sakura",
+      "name": "夜樱、粉色花瓣",
+      "path": "Assets/Sprites/Items/Namecards/namecard-sakura.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-sakura. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: wine mauve, one simple dark cherry branch with three large pink cherry blossoms, rose gold rim. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/sakura-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-sakura.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-f09205a8-7dd2-4a12-bee9-0f6b3f733a69.png"
+    },
+    {
+      "id": "namecard-clockwork",
+      "name": "黄铜齿轮",
+      "path": "Assets/Sprites/Items/Namecards/namecard-clockwork.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-clockwork. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: dark bronze, three interlocking chunky brass gears, brass rim, no clock digits. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/clockwork-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-clockwork.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-56d1c045-386a-49f4-99e9-bf9fea9e857e.png"
+    },
+    {
+      "id": "namecard-eclipse",
+      "name": "暗紫天体、金色日冕",
+      "path": "Assets/Sprites/Items/Namecards/namecard-eclipse.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-eclipse. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: violet black, one round eclipsed sun with crisp amber corona ring, gold rim. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/eclipse-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-eclipse.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-d0674aa6-2ce7-4ec5-a072-d2f889b7fa65.png"
+    },
+    {
+      "id": "namecard-prism",
+      "name": "紫青晶体、彩色折光",
+      "path": "Assets/Sprites/Items/Namecards/namecard-prism.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-prism. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: lavender teal, one large faceted prism crystal with rose violet cyan faces, opalescent silver rim. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/prism-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-prism.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-488acf81-4d02-4bad-bd2a-45d2717abf1d.png"
+    },
+    {
+      "id": "namecard-twilight-duo",
+      "name": "蓝紫双人剪影、花晶",
+      "path": "Assets/Sprites/Items/Namecards/namecard-twilight-duo.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-twilight-duo. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: blue violet cave colors, two simplified long-haired feminine silhouettes back to back, small gold violet flowers below, silver purple rim. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/twilight-duo-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-twilight-duo.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-20e44b5a-5e2c-4f90-9d7f-335ccfb0b09e.png"
+    },
+    {
+      "id": "namecard-devil-service",
+      "name": "双角恶魔纹章、铁链、狱火",
+      "path": "Assets/Sprites/Items/Namecards/namecard-devil-service.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-devil-service. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: dark brown red face, central simple two-horn devil sigil, small dark chain along bottom, restrained red flame shapes within border, black red rim. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/devil-service-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-devil-service.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-0c9c4411-9ee6-4754-847c-f5abf63b3eff.png"
+    },
+    {
+      "id": "namecard-archdevil-service",
+      "name": "四角纹章、赤红锁链",
+      "path": "Assets/Sprites/Items/Namecards/namecard-archdevil-service.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-archdevil-service. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: deep crimson face, central four-horn devil sigil, broad red-highlighted dark chains and taller red flame accents within border, black crimson rim. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/archdevil-service-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-archdevil-service.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-597a98fe-d48f-4bbc-90d9-f237344d2d43.png"
+    },
+    {
+      "id": "namecard-satan-service",
+      "name": "三尖王冠、三叉戟、赤焰",
+      "path": "Assets/Sprites/Items/Namecards/namecard-satan-service.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-satan-service. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: bright scarlet face, central gold trident and three-pronged infernal crown with ramlike horn motifs, orange gold flame accents inside thick gold red rim. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/satan-service-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-satan-service.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-63716427-11e3-4efe-9597-b40e1f7f8482.png"
+    },
+    {
+      "id": "namecard-straight-flush",
+      "name": "翡翠缎面、银框、五枚黑桃",
+      "path": "Assets/Sprites/Items/Namecards/namecard-straight-flush.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-straight-flush. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: emerald satin face, exactly five large silver spades linked in a broad arc, silver rim. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/straight-flush-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-straight-flush.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-ded028f0-c501-48af-add5-abf11565bb2f.png"
+    },
+    {
+      "id": "namecard-royal-straight-flush",
+      "name": "紫绒、金冠、紫晶",
+      "path": "Assets/Sprites/Items/Namecards/namecard-royal-straight-flush.png",
+      "generationPrompt": "Use case: style-transfer. Create one matching Poker inventory icon namecard-royal-straight-flush. Reference image is the approved namecard-default ICON: preserve its exact horizontal rounded thick nameplate silhouette, counterclockwise 10 degree tilt, thickness, placement and cartoon outline weight, replace ONLY its theme. Output square 1024x1024. One card, roughly 78% width, 43% height, safely centered with breathing room. Theme: deep purple velvet face, large gold crown with central amethyst gem and subtle spade emblem, thick gold rim. Simplify to a large readable emblem on face, no realistic texture, no tiny intricate filigree, bold clean dark outlines, two-tone cel shading like fantasy contract game items. All ornaments attached to or inside card, same card proportions across set. No text, letters, numbers, writing, watermark. CRITICAL genuine transparent alpha=0 outside actual object and in holes; no checkerboard, backdrop, glow haze, floor shadow or external frame. Readable at 64px.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-3e0189e4-e937-49bc-b0bb-aacd4e282845.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/Namecards/royal-straight-flush-wide.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/namecard-royal-straight-flush.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-4183effa-a84f-4973-8da1-86a7e8cadbc8.png"
+    },
+    {
+      "id": "cardface-default",
+      "name": "经典白牌、黑桃、红色花纹牌背",
+      "path": "Assets/Sprites/Items/CardFaces/cardface-default.png",
+      "generationPrompt": "Use case: stylized-concept. ONE Poker game inventory icon cardface-default, 1024x1024 square transparent PNG. Exactly THREE rounded poker cards fanned from common lower center: left rear card tilted counterclockwise 22 degrees, middle rear card nearly upright, foremost right card tilted clockwise 18 degrees. The rear TWO cards show their backs, foremost card shows its front. Large readable shapes, consistent card aspect 17:24, substantial visible back area of each rear card. Group fills 78% of square with generous safe margin, all corners inside. Bold clean dark outlines and simple two-tone cel shading matching fantasy contract cartoon inventory items, no photoreal microtexture or intricate tiny filigree. Theme: white classic face with one large black spade; two rear card backs warm red with simplified white interwoven diamond lattice and white border. No readable text, letters, rank numerals, writing or corner indices. At most ONE large suit symbol on front; no additional little suits. Actual transparent alpha=0 outside cards and gaps, no checkerboard, background, ground shadow, aura or external enclosing frame. Strong silhouette legible at 64px.",
+      "inputReferences": [],
+      "themeReferences": [
+        "Assets/Sprites/CardFaces/Classic/card-list-2d.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/cardface-default.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-da41302e-c702-47d8-b6c9-0155a3baedc2.png"
+    },
+    {
+      "id": "cardface-minimal",
+      "name": "极简黑桃、墨绿金线菱形牌背",
+      "path": "Assets/Sprites/Items/CardFaces/cardface-minimal.png",
+      "generationPrompt": "Use case: stylized-concept. ONE Poker game inventory icon cardface-minimal, 1024x1024 square transparent PNG. Exactly THREE rounded poker cards fanned from common lower center: left rear card tilted counterclockwise 22 degrees, middle rear card nearly upright, foremost right card tilted clockwise 18 degrees. The rear TWO cards show their backs, foremost card shows its front. Large readable shapes, consistent card aspect 17:24, substantial visible back area of each rear card. Group fills 78% of square with generous safe margin, all corners inside. Bold clean dark outlines and simple two-tone cel shading matching fantasy contract cartoon inventory items, no photoreal microtexture or intricate tiny filigree. Theme: plain white minimal face with one large black spade; two forest green backs with thin champagne inset line and small concentric gold diamond emblem, white borders. No readable text, letters, rank numerals, writing or corner indices. At most ONE large suit symbol on front; no additional little suits. Actual transparent alpha=0 outside cards and gaps, no checkerboard, background, ground shadow, aura or external enclosing frame. Strong silhouette legible at 64px. Use reference ONLY to preserve same three-card fan composition, outline weight and scale; replace theme completely.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-da41302e-c702-47d8-b6c9-0155a3baedc2.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/CardFaces/Minimal/back.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/cardface-minimal.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-599e844c-ffd0-48bf-8643-f0b397c245ff.png"
+    },
+    {
+      "id": "cardface-cat-court",
+      "name": "猫头花色、绿金双猫牌背",
+      "path": "Assets/Sprites/Items/CardFaces/cardface-cat-court.png",
+      "generationPrompt": "Use case: stylized-concept. ONE Poker game inventory icon cardface-cat-court, 1024x1024 square transparent PNG. Exactly THREE rounded poker cards fanned from common lower center: left rear card tilted counterclockwise 22 degrees, middle rear card nearly upright, foremost right card tilted clockwise 18 degrees. The rear TWO cards show their backs, foremost card shows its front. Large readable shapes, consistent card aspect 17:24, substantial visible back area of each rear card. Group fills 78% of square with generous safe margin, all corners inside. Bold clean dark outlines and simple two-tone cel shading matching fantasy contract cartoon inventory items, no photoreal microtexture or intricate tiny filigree. Theme: cream white face with one big black cat-head-shaped spade suit, cute round cat ears and tiny eyes; two forest green gold backs with simplified mirrored curled cats and gold leaf border. No readable text, letters, rank numerals, writing or corner indices. At most ONE large suit symbol on front; no additional little suits. Actual transparent alpha=0 outside cards and gaps, no checkerboard, background, ground shadow, aura or external enclosing frame. Strong silhouette legible at 64px. Use reference ONLY to preserve same three-card fan composition, outline weight and scale; replace theme completely.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-da41302e-c702-47d8-b6c9-0155a3baedc2.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/CardFaces/CatCourt/back.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/cardface-cat-court.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-eb05e4c6-597b-4ac9-b18c-d9cd538e1dfa.png"
+    },
+    {
+      "id": "cardface-jewel-court",
+      "name": "宝石花色、白金彩宝牌背",
+      "path": "Assets/Sprites/Items/CardFaces/cardface-jewel-court.png",
+      "generationPrompt": "Use case: stylized-concept. ONE Poker game inventory icon cardface-jewel-court, 1024x1024 square transparent PNG. Exactly THREE rounded poker cards fanned from common lower center: left rear card tilted counterclockwise 22 degrees, middle rear card nearly upright, foremost right card tilted clockwise 18 degrees. The rear TWO cards show their backs, foremost card shows its front. Large readable shapes, consistent card aspect 17:24, substantial visible back area of each rear card. Group fills 78% of square with generous safe margin, all corners inside. Bold clean dark outlines and simple two-tone cel shading matching fantasy contract cartoon inventory items, no photoreal microtexture or intricate tiny filigree. Theme: white face with one large blue sapphire spade jewel in gold setting; two ivory backs with chunky champagne gold scroll frame and central ruby emerald sapphire rosette, simplify jewelry to cel shaded facets. No readable text, letters, rank numerals, writing or corner indices. At most ONE large suit symbol on front; no additional little suits. Actual transparent alpha=0 outside cards and gaps, no checkerboard, background, ground shadow, aura or external enclosing frame. Strong silhouette legible at 64px. Use reference ONLY to preserve same three-card fan composition, outline weight and scale; replace theme completely.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-da41302e-c702-47d8-b6c9-0155a3baedc2.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/CardFaces/JewelCourt/back.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/cardface-jewel-court.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-cd5205ae-5d55-4942-823c-fd591a30ac46.png"
+    },
+    {
+      "id": "cardface-gensokyo",
+      "name": "红白巫女、阴阳纹、深蓝金饰牌背",
+      "path": "Assets/Sprites/Items/CardFaces/cardface-gensokyo.png",
+      "generationPrompt": "Use case: stylized-concept. ONE Poker game inventory icon cardface-gensokyo, 1024x1024 square transparent PNG. Exactly THREE rounded poker cards fanned from common lower center: left rear card tilted counterclockwise 22 degrees, middle rear card nearly upright, foremost right card tilted clockwise 18 degrees. The rear TWO cards show their backs, foremost card shows its front. Large readable shapes, consistent card aspect 17:24, substantial visible back area of each rear card. Group fills 78% of square with generous safe margin, all corners inside. Bold clean dark outlines and simple two-tone cel shading matching fantasy contract cartoon inventory items, no photoreal microtexture or intricate tiny filigree. Theme: white front with simple chibi red-white shrine maiden Reimu emblem wearing large red hair bow, black hair, red white shrine outfit, no suit symbol needed; two navy dark blue backs with central gold yin yang circle and symmetric simplified gold floral border. No readable text, letters, rank numerals, writing or corner indices. At most ONE large suit symbol on front; no additional little suits. Actual transparent alpha=0 outside cards and gaps, no checkerboard, background, ground shadow, aura or external enclosing frame. Strong silhouette legible at 64px. Use reference ONLY to preserve same three-card fan composition, outline weight and scale; replace theme completely.",
+      "inputReferences": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-da41302e-c702-47d8-b6c9-0155a3baedc2.png"
+      ],
+      "themeReferences": [
+        "Assets/Sprites/CardFaces/Gensokyo/back.png"
+      ],
+      "sourceFile": "ArtSources/Items/CosmeticIconOriginals/cardface-gensokyo.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-2ed530a5-f61d-4909-a2c2-136f87b9aadb.png"
+    }
+  ]
+}

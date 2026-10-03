@@ -1,0 +1,119 @@
+-- The mouth stays on the receiver's card; tools tend the exposed, angled tip.
+local T = { cut = 1.45, ignite = 2.30, smoke = 2.70, fade = 4.25, finish = 4.80 }
+local M = {
+  apiVersion = 1,
+  duration = T.finish,
+  resources = { 'cigar', 'cut-cigar', 'cap', 'cutter', 'blade', 'lighter', 'flame', 'snip', 'ignite' },
+}
+
+function M.build(g)
+  local sx, sy = g.sender()
+  local w, h = g.targetSize()
+  local scale = math.max(0.60, math.min(0.88, w / 290, h / 110))
+  local x0, y0, x1, y1 = g.bounds()
+  local dir = 1
+  local x, y = g.target(dir * 0.08, -0.08)
+  -- Keep the requested right-facing pose even at the right edge of the screen.
+  scale = math.min(scale, math.max(0.25, (x1 - x - 18) / 250))
+  local angle = -dir * 27
+  -- Bottom-edge seats tilt upward into the table instead of clipping below it.
+  if y - 195 * scale < y0 then angle = dir * 23 end
+  local radians = angle * math.pi / 180
+  local c, s = math.cos(radians), math.sin(radians)
+  local function along(length) return dir * length * c, dir * length * s end
+  local tipX, tipY = along(186)
+  local stage = g.set(g.node(g.layer, 'Cigar stage'), { position = { x, y }, scale = scale, alpha = 0 })
+  g.fade(stage, 0, 0.28, 0, 1, 'OutSine')
+  g.fade(stage, T.fade, T.finish - T.fade, 1, 0, 'InSine', 1)
+  local cigarRig = g.set(g.node(stage, 'Mouth anchored cigar'), { rotation = angle, scale = { dir, 1 } })
+  g.scale(cigarRig, 0, 0.36, 0.82, 1, 'OutSine', 1)
+
+  local cigar = g.set(g.image(cigarRig, 'Uncut cigar', 'cigar', 208, 52),
+    { position = { 104, 0 }, preserveAspect = true })
+  local cut = g.set(g.image(cigarRig, 'Cut cigar', 'cut-cigar', 186, 52),
+    { position = { 93, 0 }, preserveAspect = true, visible = false })
+  g.hide(cigar, T.cut)
+  g.show(cut, T.cut)
+  local capX, capY = along(197)
+  local cap = g.set(g.image(stage, 'Falling cigar cap', 'cap', 22, 52),
+    { position = { capX, capY }, rotation = angle, scale = { dir, 1 }, preserveAspect = true, visible = false })
+  g.show(cap, T.cut)
+  g.move(cap, T.cut, 0.62, { capX, capY }, { capX + dir * 32, capY - 92 }, 'InQuad')
+  g.rotate(cap, T.cut, 0.62, angle, angle - dir * 125, 'OutSine')
+  g.fade(cap, T.cut + 0.20, 0.42, 1, 0, 'InSine')
+
+  -- Approach from the giver, slow down to align, then make one precise cut.
+  local dx, dy = sx - x, sy - y
+  local distance = math.sqrt(dx * dx + dy * dy)
+  if distance < 1 then dx, dy, distance = dir, -1, math.sqrt(2) end
+  local ux, uy = dx / distance, dy / distance
+  local travel = math.min(140, math.max(80, distance / scale * 0.30))
+  local function arrival(px, py)
+    return {
+      math.max((x0 - x) / scale + 58, math.min((x1 - x) / scale - 58, px + ux * travel)),
+      math.max((y0 - y) / scale + 100, math.min((y1 - y) / scale - 115, py + uy * travel)),
+    }
+  end
+  -- The painted aperture is a side-on ellipse, offset from the sprite center.
+  local holeX, holeY = -1.1, 13
+  local cx = tipX - (dir * holeX * c - holeY * s)
+  local cy = tipY - (dir * holeX * s + holeY * c)
+  local cutter = g.set(g.node(stage, 'Guillotine'),
+    { position = { cx, cy }, rotation = angle, scale = { dir, 1 }, alpha = 0 })
+  local blade = g.set(g.image(cutter, 'Sliding blade', 'blade', 20, 116),
+    { position = { holeX, 107 }, preserveAspect = true })
+  g.set(g.image(cutter, 'Cutter frame', 'cutter', 31, 132), { preserveAspect = true })
+  g.fade(cutter, 0.40, 0.20, 0, 1, 'OutSine')
+  g.move(cutter, 0.40, 0.52, arrival(cx, cy), { cx + dir * c * 30, cy + dir * s * 30 }, 'OutCubic')
+  g.move(cutter, 0.92, 0.24, { cx + dir * c * 30, cy + dir * s * 30 }, { cx, cy }, 'InOutSine')
+  g.rotate(cutter, 0.40, 0.76, angle - dir * 16, angle, 'OutSine')
+  g.move(blade, 1.27, T.cut - 1.27, { holeX, 107 }, { holeX, 33 }, 'InCubic')
+  g.move(blade, 1.56, 0.19, { holeX, 33 }, { holeX, 99 }, 'OutCubic')
+  g.move(cutter, 1.66, 0.34, { 0, 0 }, { ux * 56, uy * 56 }, 'InSine', 1)
+  g.fade(cutter, 1.66, 0.34, 1, 0, 'InSine', 1)
+  g.sound(T.cut, 'snip', 0.72)
+
+  -- An upright lighter meets the same exposed tip that was just cut.
+  local lx, ly = tipX - 22, tipY - 58
+  local light = g.set(g.node(stage, 'Lighter'), { position = { lx, ly }, alpha = 0 })
+  g.set(g.image(light, 'Brass lighter', 'lighter', 96, 82), { preserveAspect = true })
+  g.fade(light, 1.96, 0.20, 0, 1, 'OutSine')
+  g.move(light, 1.96, 0.34, arrival(lx, ly), { lx, ly - 8 }, 'OutCubic')
+  g.move(light, 2.42, 0.28, { lx, ly - 8 }, { lx, ly }, 'InOutSine')
+  local flame = g.set(g.image(light, 'Flame', 'flame', 22, 46),
+    { position = { 22, 49 }, preserveAspect = true, alpha = 0 })
+  g.fade(flame, T.ignite, 0.10, 0, 1, 'OutSine')
+  g.scale(flame, T.ignite, 0.13, { 0.45, 0.2 }, { 1, 1 }, 'OutBack')
+  g.loop(g.scale(flame, 2.43, 0.09, { 1, 1 }, { 0.84, 1.13 }, 'InOutSine', 1), 8, true)
+  g.fade(flame, 3.12, 0.16, 1, 0, 'InSine', 1)
+  g.move(light, 3.22, 0.37, { 0, 0 }, { ux * 52, uy * 52 - 12 }, 'InSine', 1)
+  g.fade(light, 3.22, 0.37, 1, 0, 'InSine', 1)
+  g.sound(T.ignite, 'ignite', 0.55)
+
+  local ember = g.set(g.shape(cigarRig, 'Burning foot', 'disc', 7, 42, { 0.92, 0.24, 0.055 }),
+    { position = { 185, 0 }, alpha = 0 })
+  g.fade(ember, 2.54, 0.36, 0, 0.85, 'OutSine')
+  g.loop(g.fade(ember, 2.95, 0.28, 1, 0.68, 'InOutSine', 1), 4, true)
+  for i = 0, 8 do
+    local a = i * 2.4
+    local coal = g.set(g.shape(cigarRig, 'Ember fleck ' .. i, 'disc', 2, 3, { 1, 0.69, 0.19 }),
+      { position = { 185 + math.sin(a) * 2, math.cos(a) * 17 }, alpha = 0 })
+    g.fade(coal, 2.60 + i * 0.025, 0.18, 0, 0.85, 'OutSine')
+  end
+
+  -- Smoke rises vertically in table space, independently of the cigar's angle.
+  for i = 0, 10 do
+    local start = T.smoke + i * 0.08
+    local life = math.min(1.30, T.finish - start)
+    local drift = (i % 3 - 1) * 6
+    local smoke = g.set(g.shape(stage, 'White smoke ' .. i, 'wisp', 23 + i % 3 * 6, 62,
+      { 0.96, 0.97, 1 }), { position = { tipX, tipY + 32 }, alpha = 0, scale = { 0.6, 0.6 } })
+    g.move(smoke, start, life, { tipX, tipY + 32 }, { tipX + dir * 14 + drift, tipY + 134 + i % 3 * 8 }, 'OutSine')
+    g.scale(smoke, start, life, { 0.6, 0.6 }, { 1.55, 1.45 }, 'OutSine')
+    g.rotate(smoke, start, life, -7, 10 + drift, 'InOutSine')
+    g.fade(smoke, start, 0.20, 0, 0.48, 'OutSine')
+    g.fade(smoke, start + 0.32, life - 0.32, 1, 0, 'InSine', 1)
+  end
+end
+
+return M

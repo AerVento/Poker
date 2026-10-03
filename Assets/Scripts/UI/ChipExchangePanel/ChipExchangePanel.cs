@@ -24,8 +24,8 @@ namespace Game.UI
         private double _requestDeadline;
 
         [Header("Balances")]
-        [SerializeField] private TextMeshProUGUI _dollars;
-        [SerializeField] private TextMeshProUGUI _chips;
+        [SerializeField] private BalanceView _dollars;
+        [SerializeField] private BalanceView _chips;
         [SerializeField] private TextMeshProUGUI _availableChips;
 
         [Header("Direction")]
@@ -242,8 +242,8 @@ namespace Game.UI
             _chipBalance = chips;
             _availableChipBalance = availableChips;
             _canExchange = canExchange;
-            _dollars.text = $"${dollars:N0}";
-            _chips.text = $"${chips:N0}";
+            _dollars.Present(dollars);
+            _chips.Present(chips);
             _availableChips.gameObject.SetActive(availableChips != chips);
             _availableChips.text = availableChips == chips
                 ? string.Empty

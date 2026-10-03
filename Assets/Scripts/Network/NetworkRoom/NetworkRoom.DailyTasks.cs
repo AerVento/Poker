@@ -15,14 +15,6 @@ namespace Game.Network
         public bool CanOpenDailyTasks => HasAuthenticatedClient && !_roomEntryPending;
         public bool CanClaimDailyTasks => CanOpenDailyTasks;
 
-        private TaskRewardAccess TaskAccess(PlayerAccount account) => null;
-        private DailyTaskResult ValidateTaskRewardPhase(PlayerAccount account) => DailyTaskResult.Success;
-
-        private void SynchronizeTaskRewardBalance(PlayerAccount account)
-        {
-            // Rewards are dollars and never alter a running hand's chip snapshots.
-        }
-
         private void RegisterDailyTaskServerHandlers()
         {
             InitializeConfiguredTasks();
@@ -34,7 +26,7 @@ namespace Game.Network
                 if (account != null && (response.Result == DailyTaskResult.Success || response.Result == DailyTaskResult.AlreadyDeleted))
                 {
                     if (_playerManager.TryGetSession(conn, out var session)) session.Account = account.Copy();
-                    SynchronizeTaskRewardBalance(account);
+                    SynchronizeWalletBalance(account);
                     conn.Send(new AccountBalanceSync { Chips = account.Chips, Dollars = account.Dollars });
                 }
                 conn.Send(response);
@@ -50,7 +42,7 @@ namespace Game.Network
                 {
                     if (_playerManager.TryGetSession(conn, out var session))
                         session.Account = account.Copy();
-                    SynchronizeTaskRewardBalance(account);
+                    SynchronizeWalletBalance(account);
                     conn.Send(new AccountBalanceSync { Chips = account.Chips, Dollars = account.Dollars });
                 }
                 conn.Send(response);
@@ -80,7 +72,7 @@ namespace Game.Network
                 RequestId = request.RequestId,
                 AccountId = account?.AccountId,
                 Result = result,
-                Snapshot = result == DailyTaskResult.Success ? ReadConfiguredTasks(account.AccountId, request, TaskAccess(account)) : default,
+                Snapshot = result == DailyTaskResult.Success ? ReadConfiguredTasks(account.AccountId, request) : default,
             };
         }
 
@@ -89,11 +81,10 @@ namespace Game.Network
         {
             updatedAccount = null;
             var result = ValidateDailyTaskRequest(conn, request.RequestId, out var account);
-            if (result == DailyTaskResult.Success) result = ValidateTaskRewardPhase(account);
             TaskClaimReceipt receipt = null;
             if (result == DailyTaskResult.Success)
             {
-                var outcome = ClaimConfiguredTask(account.AccountId, request, TaskAccess(account));
+                var outcome = ClaimConfiguredTask(account.AccountId, request);
                 result = outcome.Result;
                 receipt = outcome.Receipt;
                 updatedAccount = outcome.Account;
@@ -105,8 +96,7 @@ namespace Game.Network
                 Result = result,
                 InstanceId = receipt?.InstanceId ?? request.InstanceId,
                 CompletionOrdinal = receipt?.Ordinal ?? request.CompletionOrdinal,
-                GrantedItems = receipt?.Items?.Select(i => new TaskRewardItemState { ItemId = i.ItemId, Count = i.Count }).ToArray(),
-                GrantedAmount = result == DailyTaskResult.Success ? receipt?.Chip ?? 0 : 0,
+                GrantedReward = receipt?.Reward ?? Reward.Empty,
             };
         }
 
@@ -143,7 +133,6 @@ namespace Game.Network
         {
             updatedAccount = null;
             var result = ValidateDailyTaskRequest(conn, request.RequestId, out var account);
-            if (result == DailyTaskResult.Success) result = ValidateTaskRewardPhase(account);
             Game.Network.Tasks.TaskDeleteOutcome outcome = null;
             if (result == DailyTaskResult.Success)
             {
@@ -152,15 +141,14 @@ namespace Game.Network
                 {
                     RefreshTaskDay();
                     _configuredTasks.DrainFacts();
-                    outcome = request.Refresh ? _configuredTasks.Reroll(account.AccountId, request.InstanceId, TaskAccess(account)) :
-                        _configuredTasks.Delete(account.AccountId, request.InstanceId, TaskAccess(account));
+                    outcome = request.Refresh ? _configuredTasks.Reroll(account.AccountId, request.InstanceId) :
+                        _configuredTasks.Delete(account.AccountId, request.InstanceId);
                     result = outcome.Result;
                     updatedAccount = outcome.Account;
                 }
             }
             return new DailyTaskDeleteResponse { Refreshed = request.Refresh, RequestId = request.RequestId, AccountId = account?.AccountId,
-                InstanceId = request.InstanceId, Result = result, GrantedAmount = outcome?.AutoClaim?.Chip ?? 0,
-                GrantedItems = outcome?.AutoClaim?.Items?.Select(i => new TaskRewardItemState { ItemId = i.ItemId, Count = i.Count }).ToArray() };
+                InstanceId = request.InstanceId, Result = result, GrantedReward = outcome?.AutoClaim?.Reward ?? Reward.Empty };
         }
 
         public ulong RequestDailyTaskDelete(string instanceId, bool refresh = false)

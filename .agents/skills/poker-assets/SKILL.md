@@ -22,7 +22,7 @@ description: 在 Poker Unity 项目中决定新文件放在哪里、如何命名
 | 礼物图片 | `Assets/Art/Gifts/` |
 | 成就图标（按路径加载） | `Assets/Resources/UI/Achievements/` |
 | 音乐与音效 | `Assets/Audio/Music/`、`Assets/Audio/SFX/<分类>/` |
-| 运行时 SO（音频库、本地默认外观） | `Assets/Resources/SO/` 根目录；商品定义在 `Configs/Shop/*.json` |
+| 运行时 SO（音频库、本地默认外观） | `Assets/Resources/SO/` 根目录；物品与商品定义在 `Configs/Items/*.json`、`Configs/Shop/Shop.json` |
 | 远程资源入口 | `Assets/RemoteContent/<namecards/cardfaces/gifts>/`、`icons/Items.asset`、`previews/Cardfaces.asset`；物品图标在 `Assets/Sprites/Items/<分类>/`（文件名即配置中的图标名） |
 | 礼物 Lua 脚本 | `Assets/Scripts/UI/Gifts/Lua/<礼物>.lua.txt`，共享模块在 `Shared/` |
 | 生成原图、提示词、导出脚本、原始音频 | 仓库根目录 `ArtSources/`、`AudioSources/`，不进 `Assets` |
@@ -39,7 +39,7 @@ description: 在 Poker Unity 项目中决定新文件放在哪里、如何命名
 
 | 类型 | 写法 | 例子 |
 | --- | --- | --- |
-| 导入的原始美术与音频：`png`、`jpg`、`jpeg`、`wav`、`ogg`、`mp3`、`ttf`、`ttc` | 小写短横线 | `big-blind.png`、`abyss-wide.png`、`club-10.png`、`msyh.ttc` |
+| 导入的原始美术与音频：`png`、`jpg`、`jpeg`、`wav`、`ogg`、`mp3`、`ttf`、`ttc` | 小写短横线 | `champagne-bottle.png`、`abyss-wide.png`、`club-10.png`、`msyh.ttc` |
 | 音频 | 小写短横线，保留类型前缀 `bgm-`、`sfx-`、`gift-` | `bgm-game.ogg`、`sfx-all-in.wav`、`gift-egg-splat.wav` |
 | 脚本、prefab、SO、场景、材质、TMP 字体资产等 Unity 序列化资产 | 大驼峰 | `GamePanel.prefab`、`ShopLocalArt.asset`、`RoyalStraightFlush.asset`、`MsyhSdf.asset` |
 | 目录 | 保持大驼峰，不跟随文件规则 | `Sprites/UITheme/`、`Sprites/CardFaces/JewelCourt/` |

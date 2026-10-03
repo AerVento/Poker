@@ -5,7 +5,7 @@ namespace Game.SO
 {
     /// <summary>
     /// Art that stays in the page: the default namecard, the classic deck and its preview, the shared card face view,
-    /// and the gift menu icon shown until the remote item icons arrive. Every other product's art is remote content.
+    /// and the gift menu icon shown until the remote item icons arrive. Every other item's art is remote content.
     /// </summary>
     [CreateAssetMenu(fileName = "ShopLocalArt", menuName = "Poker/Shop/Local Art")]
     public sealed class ShopLocalArtSO : ScriptableObject
@@ -29,11 +29,11 @@ namespace Game.SO
 
         /// <summary>The remote item icon, or the local placeholder until it is downloaded.</summary>
         public static Sprite ItemIcon(ItemDefinition item) =>
-            (item != null ? Game.Content.ProductArt.ItemIcon(item.Icon) : null) ?? Instance?.DefaultItemIcon;
+            (item != null ? Game.Content.ItemArt.ItemIcon(item.Icon) : null) ?? Instance?.DefaultItemIcon;
 
         /// <summary>The card face preview; the classic one is local, others are remote and may still be missing.</summary>
         public static Sprite CardFacePreview(CardFaceDefinition face) =>
-            face == null ? null : face.IsDefault ? Instance?.ClassicPreview : Game.Content.ProductArt.CardFacePreview(face.Preview);
+            face == null ? null : face.IsDefault ? Instance?.ClassicPreview : Game.Content.ItemArt.CardFacePreview(face.Preview);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset() => _instance = null;

@@ -1,0 +1,172 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d72b9de73514de74ca35fb708edc6897, type: 3}
+  m_Name: Gensokyo
+  m_EditorClassIdentifier: 
+  _items:
+  - Suit: 0
+    Rank: 0
+    Front: {fileID: 21300000, guid: 88dd1138347859c47b6f00b7ce71bab7, type: 3}
+  - Suit: 0
+    Rank: 1
+    Front: {fileID: 21300000, guid: 1bcb89d8f92d3304a86032d1bafa1ec3, type: 3}
+  - Suit: 0
+    Rank: 2
+    Front: {fileID: 21300000, guid: cc9bfb550337cfc4196bc6742cebcac0, type: 3}
+  - Suit: 0
+    Rank: 3
+    Front: {fileID: 21300000, guid: 38b273751bd242047aa3f5d0626bf634, type: 3}
+  - Suit: 0
+    Rank: 4
+    Front: {fileID: 21300000, guid: 8b8fd917bbf7cee4097826f57f407d34, type: 3}
+  - Suit: 0
+    Rank: 5
+    Front: {fileID: 21300000, guid: e0469d5efc28fec40a23a5a05197e8b6, type: 3}
+  - Suit: 0
+    Rank: 6
+    Front: {fileID: 21300000, guid: 1cd68feb4c24a5845806466f4e57f340, type: 3}
+  - Suit: 0
+    Rank: 7
+    Front: {fileID: 21300000, guid: c5ff989c22467144389dc40452579a7a, type: 3}
+  - Suit: 0
+    Rank: 8
+    Front: {fileID: 21300000, guid: f65c7f4f680204441be3234eac8af44e, type: 3}
+  - Suit: 0
+    Rank: 9
+    Front: {fileID: 21300000, guid: 15ccda73a1163da478dfc45ce4dc016f, type: 3}
+  - Suit: 0
+    Rank: 10
+    Front: {fileID: 21300000, guid: 68bada0b00e32f3499fffbbe82c06ac9, type: 3}
+  - Suit: 0
+    Rank: 11
+    Front: {fileID: 21300000, guid: 72fec9831497b894faea541c099b3101, type: 3}
+  - Suit: 0
+    Rank: 12
+    Front: {fileID: 21300000, guid: 2cabebe21a007bc4bb1c8eabf5625862, type: 3}
+  - Suit: 1
+    Rank: 0
+    Front: {fileID: 21300000, guid: f49180b0a6009b94f938e07e27a8b26d, type: 3}
+  - Suit: 1
+    Rank: 1
+    Front: {fileID: 21300000, guid: 7d50e97a73a3d614fa8808f3ab8fe299, type: 3}
+  - Suit: 1
+    Rank: 2
+    Front: {fileID: 21300000, guid: 0b93903fa3fecf94f8c331b16566ed67, type: 3}
+  - Suit: 1
+    Rank: 3
+    Front: {fileID: 21300000, guid: ce2225b72cae4ae469e48de6d3043559, type: 3}
+  - Suit: 1
+    Rank: 4
+    Front: {fileID: 21300000, guid: 01fbe5ce462958f45bb7b88662311a56, type: 3}
+  - Suit: 1
+    Rank: 5
+    Front: {fileID: 21300000, guid: 41d88105712a6534e903156c95956f19, type: 3}
+  - Suit: 1
+    Rank: 6
+    Front: {fileID: 21300000, guid: 4ade11098f1045b42ae439506b025577, type: 3}
+  - Suit: 1
+    Rank: 7
+    Front: {fileID: 21300000, guid: b16a8625aca718445963eef892aecbca, type: 3}
+  - Suit: 1
+    Rank: 8
+    Front: {fileID: 21300000, guid: ad6d81f6ddba2e44ebc11068e47dfd52, type: 3}
+  - Suit: 1
+    Rank: 9
+    Front: {fileID: 21300000, guid: fb8fe119dc52dbb43b85aa21d2c003a2, type: 3}
+  - Suit: 1
+    Rank: 10
+    Front: {fileID: 21300000, guid: d0fd2ad415198574ea8c45fa815c782d, type: 3}
+  - Suit: 1
+    Rank: 11
+    Front: {fileID: 21300000, guid: a22a93ac426fd9a418672fe3d70313c7, type: 3}
+  - Suit: 1
+    Rank: 12
+    Front: {fileID: 21300000, guid: 6bfa9ec9787456f4a98e953dbd5b1848, type: 3}
+  - Suit: 2
+    Rank: 0
+    Front: {fileID: 21300000, guid: f77802b47a8cd874fbf4d82c31ea7e09, type: 3}
+  - Suit: 2
+    Rank: 1
+    Front: {fileID: 21300000, guid: b87a0f7eee87f7042871e1607991d3f3, type: 3}
+  - Suit: 2
+    Rank: 2
+    Front: {fileID: 21300000, guid: 8f04875a805869c44a0970d49fe2dd7f, type: 3}
+  - Suit: 2
+    Rank: 3
+    Front: {fileID: 21300000, guid: 0eb8e229339f68f4fb9e6991f2232c87, type: 3}
+  - Suit: 2
+    Rank: 4
+    Front: {fileID: 21300000, guid: 6ff7ace43b8f9c3458d6a9ac3da7fe13, type: 3}
+  - Suit: 2
+    Rank: 5
+    Front: {fileID: 21300000, guid: 3fb8af3898060634d818dacd0b5a6d64, type: 3}
+  - Suit: 2
+    Rank: 6
+    Front: {fileID: 21300000, guid: 8f842be6b73c1f34bbe7fd9b2da78bb9, type: 3}
+  - Suit: 2
+    Rank: 7
+    Front: {fileID: 21300000, guid: 52f4cdb6e8177644eaa54f576b859329, type: 3}
+  - Suit: 2
+    Rank: 8
+    Front: {fileID: 21300000, guid: eeadcaa2dde1d9d468b5ea0e003108c8, type: 3}
+  - Suit: 2
+    Rank: 9
+    Front: {fileID: 21300000, guid: cd5d90d70afae7a40853375923a4563f, type: 3}
+  - Suit: 2
+    Rank: 10
+    Front: {fileID: 21300000, guid: b5a5a1657edf7704ea640c940e86d254, type: 3}
+  - Suit: 2
+    Rank: 11
+    Front: {fileID: 21300000, guid: 03379a35ee05eb445a0e97947ea7f572, type: 3}
+  - Suit: 2
+    Rank: 12
+    Front: {fileID: 21300000, guid: 4025db5ca87bda34aa2531e03d79ecc6, type: 3}
+  - Suit: 3
+    Rank: 0
+    Front: {fileID: 21300000, guid: bf354b99153b5234fb51a3727ad6f497, type: 3}
+  - Suit: 3
+    Rank: 1
+    Front: {fileID: 21300000, guid: fd6ab1a47f243d848b86a6aedd83ac19, type: 3}
+  - Suit: 3
+    Rank: 2
+    Front: {fileID: 21300000, guid: d6e5483d9bc18e4479a15bac11aef33e, type: 3}
+  - Suit: 3
+    Rank: 3
+    Front: {fileID: 21300000, guid: f16ee94344a629343a1480a32d5e0dc5, type: 3}
+  - Suit: 3
+    Rank: 4
+    Front: {fileID: 21300000, guid: 0c2cdcd1bf75d0744be4c155da99dbb5, type: 3}
+  - Suit: 3
+    Rank: 5
+    Front: {fileID: 21300000, guid: 6409e103809f1384986c41e9bb1c3a39, type: 3}
+  - Suit: 3
+    Rank: 6
+    Front: {fileID: 21300000, guid: 013475044a044724cabb169a01ad5543, type: 3}
+  - Suit: 3
+    Rank: 7
+    Front: {fileID: 21300000, guid: 9f2cb3902296295459f066e5a7bb9641, type: 3}
+  - Suit: 3
+    Rank: 8
+    Front: {fileID: 21300000, guid: a0d967721b84c314f9dfcf0018a17e9f, type: 3}
+  - Suit: 3
+    Rank: 9
+    Front: {fileID: 21300000, guid: 955d8e9a21430344e9ca19bbdfa88af9, type: 3}
+  - Suit: 3
+    Rank: 10
+    Front: {fileID: 21300000, guid: 7563071628632b64f91468f2c3b97224, type: 3}
+  - Suit: 3
+    Rank: 11
+    Front: {fileID: 21300000, guid: 1ad12a4a2f6f8d545af94d7fc1a80bf1, type: 3}
+  - Suit: 3
+    Rank: 12
+    Front: {fileID: 21300000, guid: 0939e4878f5096647bb3846168fc86d0, type: 3}
+  _back: {fileID: 21300000, guid: bb1e0fb88e677b342b7e6df1741dbdeb, type: 3}

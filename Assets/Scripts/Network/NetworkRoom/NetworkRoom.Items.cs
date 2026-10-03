@@ -1,149 +1,284 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using Game.Network.Accounts;
 using Game.UI;
+using Game.UI.Gifts;
 using Mirror;
 using UnityEngine;
 
 namespace Game.Network
 {
+    // Purchase, equip and consume requests for every item kind. Each response carries the account's inventory snapshot.
     public partial class NetworkRoom
     {
-        private ItemPurchaseRuntime _itemRuntime;
-        public ItemPurchaseEvents ItemPurchaseEvents { get; } = new ItemPurchaseEvents(exception => Debug.LogException(exception));
+        private ItemRules _itemRules;
         private readonly Dictionary<NetworkConnectionToClient, (ulong Sequence, double Next)> _itemRequests =
             new Dictionary<NetworkConnectionToClient, (ulong Sequence, double Next)>();
         private ulong _nextItemRequest;
 
+        public bool CanOpenShop => HasAuthenticatedClient && !_roomEntryPending;
+        private IItemRepository ItemRepository => (authenticator as AccountAuthenticator)?.AccountRepository as IItemRepository;
+
         private void RegisterItemServerHandlers()
         {
             _itemRequests.Clear();
-            var definitions = ShopConfiguration.Server;
-            _itemRuntime = ContractPurchaseRegistration.CreateRuntime(ShopConfiguration.CreateItemCatalog(definitions),
-                definitions.Gifts.Select(gift => gift.ItemId));
+            _itemRules = new ItemRules(ServerConfiguration.Current.Catalog);
             WarnUnconfiguredInventory();
-            RegisterServerHandler<ItemShopRequest>((conn, request) =>
+            RegisterServerHandler<ItemPurchaseRequest>((conn, request) =>
+                SendItemResponse(conn, ProcessItemPurchase(conn, request)), requireAuthentication: true);
+            RegisterServerHandler<ItemEquipRequest>((conn, request) =>
+                SendItemResponse(conn, ProcessItemEquip(conn, request)), requireAuthentication: true);
+            RegisterServerHandler<ItemConsumeRequest>((conn, request) =>
             {
-                var response = ProcessItemRequest(conn, request);
-                if (response.HasSnapshot) conn.Send(new AccountBalanceSync { Chips = response.Chips, Dollars = response.Dollars });
-                conn.Send(response);
-                if (request.Action != ItemShopAction.Read && response.HasSnapshot)
-                    conn.Send(ReadCollection(conn));
+                var response = ProcessItemConsume(conn, request, out var playback, out var room);
+                SendItemResponse(conn, response);
+                if (response.IsNewlyApplied && playback.Commands != null && room != null)
+                    foreach (var memberName in room.MemberNames.Distinct(StringComparer.Ordinal))
+                        _playerManager.GetConnection(memberName)?.Send(playback);
             }, requireAuthentication: true);
         }
 
-        internal ItemShopResponse ProcessItemRequest(NetworkConnectionToClient conn, ItemShopRequest request)
+        private void SendItemResponse(NetworkConnectionToClient conn, ItemActionResponse response)
         {
-            var response = new ItemShopResponse
-            {
-                RequestId = request.RequestId, Result = ItemShopResult.Unavailable
-            };
-            if (_serverStorageFailed || conn == null || !conn.isAuthenticated ||
-                !_playerManager.TryGetSession(conn, out var session)) return response;
+            if (response.HasSnapshot)
+                conn.Send(new AccountBalanceSync { Chips = response.Snapshot.Chips, Dollars = response.Snapshot.Dollars });
+            conn.Send(response);
+            if (response.Result == ItemActionResult.Success && response.HasSnapshot)
+                conn.Send(ReadCollection(conn));
+        }
+
+        // Shared request gate: authenticated session, increasing request IDs, bounded strings and a per-connection rate.
+        private bool BeginItemRequest(NetworkConnectionToClient conn, ulong requestId, string operationId, string itemId,
+            Dictionary<NetworkConnectionToClient, (ulong Sequence, double Next)> requests, double interval,
+            ref ItemActionResponse response, out PlayerSession session)
+        {
+            session = null;
+            response.Result = ItemActionResult.Unavailable;
+            if (_serverStorageFailed || conn == null || !conn.isAuthenticated || !_playerManager.TryGetSession(conn, out session))
+                return false;
             response.AccountId = session.Account.AccountId;
-            _itemRequests.TryGetValue(conn, out var previous);
-            if (request.RequestId == 0 || request.RequestId <= previous.Sequence ||
-                !Enum.IsDefined(typeof(ItemShopAction), request.Action) ||
-                (request.CatalogRevision?.Length ?? 0) > 64 || (request.OperationId?.Length ?? 0) > 32 ||
-                (request.ItemId?.Length ?? 0) > 48)
+            requests.TryGetValue(conn, out var previous);
+            if (requestId == 0 || requestId <= previous.Sequence || (operationId?.Length ?? 0) > 32 ||
+                (itemId?.Length ?? 0) > GameCatalog.MaxIdLength)
             {
-                response.Result = ItemShopResult.InvalidRequest;
-                return response;
+                response.Result = ItemActionResult.InvalidRequest;
+                return false;
             }
-            response.OperationId = request.OperationId;
             var now = Time.realtimeSinceStartupAsDouble;
-            _itemRequests[conn] = (request.RequestId, previous.Next);
+            requests[conn] = (requestId, previous.Next);
             if (now < previous.Next)
             {
-                response.Result = ItemShopResult.RateLimited;
+                response.Result = ItemActionResult.RateLimited;
+                return false;
+            }
+            requests[conn] = (requestId, now + interval);
+            if (ItemRepository == null || _itemRules == null) return false;
+            UpdateWalletHandAccess(session.Account);
+            return true;
+        }
+
+        internal ItemActionResponse ProcessItemPurchase(NetworkConnectionToClient conn, ItemPurchaseRequest request)
+        {
+            var response = new ItemActionResponse { RequestId = request.RequestId, OperationId = request.OperationId, Action = ItemAction.Purchase };
+            if (!BeginItemRequest(conn, request.RequestId, request.OperationId, request.ItemId, _itemRequests, 0.2d, ref response, out var session))
+                return response;
+            if ((request.CatalogRevision?.Length ?? 0) > 64)
+            {
+                response.Result = ItemActionResult.InvalidRequest;
                 return response;
             }
-            _itemRequests[conn] = (request.RequestId, now + 0.2d);
-            var repository = (authenticator as AccountAuthenticator)?.AccountRepository as IItemRepository;
-            if (repository == null || _itemRuntime == null) return response;
-            bool inRoom = _roomManager.WhichRoom(session.Account.UserName, out _) || session.Account.LastRoomId.HasValue;
-            UpdateWalletHandAccess(session.Account);
-            var execution = request.Action == ItemShopAction.Read ? new ItemChangeExecution(ItemShopResult.Success) :
-                new ItemShopService(repository, _itemRuntime, ItemPurchaseEvents).ChangeItem(response.AccountId, request.OperationId,
-                    request.Action, request.ItemId, request.Quantity, request.QuotedPrice, request.CatalogRevision, inRoom, request.AuthorizeChipConversion, request.AuthorizedShortfall);
+            var execution = ItemRepository.PurchaseItem(response.AccountId,
+                request.OperationId, request.ItemId, request.Quantity, request.QuotedPrice, request.CatalogRevision, _itemRules,
+                request.AuthorizeChipConversion, request.AuthorizedShortfall);
             response.Result = execution.Result;
-            if (execution.IsNewlyApplied)
+            response.IsNewlyApplied = execution.IsNewlyApplied;
+            if (execution.Outcome != null)
+            {
+                response.AppliedRewardDollars = execution.Outcome.RewardChips;
+                response.HasFailedCondition = execution.Outcome.FailedCondition != null;
+                if (response.HasFailedCondition) response.FailedCondition = ProjectCondition(execution.Outcome.FailedCondition);
+            }
+            if (response.Result == ItemActionResult.ConversionRequired)
+                response.RequiredConversion = Shortfall(response.AccountId, (ulong)(_itemRules.Find(request.ItemId)?.Price ?? 0) * request.Quantity);
+            return CompleteItemResponse(response, session, execution.IsNewlyApplied);
+        }
+
+        internal ItemActionResponse ProcessItemEquip(NetworkConnectionToClient conn, ItemEquipRequest request)
+        {
+            var response = new ItemActionResponse { RequestId = request.RequestId, OperationId = request.OperationId, Action = ItemAction.Equip };
+            if (!BeginItemRequest(conn, request.RequestId, request.OperationId, request.ItemId, _itemRequests, 0.2d, ref response, out var session))
+                return response;
+            response.Result = InRoom(session) ? ItemActionResult.OutsideRoomRequired :
+                ItemRepository.EquipItem(response.AccountId, request.OperationId, request.ItemId, _itemRules);
+            return CompleteItemResponse(response, session, false);
+        }
+
+        internal ItemActionResponse ProcessItemConsume(NetworkConnectionToClient conn, ItemConsumeRequest request,
+            out GiftPlaybackBatchMessage playback, out RoomInfo room)
+        {
+            playback = default;
+            room = null;
+            var response = new ItemActionResponse
+            {
+                RequestId = request.RequestId, OperationId = request.OperationId,
+                Action = request.Method == ItemConsumeMethod.Give ? ItemAction.Give : ItemAction.Use,
+            };
+            // Gifts are sent in quick bursts, so giving has its own, shorter request interval.
+            var requests = request.Method == ItemConsumeMethod.Give ? _giftRequests : _itemRequests;
+            if (!BeginItemRequest(conn, request.RequestId, request.OperationId, null, requests,
+                    request.Method == ItemConsumeMethod.Give ? 0.05d : 0.2d, ref response, out var session))
+                return response;
+            if (!Enum.IsDefined(typeof(ItemConsumeMethod), request.Method) || (request.CatalogRevision?.Length ?? 0) > 64 ||
+                request.Commands == null || request.Commands.Length == 0 || request.Commands.Length > GiftBatchLimits.MaxCommands ||
+                request.Commands.Any(c => (c.ItemId?.Length ?? 0) > GameCatalog.MaxIdLength))
+            {
+                response.Result = ItemActionResult.InvalidRequest;
+                return response;
+            }
+            var commands = request.Commands.Select(c => new ItemConsumeCommand(c.ItemId, c.Quantity,
+                request.Method == ItemConsumeMethod.Give ? c.TargetSeatIndex : -1)).ToArray();
+            var location = CurrentLocation(session, out room, out var senderSeat);
+            if (request.Method == ItemConsumeMethod.Give)
+            {
+                var check = ValidateGive(commands, room, senderSeat);
+                if (check != ItemActionResult.Success)
+                {
+                    response.Result = check;
+                    return CompleteItemResponse(response, session, false);
+                }
+            }
+            var execution = ItemRepository.ConsumeItems(response.AccountId, request.OperationId, request.Method, commands,
+                request.CatalogRevision, _itemRules, location, request.AuthorizeChipConversion, request.AuthorizedShortfall);
+            response.Result = execution.Result;
+            response.IsNewlyApplied = execution.IsNewlyApplied;
+            if (response.Result == ItemActionResult.ConversionRequired && request.Method == ItemConsumeMethod.Use)
+                response.RequiredConversion = Shortfall(response.AccountId, _itemRules.Find(commands[0].ItemId)?.UsePolicy?.Cost ?? 0);
+            if (request.Method == ItemConsumeMethod.Give && execution.Result == ItemActionResult.Success && execution.IsNewlyApplied)
+                playback = new GiftPlaybackBatchMessage
+                {
+                    EventId = request.OperationId,
+                    StartAtNetworkTime = NetworkTime.time + 0.1d,
+                    Commands = execution.Applied.Select(command => new GiftPlaybackCommandMessage
+                    {
+                        ItemId = command.ItemId, SenderSeatIndex = senderSeat.SeatIndex,
+                        TargetSeatIndex = command.TargetSeatIndex, Quantity = command.Quantity,
+                    }).ToArray(),
+                };
+            return CompleteItemResponse(response, session, execution.IsNewlyApplied);
+        }
+
+        private uint Shortfall(string accountId, ulong cost)
+        {
+            var current = WalletRepository?.ReadWallet(accountId)?.Account;
+            return current != null && cost > current.Dollars && cost - current.Dollars <= uint.MaxValue
+                ? (uint)(cost - current.Dollars) : 0;
+        }
+
+        private ItemActionResponse CompleteItemResponse(ItemActionResponse response, PlayerSession session, bool changedWallet)
+        {
+            if (changedWallet)
             {
                 var updated = WalletRepository?.ReadWallet(response.AccountId)?.Account;
                 if (updated != null) SynchronizeWalletBalance(updated);
             }
-            if (response.Result == ItemShopResult.ConversionRequired)
-            {
-                var current = WalletRepository?.ReadWallet(response.AccountId)?.Account;
-                var product = _itemRuntime.Find(request.ItemId);
-                var cost = request.Action == ItemShopAction.Purchase ? (ulong)(product?.Price ?? 0) * request.Quantity : product?.UsePolicy?.Cost ?? 0;
-                if (current != null && cost > current.Dollars && cost - current.Dollars <= uint.MaxValue)
-                    response.RequiredConversion = (uint)(cost - current.Dollars);
-            }
-            response.IsNewlyApplied = execution.IsNewlyApplied;
-            response.HasOutcome = execution.Outcome != null;
-            if (execution.Outcome != null)
-            {
-                response.AppliedRewardChips = execution.Outcome.RewardChips;
-                response.HasFailedCondition = execution.Outcome.FailedCondition != null;
-                if (response.HasFailedCondition) response.FailedCondition = ProjectCondition(execution.Outcome.FailedCondition);
-                response.Effects = execution.Outcome.Effects.Select(e => new ItemEffectOutcomeMessage
-                {
-                    EffectIndex = e.EffectIndex, CommandIndex = e.CommandIndex, Kind = e.Kind, Version = e.Version,
-                    Amount = e.Amount, BalanceBefore = e.BalanceBefore, BalanceAfter = e.BalanceAfter
-                }).ToArray();
-            }
-            return PopulateItems(response, repository, session, inRoom);
+            response.HasSnapshot = TryReadInventory(session, out response.Snapshot);
+            return response;
         }
 
-        private ItemShopResponse PopulateItems(ItemShopResponse response, IItemRepository repository, PlayerSession session, bool inRoom)
+        private bool InRoom(PlayerSession session) =>
+            _roomManager.WhichRoom(session.Account.UserName, out _) || session.Account.LastRoomId.HasValue;
+
+        private ItemUseLocation CurrentLocation(PlayerSession session, out RoomInfo room, out RoomSeatInfo seat)
         {
-            var snapshot = repository.ReadItems(response.AccountId);
-            if (snapshot == null) return response;
-            session.Account = snapshot.Account.Copy();
-            response.HasSnapshot = true;
-            response.Chips = snapshot.Account.Chips;
-            response.Dollars = snapshot.Account.Dollars;
-            var wallet = ReadCurrentWallet(snapshot.Account);
-            response.AvailableChips = wallet?.AvailableChips ?? 0;
-            response.CanExchange = wallet?.CanExchange ?? false;
-            response.Items = snapshot.Items.Select(p => new ItemStackMessage { ItemId = p.ItemId, Quantity = p.Quantity }).ToArray();
-            response.CanAct = snapshot.CanAct;
-            response.CatalogRevision = _itemRuntime.Revision;
-            response.Offers = _itemRuntime.Products.Select(p =>
+            room = null;
+            seat = null;
+            if (_roomManager.WhichRoom(session.Account.UserName, out var roomId))
             {
-                var owned = snapshot.Items.FirstOrDefault(stack => stack.ItemId == p.Id)?.Quantity ?? 0;
-                var buyingBalance = response.Dollars;
-                if (response.CanExchange && p.Price > buyingBalance && p.Price - buyingBalance <= response.AvailableChips)
-                    buyingBalance = p.Price;
-                var useBalance = response.Dollars;
-                var useCost = p.UsePolicy?.Cost ?? 0;
-                if (response.CanExchange && useCost > useBalance && useCost - useBalance <= response.AvailableChips)
-                    useBalance = useCost;
-                var reason = ItemPurchaseRuntime.CheckPurchase(new PurchaseContext(response.AccountId, buyingBalance, p, owned, snapshot.Account.TotalAssets),
-                    response.CanAct, out _);
-                return new ItemOfferMessage
+                room = _roomManager.FindRoom(roomId);
+                seat = room?.FindSeat(session.Account.UserName);
+                return room != null && !room.IsWaiting ? ItemUseLocation.StartedRoom : ItemUseLocation.WaitingRoom;
+            }
+            return session.Account.LastRoomId.HasValue ? ItemUseLocation.WaitingRoom : ItemUseLocation.OutsideRoom;
+        }
+
+        /// <summary>Reads the authoritative inventory and the per-account verdict on every offer and owned item.</summary>
+        internal bool TryReadInventory(PlayerSession session, out InventorySnapshotMessage snapshot)
+        {
+            snapshot = default;
+            var inventory = ItemRepository?.ReadItems(session.Account.AccountId);
+            if (inventory == null || _itemRules == null) return false;
+            var account = inventory.Account;
+            session.Account = account.Copy();
+            var wallet = ReadCurrentWallet(account);
+            var availableChips = wallet?.AvailableChips ?? 0;
+            var canExchange = wallet?.CanExchange ?? false;
+            var location = CurrentLocation(session, out _, out _);
+            var owned = inventory.Items.ToDictionary(stack => stack.ItemId, stack => stack.Quantity, StringComparer.Ordinal);
+            // Eligibility counts chips that could be exchanged, so the UI can offer a conversion instead of refusing.
+            uint Power(ulong cost) => canExchange && cost > account.Dollars && cost - account.Dollars <= availableChips
+                ? (uint)Math.Min(uint.MaxValue, cost) : account.Dollars;
+            snapshot = new InventorySnapshotMessage
+            {
+                Dollars = account.Dollars,
+                Chips = account.Chips,
+                AvailableChips = availableChips,
+                CanExchange = canExchange,
+                Items = inventory.Items.Select(stack => new ItemStackMessage { ItemId = stack.ItemId, Quantity = stack.Quantity }).ToArray(),
+                EquippedNamecard = account.EquippedNamecardId ?? string.Empty,
+                EquippedCardFace = account.EquippedCardFaceId ?? string.Empty,
+                CanAct = true,
+                CanEquip = location == ItemUseLocation.OutsideRoom,
+                CatalogRevision = _itemRules.Revision,
+                Offers = _itemRules.Offers.Where(rule => rule.Listed).Select(rule =>
                 {
-                    ItemId = p.Id, Price = p.Price, Listed = p.Listed, MaxQuantity = p.MaxQuantity,
-                    RewardChips = p.Policy.RewardChips, PurchaseConditions = p.Policy.ConditionDescriptors.Select(ProjectCondition).ToArray(),
-                    CanPurchase = reason == ItemShopResult.Success, BlockReason = reason,
-                    CanUse = ItemPurchaseRuntime.CheckUse(new ItemUseContext(response.AccountId, useBalance, p, owned),
-                        !inRoom) == ItemShopResult.Success,
-                    UseCost = p.UsePolicy?.Cost ?? 0
-                };
-            }).ToArray();
-            return response;
+                    owned.TryGetValue(rule.Id, out var quantity);
+                    var reason = ItemRules.CheckPurchase(new PurchaseContext(account.AccountId, Power(rule.Price), rule, quantity,
+                        account.TotalAssets), 1, out _);
+                    return new ItemOfferStateMessage { ItemId = rule.Id, CanPurchase = reason == ItemActionResult.Success, BlockReason = reason };
+                }).ToArray(),
+                Usable = inventory.Items.Select(stack => _itemRules.Find(stack.ItemId)).Where(rule => rule?.UsePolicy != null &&
+                    ItemRules.CheckUse(new ItemUseContext(account.AccountId, Power(rule.UsePolicy.Cost), rule, owned[rule.Id]), location) ==
+                    ItemActionResult.Success).Select(rule => rule.Id).ToArray(),
+            };
+            return true;
         }
 
         private static PurchaseConditionMessage ProjectCondition(PurchaseConditionDescriptor condition)
             => new PurchaseConditionMessage { Kind = condition.Kind, Comparison = condition.Comparison, Threshold = condition.Threshold, Version = condition.Version };
 
-        public ulong RequestItems(ItemShopRequest request)
+        // Items can only be delisted, never removed while players own them; report owned IDs that are gone.
+        private void WarnUnconfiguredInventory()
+        {
+            if (!(authenticator is AccountAuthenticator accounts) || !(accounts.AccountRepository is IStoredItemRepository repository))
+                return;
+            var missing = repository.ReadStoredItemIds().Where(id => _itemRules.Find(id) == null).ToArray();
+            if (missing.Length > 0)
+                Framework.Log.Log.WriteWarn("Players own items missing from Configs/Items/Items.json; restore them: " + string.Join(", ", missing));
+        }
+
+        public ulong RequestItemPurchase(ItemPurchaseRequest request)
         {
             if (!CanOpenShop) return 0;
-            if (request.Action != ItemShopAction.Read) InvalidateCollection();
+            InvalidateCollection();
+            request.RequestId = ++_nextItemRequest;
+            NetworkClient.Send(request);
+            return request.RequestId;
+        }
+
+        public ulong RequestItemEquip(ItemEquipRequest request)
+        {
+            if (!CanOpenShop) return 0;
+            InvalidateCollection();
+            request.RequestId = ++_nextItemRequest;
+            NetworkClient.Send(request);
+            return request.RequestId;
+        }
+
+        public ulong RequestItemConsume(ItemConsumeRequest request)
+        {
+            if (!HasAuthenticatedClient || request.Commands == null || request.Commands.Length == 0) return 0;
+            InvalidateCollection();
             request.RequestId = ++_nextItemRequest;
             NetworkClient.Send(request);
             return request.RequestId;
@@ -151,10 +286,12 @@ namespace Game.Network
 
         private void RegisterItemClientHandlers()
         {
-            NetworkClient.RegisterHandler<ItemShopResponse>(response =>
+            NetworkClient.RegisterHandler<ItemActionResponse>(response =>
             {
-                if (CanOpenShop && response.AccountId == GameController.Instance.State.AccountId)
-                    ShopPanel.Instance?.ReceiveItems(response);
+                if (!HasAuthenticatedClient || response.AccountId != GameController.Instance.State.AccountId) return;
+                if (response.HasSnapshot) CardFaceAppearance.Equip(response.Snapshot.EquippedCardFace);
+                if (response.Action == ItemAction.Give) GiftInteractionController.EnsureActive()?.ReceiveGiveResponse(response);
+                else if (CanOpenShop) ShopPanel.Instance?.ReceiveItemAction(response);
             });
         }
     }

@@ -60,3 +60,18 @@ The original recording is preserved in AudioSources/Gifts/SwissBankNote/.
 Edits: light noise reduction, EQ, compression, level adjustment and fades.
 Recipe: Tools/Audio/build_bank_note_audio.py; parameters and source hash:
 AudioSources/Gifts/SwissBankNote/manifest.json.
+
+Slot-machine lever, reel-stop, cannon, small/medium/grand prize and lose cues,
+and bgm-slot-spin are original local synthesis without external samples.
+Recipe: Tools/Audio/build_slot_audio.py.
+Manifest: AudioSources/SlotMachine/manifest.json.
+
+bgm-slot-lounge is an original 132 BPM, 16-bar stereo party loop, synthesized
+locally from brass, bass, bell, clap and disco percussion voices; no external
+samples. Note and room tails wrap across the loop boundary.
+Recipe: Tools/Audio/build_slot_music.py.
+Parameters: AudioSources/SlotMachine/lounge-music.json.
+
+gift-cigar-snip and gift-cigar-ignite are original local foley synthesis,
+using deterministic noise and oscillators without external samples.
+Recipe: AudioSources/Gifts/build_cigar_foley.py.

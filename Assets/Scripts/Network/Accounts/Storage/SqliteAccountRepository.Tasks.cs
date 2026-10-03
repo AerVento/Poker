@@ -160,70 +160,14 @@ WHERE r.event_id IS NULL ORDER BY f.sequence LIMIT $limit;";
                 Account = account; Document = document; AlreadyConsumed = consumed;
                 HasActiveHand = IsAccountInActiveHand(connection, transaction, account.AccountId);
             }
-            private TaskRewardAccess _rewardAccess;
-            public override DailyTaskResult RewardBlockReason => _rewardAccess != null ? DailyTaskResult.Success : base.RewardBlockReason;
-
-            public override void AuthorizeRewardAccess(TaskRewardAccess access)
-            {
-                _rewardAccess = null;
-                if (access == null || access.AccountId != Account.AccountId || Account.LastRoomId != access.RoomId) return;
-                using var check = _connection.CreateCommand();
-                check.Transaction = _transaction;
-                check.CommandText = @"SELECT hand.hand_id,hand.accounting_mode,hand.room_id FROM poker_hands hand
-INNER JOIN poker_hand_participants participant ON participant.hand_id=hand.hand_id
-WHERE participant.account_id=$account AND hand.status='Active';";
-                check.Parameters.AddWithValue("$account", Account.AccountId);
-                using var reader = check.ExecuteReader();
-                if (reader.Read())
-                {
-                    if (reader.GetString(0) != access.HandId || reader.GetInt32(1) != 1 || reader.GetInt32(2) != access.RoomId) return;
-                }
-                else if (access.HandId != null) return;
-                _rewardAccess = access;
-            }
-
             public override DailyTaskResult Grant(Reward reward, IReadOnlyDictionary<string, uint> limits, string claimKey)
             {
-                if (RewardBlockReason != DailyTaskResult.Success) return RewardBlockReason;
-                if ((ulong)Account.Dollars + reward.Chip > uint.MaxValue) return DailyTaskResult.BalanceLimit;
-                var owned = ReadItemStacks(_connection, _transaction, Account.AccountId).ToDictionary(i => i.ItemId, i => i.Quantity);
-                foreach (var item in reward.Items)
-                {
-                    owned.TryGetValue(item.ItemId, out var count);
-                    if (!limits.TryGetValue(item.ItemId, out var maximum) || (ulong)count + item.Quantity > maximum)
-                        return DailyTaskResult.ItemLimit;
-                }
-                // Reward.Chip is retained in old JSON snapshots; redemptions now always credit dollars.
-                var before = Account.Dollars;
-                var after = checked(before + reward.Chip);
-                using (var update = _connection.CreateCommand())
-                {
-                    update.Transaction = _transaction;
-                    update.CommandText = @"UPDATE player_accounts SET dollars=$chips,version=version+1,updated_at_utc=$now
-WHERE account_id=$account AND version=$version;";
-                    update.Parameters.AddWithValue("$chips", (long)after);
-                    update.Parameters.AddWithValue("$now", FormatDateTime(DateTime.UtcNow));
-                    update.Parameters.AddWithValue("$account", Account.AccountId);
-                    update.Parameters.AddWithValue("$version", Account.Version);
-                    if (update.ExecuteNonQuery() != 1) throw new InvalidOperationException("Task reward account version changed.");
-                }
-                foreach (var item in reward.Items)
-                {
-                    using var update = _connection.CreateCommand();
-                    update.Transaction = _transaction;
-                    update.CommandText = @"INSERT INTO account_items(account_id,item_id,quantity) VALUES($account,$item,$count)
-ON CONFLICT(account_id,item_id) DO UPDATE SET quantity=quantity+excluded.quantity;";
-                    update.Parameters.AddWithValue("$account", Account.AccountId);
-                    update.Parameters.AddWithValue("$item", item.ItemId);
-                    update.Parameters.AddWithValue("$count", (long)item.Quantity);
-                    update.ExecuteNonQuery();
-                }
-                if (reward.Items.Count > 0)
-                    RecordInventoryChanged(_connection, _transaction, Account.AccountId, claimKey, "task-reward", DateTime.UtcNow);
-                InsertDollarLedger(_connection, _transaction, Guid.NewGuid().ToString("N"), claimKey, Account.AccountId,
-                    "TaskReward", reward.Chip, before, after, _rewardAccess?.RoomId, _rewardAccess?.HandId, DateTime.UtcNow);
-                Account.Dollars = after;
-                Account.Version++;
+                var result = ApplyReward(_connection, _transaction, Account, reward, limits, claimKey,
+                    "TaskReward", out var granted);
+                if (result != RewardGrantStatus.Success)
+                    return result == RewardGrantStatus.ActiveHand ? DailyTaskResult.ActiveHand :
+                        result == RewardGrantStatus.BalanceLimit ? DailyTaskResult.BalanceLimit : DailyTaskResult.ItemLimit;
+                GrantedReward = granted;
                 Changed = true;
                 return DailyTaskResult.Success;
             }

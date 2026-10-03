@@ -23,9 +23,9 @@ namespace Game.UI.Gifts
         private const float CaptureWindowSeconds = 0.2f;
         private const float MaximumSimultaneousEffects = 10f;
         private readonly Dictionary<string, uint> _owned = new Dictionary<string, uint>(StringComparer.Ordinal);
-        private readonly List<GiftUseCommandMessage> _pending = new List<GiftUseCommandMessage>();
-        private readonly Dictionary<string, GiftUseCommandMessage[]> _inFlight =
-            new Dictionary<string, GiftUseCommandMessage[]>(StringComparer.Ordinal);
+        private readonly List<ItemConsumeCommandMessage> _pending = new List<ItemConsumeCommandMessage>();
+        private readonly Dictionary<string, ItemConsumeCommandMessage[]> _inFlight =
+            new Dictionary<string, ItemConsumeCommandMessage[]>(StringComparer.Ordinal);
         private readonly Queue<PlaybackUnit> _playback = new Queue<PlaybackUnit>();
         private readonly HashSet<string> _seenEvents = new HashSet<string>(StringComparer.Ordinal);
         private readonly Queue<string> _seenEventOrder = new Queue<string>();
@@ -36,7 +36,16 @@ namespace Game.UI.Gifts
         private uint _dollars;
         private uint _availableChips;
         private bool _canExchange;
-        private readonly Dictionary<string, GiftOfferMessage> _offers = new Dictionary<string, GiftOfferMessage>(StringComparer.Ordinal);
+        private readonly Dictionary<string, GiftOffer> _offers = new Dictionary<string, GiftOffer>(StringComparer.Ordinal);
+        private NetworkRoom _inventoryRoom;
+
+        // A gift's shop price, and whether the server would let the player buy it right now.
+        private readonly struct GiftOffer
+        {
+            public uint Price { get; }
+            public bool CanPurchase { get; }
+            public GiftOffer(uint price, bool canPurchase) { Price = price; CanPurchase = canPurchase; }
+        }
         private readonly List<GiftDefinition> _gifts = new List<GiftDefinition>();
         private static string _selectedGiftId;
         private int _selectedIndex;
@@ -73,7 +82,6 @@ namespace Game.UI.Gifts
         private bool _playingQueue;
         private int _playbackVersion;
         private int _targetSeat = -1;
-        private ulong _lastInventoryRequest;
         private readonly List<GiftEffect> _activeEffects = new List<GiftEffect>();
 
         public static GiftInteractionController Active { get; private set; }
@@ -112,12 +120,12 @@ namespace Game.UI.Gifts
             _menuBlockerButton = view.MenuBlockerButton;
         }
 
-        // The gift menu lists Configs/Shop/Gifts.json in order, as received from the server.
+        // The gift menu lists Configs/Items/Gifts.json in order, as received from the server.
         private void ReloadGifts()
         {
             _gifts.Clear();
-            foreach (var gift in ClientShopCatalog.Current?.Gifts ?? Array.Empty<GiftDefinition>())
-                if (!string.IsNullOrWhiteSpace(gift.Effect) && ClientShopCatalog.FindItem(gift.ItemId) != null) _gifts.Add(gift);
+            foreach (var gift in ClientCatalog.Current?.Gifts ?? Array.Empty<GiftDefinition>())
+                if (!string.IsNullOrWhiteSpace(gift.Effect) && ClientCatalog.FindItem(gift.ItemId) != null) _gifts.Add(gift);
             _selectedIndex = Mathf.Max(0, _gifts.FindIndex(g => g.ItemId == _selectedGiftId));
         }
 
@@ -130,23 +138,27 @@ namespace Game.UI.Gifts
         private void OnEnable()
         {
             Active = this;
-            ClientShopCatalog.Changed += OnCatalogChanged;
-            Game.Content.ProductArt.Changed += RefreshMenu;
+            ClientCatalog.Changed += OnCatalogChanged;
+            Game.Content.ItemArt.Changed += RefreshMenu;
             _menuBlockerButton.onClick.AddListener(CloseMenu);
             _giftButton.onClick.AddListener(QueueSelectedGift);
             _view.Previous.onClick.AddListener(PreviousGift);
             _view.Next.onClick.AddListener(NextGift);
+            _inventoryRoom = Mirror.NetworkManager.singleton as NetworkRoom;
+            if (_inventoryRoom != null) _inventoryRoom.CollectionReceived += ReceiveInventory;
             CloseMenu();
         }
 
         private void OnDisable()
         {
-            ClientShopCatalog.Changed -= OnCatalogChanged;
-            Game.Content.ProductArt.Changed -= RefreshMenu;
+            ClientCatalog.Changed -= OnCatalogChanged;
+            Game.Content.ItemArt.Changed -= RefreshMenu;
             _menuBlockerButton.onClick.RemoveListener(CloseMenu);
             _giftButton.onClick.RemoveListener(QueueSelectedGift);
             _view.Previous.onClick.RemoveListener(PreviousGift);
             _view.Next.onClick.RemoveListener(NextGift);
+            if (_inventoryRoom != null) _inventoryRoom.CollectionReceived -= ReceiveInventory;
+            _inventoryRoom = null;
             if (Active == this)
                 Active = null;
             StopAllCoroutines();
@@ -195,30 +207,26 @@ namespace Game.UI.Gifts
             RefreshMenu();
         }
 
-        public void ReceiveInventory(GiftInventoryResponse response)
+        // The gift menu reads the shared inventory snapshot; giving is an item consume request with the Give method.
+        private void ReceiveInventory(InventoryResponse response)
         {
-            if (response.RequestId < _lastInventoryRequest)
-                return;
-            _lastInventoryRequest = response.RequestId;
-            if (response.Result == GiftUseResult.Success)
+            if (!isActiveAndEnabled) return;
+            if (response.Success)
             {
-                ApplyInventory(response.Items, response.Dollars, response.Offers, response.CanSend, response.AvailableChips, response.CanExchange);
+                ApplyInventory(response.Snapshot);
                 _feedback.text = string.Empty;
             }
             else if (_owned.Count == 0)
-                _feedback.text = GiftResultText(response.Result);
+                _feedback.text = "礼物服务暂时不可用";
         }
 
-        public void ReceiveUseResponse(GiftUseBatchResponse response)
+        public void ReceiveGiveResponse(ItemActionResponse response)
         {
             if (!string.IsNullOrEmpty(response.OperationId))
                 _inFlight.Remove(response.OperationId);
-            if (response.HasSnapshot && response.RequestId >= _lastInventoryRequest)
-            {
-                _lastInventoryRequest = response.RequestId;
-                ApplyInventory(response.Items, response.Dollars, response.Offers, response.CanSend, response.AvailableChips, response.CanExchange);
-            }
-            _feedback.text = response.Result == GiftUseResult.Success
+            if (response.HasSnapshot)
+                ApplyInventory(response.Snapshot);
+            _feedback.text = response.Result == ItemActionResult.Success
                 ? "礼物已送出"
                 : GiftResultText(response.Result);
             RefreshMenu();
@@ -270,7 +278,6 @@ namespace Game.UI.Gifts
             foreach (var effect in _activeEffects.Where(effect => effect != null).ToArray())
                 Destroy(effect.gameObject);
             _activeEffects.Clear();
-            _lastInventoryRequest = 0;
             CloseMenu();
             RefreshMenu();
         }
@@ -279,9 +286,8 @@ namespace Game.UI.Gifts
         {
             if (Mirror.NetworkManager.singleton is NetworkRoom room)
             {
-                var request = room.RequestGiftInventory();
-                if (request > _lastInventoryRequest)
-                    _feedback.text = "正在读取礼物库存…";
+                if (!_hasInventory) _feedback.text = "正在读取礼物库存…";
+                room.LoadCollection(force: true);
             }
         }
 
@@ -306,7 +312,7 @@ namespace Game.UI.Gifts
         {
             if (!isActiveAndEnabled) return false;
             PruneOutgoing();
-            if (string.IsNullOrWhiteSpace(ClientShopCatalog.FindGift(itemId)?.Effect))
+            if (string.IsNullOrWhiteSpace(ClientCatalog.FindGift(itemId)?.Effect))
             {
                 _feedback.text = "当前礼物暂不支持播放";
                 return false;
@@ -350,7 +356,7 @@ namespace Game.UI.Gifts
                     _feedback.text = "这一批礼物种类过多";
                     return false;
                 }
-                _pending.Add(new GiftUseCommandMessage
+                _pending.Add(new ItemConsumeCommandMessage
                 {
                     ItemId = itemId,
                     TargetSeatIndex = targetSeatIndex,
@@ -392,8 +398,15 @@ namespace Game.UI.Gifts
             _pending.Clear();
             _pendingTargets.Clear();
             var room = Mirror.NetworkManager.singleton as NetworkRoom;
-            var operationId = room?.RequestGiftUseBatch(commands);
-            if (string.IsNullOrEmpty(operationId))
+            var operationId = Guid.NewGuid().ToString("N");
+            var requestId = room?.RequestItemConsume(new ItemConsumeRequest
+            {
+                OperationId = operationId,
+                Method = ItemConsumeMethod.Give,
+                CatalogRevision = ClientCatalog.Revision,
+                Commands = commands,
+            }) ?? 0;
+            if (requestId == 0)
             {
                 _feedback.text = "当前无法发送礼物";
                 RefreshMenu();
@@ -409,7 +422,7 @@ namespace Game.UI.Gifts
             RemoteAssets.Lease<GiftEffectSO> lease = null;
             try
             {
-                lease = await GiftEffectLoader.LoadAsync(ClientShopCatalog.FindGift(itemId)?.Effect, token);
+                lease = await GiftEffectLoader.LoadAsync(ClientCatalog.FindGift(itemId)?.Effect, token);
                 token.ThrowIfCancellationRequested();
                 resource.Lease = lease;
                 lease = null;
@@ -477,7 +490,7 @@ namespace Game.UI.Gifts
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var unit = _playback.Dequeue();
-                    var entry = ClientShopCatalog.FindGift(unit.ItemId);
+                    var entry = ClientCatalog.FindGift(unit.ItemId);
                     if (string.IsNullOrWhiteSpace(entry?.Effect) || failed.Contains(unit.ItemId) || !IsCurrent(unit)) continue;
                     var lease = await GiftEffectLoader.LoadAsync(entry.Effect, cancellationToken);
                     try
@@ -590,35 +603,42 @@ namespace Game.UI.Gifts
             return true;
         }
 
-        private void ApplyInventory(ItemStackMessage[] items, uint dollars, GiftOfferMessage[] offers, bool canSend, uint availableChips, bool canExchange)
+        private void ApplyInventory(InventorySnapshotMessage snapshot)
         {
+            var catalog = ClientCatalog.Current;
             _hasInventory = true;
-            _canSend = canSend;
-            _dollars = dollars;
-            _availableChips = availableChips;
-            _canExchange = canExchange;
-            _offers.Clear();
-            foreach (var offer in offers ?? Array.Empty<GiftOfferMessage>())
-                if (!string.IsNullOrEmpty(offer.ItemId)) _offers[offer.ItemId] = offer;
+            _dollars = snapshot.Dollars;
+            _availableChips = snapshot.AvailableChips;
+            _canExchange = snapshot.CanExchange;
             _owned.Clear();
-            foreach (var item in items ?? Array.Empty<ItemStackMessage>())
-                _owned[item.ItemId] = item.Quantity;
+            foreach (var item in snapshot.Items ?? Array.Empty<ItemStackMessage>())
+                if (catalog?.FindGift(item.ItemId) != null) _owned[item.ItemId] = item.Quantity;
+            _offers.Clear();
+            foreach (var state in snapshot.Offers ?? Array.Empty<ItemOfferStateMessage>())
+            {
+                var offer = catalog?.FindOffer(state.ItemId);
+                if (offer != null && catalog.FindGift(state.ItemId) != null)
+                    _offers[state.ItemId] = new GiftOffer(offer.Price, state.CanPurchase);
+            }
+            // Players serving a sentence cannot give gifts.
+            _canSend = catalog == null || !catalog.IsServing(catalog.ServiceYears(
+                (snapshot.Items ?? Array.Empty<ItemStackMessage>()).Select(i => new ItemStack(i.ItemId, i.Quantity))));
             RefreshMenu();
         }
 
         private bool IsRestricted => (_hasInventory && !_canSend) ||
-            InfernalNamecard.IsForced(_panel?.Info.RoomInfo?.GetServiceYears(
-                GameController.Available ? GameController.Instance.State.UserName : null) ?? 0UL);
+            ClientCatalog.Current?.IsServing(_panel?.Info.RoomInfo?.GetServiceYears(
+                GameController.Available ? GameController.Instance.State.UserName : null) ?? 0UL) == true;
 
         private void RefreshMenu()
         {
             if (_quantity == null)
                 return;
             var gift = _gifts.Count > 0 ? _gifts[_selectedIndex] : null;
-            var item = gift != null ? ClientShopCatalog.FindItem(gift.ItemId) : null;
+            var item = gift != null ? ClientCatalog.FindItem(gift.ItemId) : null;
             var quantity = gift != null ? Available(gift.ItemId) : 0;
             var affordable = gift != null && CanAffordGift(gift.ItemId);
-            var offer = default(GiftOfferMessage);
+            var offer = default(GiftOffer);
             var hasOffer = gift != null && _offers.TryGetValue(gift.ItemId, out offer);
             _quantity.text = gift == null ? "暂无礼物" : item?.Name ?? gift.ItemId;
             _view.UseCost.text = gift == null ? string.Empty : !_hasInventory ? "加载中…" : quantity > 0
@@ -666,22 +686,24 @@ namespace Game.UI.Gifts
             _menu.anchoredPosition = point;
         }
 
-        private static string GiftResultText(GiftUseResult result)
+        private static string GiftResultText(ItemActionResult result)
         {
             return result switch
             {
-                GiftUseResult.RateLimited => "操作太快，请稍后再试",
-                GiftUseResult.RoomNotStarted => "礼物只能在牌局开始后使用",
-                GiftUseResult.SenderNotSeated => "只有牌桌玩家可以送礼",
-                GiftUseResult.TargetNotFound => "目标玩家已经离开",
-                GiftUseResult.CannotTargetSelf => "不能给自己送礼",
-                GiftUseResult.NotOwned => "尚未拥有这个礼物",
-                GiftUseResult.InsufficientItems => "礼物库存不足",
-                GiftUseResult.ServiceRestricted => "服刑期间无法送礼",
-                GiftUseResult.InsufficientDollars => "余额不足",
-                GiftUseResult.UnknownGift => "客户端需要更新礼物资源",
-                GiftUseResult.UseNotAllowed => "这个物品当前不能作为礼物使用",
-                GiftUseResult.InvalidRequest => "礼物请求无效",
+                ItemActionResult.RateLimited => "操作太快，请稍后再试",
+                ItemActionResult.RoomStartedRequired => "礼物只能在牌局开始后使用",
+                ItemActionResult.SenderNotSeated => "只有牌桌玩家可以送礼",
+                ItemActionResult.TargetNotFound => "目标玩家已经离开",
+                ItemActionResult.CannotTargetSelf => "不能给自己送礼",
+                ItemActionResult.NotOwned => "尚未拥有这个礼物",
+                ItemActionResult.InsufficientItems => "礼物库存不足",
+                ItemActionResult.ServiceRestricted => "服刑期间无法送礼",
+                ItemActionResult.InsufficientDollars => "余额不足",
+                ItemActionResult.UnknownItem => "客户端需要更新礼物资源",
+                ItemActionResult.CatalogChanged => "礼物配置已更新，请重新选择",
+                ItemActionResult.NotConsumable => "这个物品当前不能作为礼物使用",
+                ItemActionResult.MethodUnavailable => "这个物品当前不能作为礼物使用",
+                ItemActionResult.InvalidRequest => "礼物请求无效",
                 _ => "礼物服务暂时不可用",
             };
         }

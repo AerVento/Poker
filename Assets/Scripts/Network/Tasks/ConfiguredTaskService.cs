@@ -28,7 +28,6 @@ namespace Game.Network.Tasks
         private readonly TaskCatalog _catalog;
         private readonly IWeightedTaskSelector _selector;
         private readonly Func<DateTimeOffset> _now;
-        private readonly Dictionary<string, TaskDefinition> _definitions = new Dictionary<string, TaskDefinition>();
         public TaskCatalog Catalog => _catalog;
 
         public ConfiguredTaskService(ITaskRepository repository, TaskCatalog catalog,
@@ -64,10 +63,11 @@ namespace Game.Network.Tasks
             var document = tx.Document;
             var period = TaskPeriod.GetPeriod(now);
             var timestamp = now.ToUnixTimeMilliseconds();
+            FollowCatalog(tx);
             if (document.FixedPeriod != period)
             {
                 CleanFinished(tx, now, false);
-                foreach (var entry in _catalog.Fixed.Where(e => e.Enabled).OrderBy(e => e.SortOrder).ThenBy(e => e.TaskId))
+                foreach (var entry in _catalog.Fixed.Where(e => e.Enabled))
                 {
                     document.Instances.Add(Create(entry, false, now));
                 }
@@ -107,6 +107,27 @@ namespace Game.Network.Tasks
             tx.Changed = true;
         }
 
+        // Assigned tasks store only their task ID and always follow the configuration loaded at startup. A task removed
+        // from TaskDefinitions.json is removed from every account, together with any reward still waiting to be claimed.
+        private void FollowCatalog(TaskAccountTransaction tx)
+        {
+            foreach (var instance in tx.Document.Instances.ToArray())
+            {
+                if (!_catalog.Definitions.TryGetValue(instance.DefinitionId, out var definition))
+                {
+                    Remove(tx, instance);
+                    continue;
+                }
+                var state = instance.State;
+                var objectives = definition.Rule.Objectives.Count;
+                if (state.MaxCompletions == definition.MaxCompletions && state.Progress.Length == objectives) continue;
+                state.MaxCompletions = definition.MaxCompletions;
+                state.CompletedCount = Math.Min(state.CompletedCount, Math.Max(state.ClaimedCount, state.MaxCompletions));
+                if (state.Progress.Length != objectives) state.Progress = new int[objectives];
+                tx.Changed = true;
+            }
+        }
+
         private static int FirstFreeSlot(HashSet<int> slots)
         {
             var slot = 0;
@@ -141,17 +162,15 @@ namespace Game.Network.Tasks
         private static bool CanRefresh(PlayerTaskInstance instance, long now) => instance.IsRandom &&
             !instance.OutDated && instance.ExpiresAt > now && !instance.RefreshUsed && instance.State.ClaimedCount == 0;
 
-        public TaskDeleteOutcome Reroll(string accountId, string instanceId, TaskRewardAccess access = null)
+        public TaskDeleteOutcome Reroll(string accountId, string instanceId)
         {
             if (!Guid.TryParseExact(instanceId, "N", out _)) return new TaskDeleteOutcome { Result = DailyTaskResult.InvalidRequest };
             var now = _now();
             return _repository.TransactTasks(accountId, tx =>
             {
-                tx.AuthorizeRewardAccess(access);
                 var outcome = new TaskDeleteOutcome { Account = tx.Account, Result = DailyTaskResult.RefreshUnavailable };
                 var instance = tx.Document.Instances.Find(i => i.InstanceId == instanceId);
                 if (instance == null || !CanRefresh(instance, now.ToUnixTimeMilliseconds())) return outcome;
-                if (tx.RewardBlockReason != DailyTaskResult.Success) { outcome.Result = tx.RewardBlockReason; return outcome; }
                 // Other slots may contain the replacement. Only the original definition is excluded.
                 var entry = _selector.Select(_catalog.Random.Where(e => e.TaskId != instance.DefinitionId), 1).FirstOrDefault();
                 if (entry == null) { outcome.Result = DailyTaskResult.NoAlternative; return outcome; }
@@ -177,24 +196,25 @@ namespace Game.Network.Tasks
             var definition = _catalog.Definitions[entry.TaskId];
             return new PlayerTaskInstance
             {
-                InstanceId = Guid.NewGuid().ToString("N"), DefinitionId = definition.Id, DefinitionJson = definition.RawJson,
-                Revision = _catalog.Revision, IsRandom = random, DisplayOrder = entry.SortOrder, Period = TaskPeriod.GetPeriod(now),
+                InstanceId = Guid.NewGuid().ToString("N"), DefinitionId = definition.Id,
+                IsRandom = random, Period = TaskPeriod.GetPeriod(now),
                 AssignedAt = now.ToUnixTimeMilliseconds(),
                 ExpiresAt = new DateTimeOffset(now.ToOffset(TaskPeriod.ResetOffset).Date.AddDays(random ? entry.ValidityDays : 1),
                     TaskPeriod.ResetOffset).ToUnixTimeMilliseconds(),
-                State = new TaskState { MaxCompletions = definition.MaxCompletions, Progress = new int[definition.Rule.Objectives.Count] },
-                ItemLimits = definition.Rule.GetReward().Items.ToDictionary(i => i.ItemId, i => _catalog.ItemLimits[i.ItemId])
+                State = new TaskState { MaxCompletions = definition.MaxCompletions, Progress = new int[definition.Rule.Objectives.Count] }
             };
         }
 
-        private TaskDefinition Definition(PlayerTaskInstance instance)
+        // Startup refreshes every account, so each stored task refers to a loaded definition.
+        private TaskDefinition Definition(PlayerTaskInstance instance) =>
+            _catalog.Definitions.TryGetValue(instance.DefinitionId, out var definition) ? definition
+                : throw new InvalidOperationException("Task " + instance.DefinitionId + " is not in the task configuration.");
+
+        private int FixedOrder(PlayerTaskInstance instance)
         {
-            if (!_definitions.TryGetValue(instance.DefinitionJson, out var definition))
-            {
-                definition = TaskFactory.Compile(instance.DefinitionJson);
-                _definitions.Add(instance.DefinitionJson, definition);
-            }
-            return definition;
+            for (var index = 0; index < _catalog.Fixed.Count; index++)
+                if (_catalog.Fixed[index].TaskId == instance.DefinitionId) return index;
+            return int.MaxValue;
         }
 
         public int DrainFacts(int limit = 100)
@@ -221,15 +241,14 @@ namespace Game.Network.Tasks
             }, fact.EventId);
         }
 
-        public DailyTasksSnapshot GetStatus(string accountId, int offset = 0, long revision = 0, TaskRewardAccess access = null)
+        public DailyTasksSnapshot GetStatus(string accountId, int offset = 0, long revision = 0)
         {
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
             var now = _now();
             return _repository.TransactTasks(accountId, tx =>
             {
-                tx.AuthorizeRewardAccess(access);
                 var visible = tx.Document.Instances.Where(i => i.ExpiresAt > now.ToUnixTimeMilliseconds() || i.State.HasPendingReward)
-                    .OrderBy(i => i.IsRandom).ThenBy(i => i.OutDated).ThenBy(i => i.IsRandom ? i.SlotId ?? int.MaxValue : i.DisplayOrder).ThenBy(i => i.AssignedAt).ThenBy(i => i.InstanceId, StringComparer.Ordinal).ToArray();
+                    .OrderBy(i => i.IsRandom).ThenBy(i => i.OutDated).ThenBy(i => i.IsRandom ? i.SlotId ?? int.MaxValue : FixedOrder(i)).ThenBy(i => i.AssignedAt).ThenBy(i => i.InstanceId, StringComparer.Ordinal).ToArray();
                 if (offset > 0 && revision != tx.Document.Revision)
                     return new DailyTasksSnapshot { Revision = tx.Document.Revision, Tasks = null };
                 var page = visible.Skip(offset).Take(PageSize).Select(i => Project(i, tx, now)).ToArray();
@@ -258,15 +277,13 @@ namespace Game.Network.Tasks
                 !valid ? DailyTaskAvailability.Expired : rule.IsDirectClaim ? DailyTaskAvailability.BalanceTooHigh : DailyTaskAvailability.InProgress;
             if (available)
             {
-                if (tx.RewardBlockReason == DailyTaskResult.ActiveHand) availability = DailyTaskAvailability.ActiveHand;
-                else if (tx.RewardBlockReason != DailyTaskResult.Success) availability = DailyTaskAvailability.OutsideRoom;
-                else if ((ulong)tx.Account.Dollars + reward.Chip > uint.MaxValue) availability = DailyTaskAvailability.BalanceLimit;
+                if (reward.Chips > 0 && tx.HasActiveHand) availability = DailyTaskAvailability.ActiveHand;
+                else if (reward.Dollars > uint.MaxValue - tx.Account.Dollars || reward.Chips > uint.MaxValue - tx.Account.Chips) availability = DailyTaskAvailability.BalanceLimit;
             }
             return new DailyTaskState
             {
                 InstanceId = instance.InstanceId, DefinitionId = definition.Id,
-                Name = definition.Name, Description = definition.Description, Reward = reward.Chip,
-                RewardItems = reward.Items.Select(i => new TaskRewardItemState { ItemId = i.ItemId, Count = i.Quantity }).ToArray(),
+                Name = definition.Name, Description = definition.Description, Reward = reward,
                 IsRandom = instance.IsRandom, IsDirectClaim = rule.IsDirectClaim, Availability = availability,
                 CanDelete = instance.IsRandom && (valid || state.HasPendingReward),
                 CanRefresh = CanRefresh(instance, now.ToUnixTimeMilliseconds()),
@@ -278,14 +295,13 @@ namespace Game.Network.Tasks
             };
         }
 
-        public TaskClaimOutcome Claim(string accountId, string instanceId, int ordinal, TaskRewardAccess access = null)
+        public TaskClaimOutcome Claim(string accountId, string instanceId, int ordinal)
         {
             if (!Guid.TryParseExact(instanceId, "N", out _) || ordinal < 1 || ordinal > 1000)
                 return new TaskClaimOutcome { Result = DailyTaskResult.InvalidRequest };
             var now = _now().ToUnixTimeMilliseconds();
             return _repository.TransactTasks(accountId, tx =>
             {
-                tx.AuthorizeRewardAccess(access);
                 var outcome = new TaskClaimOutcome { Account = tx.Account, Result = DailyTaskResult.InvalidRequest };
                 var prior = tx.Document.Receipts.Find(r => r.InstanceId == instanceId && r.Ordinal == ordinal);
                 if (prior != null)
@@ -313,14 +329,15 @@ namespace Game.Network.Tasks
             });
         }
 
-        private static DailyTaskResult GrantRound(TaskAccountTransaction tx, PlayerTaskInstance instance, GameTask rule,
+        private DailyTaskResult GrantRound(TaskAccountTransaction tx, PlayerTaskInstance instance, GameTask rule,
             bool valid, out TaskClaimReceipt receipt)
         {
             receipt = null;
             var state = instance.State;
             var ordinal = state.ClaimedCount + 1;
             var reward = rule.GetReward();
-            var result = tx.Grant(reward, instance.ItemLimits, "TaskReward:" + tx.Account.AccountId + ":" + instance.InstanceId + ":" + ordinal);
+            var limits = reward.Items.ToDictionary(i => i.ItemId, i => _catalog.CurrentItemLimit?.Invoke(i.ItemId) ?? uint.MaxValue);
+            var result = tx.Grant(reward, limits, "TaskReward:" + tx.Account.AccountId + ":" + instance.InstanceId + ":" + ordinal);
             if (result != DailyTaskResult.Success) return result;
             state.ClaimedCount++;
             instance.RefreshUsed = true;
@@ -328,27 +345,24 @@ namespace Game.Network.Tasks
             if (valid && state.ClaimedCount < state.MaxCompletions) state.Progress = new int[rule.Objectives.Count];
             receipt = new TaskClaimReceipt
             {
-                InstanceId = instance.InstanceId, Ordinal = ordinal, Chip = reward.Chip,
-                Items = reward.Items.Select(i => new TaskRewardItem { ItemId = i.ItemId, Count = i.Quantity }).ToArray()
+                InstanceId = instance.InstanceId, Ordinal = ordinal, Reward = tx.GrantedReward
             };
             tx.Document.Receipts.Add(receipt);
             tx.Changed = true;
             return result;
         }
 
-        public TaskDeleteOutcome Delete(string accountId, string instanceId, TaskRewardAccess access = null)
+        public TaskDeleteOutcome Delete(string accountId, string instanceId)
         {
             if (!Guid.TryParseExact(instanceId, "N", out _)) return new TaskDeleteOutcome { Result = DailyTaskResult.InvalidRequest };
             var now = _now().ToUnixTimeMilliseconds();
             return _repository.TransactTasks(accountId, tx =>
             {
-                tx.AuthorizeRewardAccess(access);
                 var outcome = new TaskDeleteOutcome { Account = tx.Account, Result = DailyTaskResult.InvalidRequest };
                 if (tx.Document.DeletedInstanceIds.Contains(instanceId)) { outcome.Result = DailyTaskResult.AlreadyDeleted; return outcome; }
                 var instance = tx.Document.Instances.Find(i => i.InstanceId == instanceId);
                 if (instance == null) return outcome;
                 if (!instance.IsRandom) { outcome.Result = DailyTaskResult.FixedTask; return outcome; }
-                if (tx.RewardBlockReason != DailyTaskResult.Success) { outcome.Result = tx.RewardBlockReason; return outcome; }
                 var valid = !instance.OutDated && instance.ExpiresAt > now;
                 if (!valid && !instance.State.HasPendingReward) { outcome.Result = DailyTaskResult.Expired; return outcome; }
                 var rule = Definition(instance).Rule;

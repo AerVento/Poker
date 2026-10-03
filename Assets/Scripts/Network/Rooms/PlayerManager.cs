@@ -75,14 +75,6 @@ namespace Game.Network
                 : null;
         }
 
-        public bool IsConnectionForPlayer(string playerName, NetworkConnectionToClient connection)
-        {
-            return playerName != null &&
-                connection != null &&
-                _sessionsByUserName.TryGetValue(playerName, out var session) &&
-                session.Connection == connection;
-        }
-
         public bool TryGetSession(NetworkConnectionToClient connection, out PlayerSession session)
         {
             if (connection != null && _sessionsByConnection.TryGetValue(connection, out session))

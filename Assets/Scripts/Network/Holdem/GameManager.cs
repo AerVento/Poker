@@ -19,11 +19,9 @@ namespace Game.Network
 
         private enum ActionSource { Manual, Timeout, Disconnected }
 
-
         public event Action<int> OnGameInfoChanged;
         public event Action<int> OnGameStageEnded;
         public event Action<int, RoundResult> OnRoomRoundEnded;
-        public event Action<int, GameResult> OnRoomGameOver;
 
         public GameManager(IHandAccountRepository accountRepository = null)
         {
