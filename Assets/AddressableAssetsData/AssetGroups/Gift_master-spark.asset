@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Gift_master-spark
+  m_EditorClassIdentifier: 
+  m_GroupName: Gift_master-spark
+  m_Data:
+    m_SerializedData: []
+  m_GUID: efa31e4250646084b80e1779befc2447
+  m_SerializeEntries:
+  - m_GUID: f72b64278ad48f3428d80f449382905a
+    m_Address: gifts/master-spark
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 8d0b2af6b70451145a85efb7d3a9fece, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: dd77c2566237397459fb713977009b83, type: 2}
+    - {fileID: 11400000, guid: 1ae3cfb4200aa414a8405fd3fb9cc857, type: 2}

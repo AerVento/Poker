@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Gift_hour-of-daybreak
+  m_EditorClassIdentifier: 
+  m_GroupName: Gift_hour-of-daybreak
+  m_Data:
+    m_SerializedData: []
+  m_GUID: 331bfbbf3bb44f849bb6f3121aca04cd
+  m_SerializeEntries:
+  - m_GUID: aee0cc4214868974db9d210ca3e6d970
+    m_Address: gifts/hour-of-daybreak
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 8d0b2af6b70451145a85efb7d3a9fece, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: fa3f23236bc7bd549a53a925c64a7c8e, type: 2}
+    - {fileID: 11400000, guid: 61848021bfb27d94c85a9fc1883c7a16, type: 2}

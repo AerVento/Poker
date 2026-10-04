@@ -1,0 +1,19 @@
+{
+  "tool": "image_gen built-in",
+  "date": "2026-10-04",
+  "prompts": [
+    [
+      "saigyou-ayakashi",
+      "Use case: stylized-concept. Asset type: transparent 2D game effect backdrop for Touhou Yuyuko. One ancient magnificent Japanese cherry tree, Saigyou Ayakashi at eight-tenths bloom: thick gnarled dark violet trunk, wide curving branches clearly visible between airy clusters of pale pink and lavender sakura blossoms, a few unopened buds. Elegant anime illustration with clean linework, restrained cel shading and soft pink luminous petal tips. Full tree isolated, wide umbrella canopy and short exposed roots, centered and completely inside the frame with generous margins. No character, no text, no moon, no scenery, no ground panel, no rectangular background, no magic circle. Meant to fade in behind a small chibi character; recognizable readable silhouette, not photorealistic. Actual transparent alpha background. Landscape 3:2 composition."
+    ],
+    [
+      "ofuda",
+      "Create a transparent game projectile sprite using the supplied Touhou Kaguya screenshot as a shape reference: the SMALL YELLOW NEAR-SQUARE PAPER BULLETS scattered throughout it. Draw exactly ONE such bullet enlarged and isolated, front facing, short rectangular golden-yellow paper tile with height only 1.25 times its width, straight crisp corners, luminous pale yellow double edge, warm yellow fill, small dark olive purple abstract cross-like seal glyph at its center. Flat clean anime danmaku style, readable when reduced to 22x28 pixels. A restrained narrow soft lemon aura hugs the edge; no particles, no ornamental frame, no curling, no long talisman strip, no red calligraphy, no textual label, no additional objects. Sprite entirely within canvas with transparent margin. Genuine transparent alpha background. Do not reproduce the screenshot, HUD, character, or other projectiles."
+    ],
+    [
+      "spirit-fan",
+      "Use case: stylized-concept. Transparent 2D anime game effect sprite, a single enormous fully opened Japanese folding fan inspired by Touhou Yuyuko Saigyouji. Front view, symmetric broad 170-degree fan arc, scalloped ivory-pink paper edge, elegantly painted simplified pale pink sakura blossoms and a few violet butterflies on soft icy blue to pale lavender silk panels. Clearly defined dark violet thin radial ribs converge into one small bottom-center pivot, dark blue elegant rim, luminous pale pink accents. Full silhouette completely within canvas, landscape composition. No hands, no character, no tree, no scenery, no text or readable symbols. Designed as a decorative backdrop behind a chibi character, clean anime cel-shaded shapes, moderately detailed but readable at 500px width. Actual transparent background everywhere outside fan."
+    ]
+  ],
+  "reference": "User-provided Touhou Kaguya danmaku screenshot; Yuyuko fan backdrop screenshot. Ofuda uses a trimmed Sprite import rectangle; source pixels unchanged."
+}

@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-03",
+  "tool": "Built-in image_gen",
+  "stage": "Concept only; not runtime animation",
+  "spell": "返魂蝶",
+  "durationProposalSeconds": 7,
+  "output": "ArtSources/Gifts/Touhou/resurrection-butterfly-concept.png",
+  "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a10125-64dc-7ff1-b92e-fc1bc3cd6507\\exec-34a28bd8-45cc-49d7-af5c-7d98b6b2c196.png",
+  "prompt": "Use case: stylized-concept. Create one polished game VFX concept sheet for a premium Touhou-inspired poker-table gift: Yuyuko Saigyouji's Resurrection Butterfly. Landscape 1792x1024. This is a DANMAKU design, emphasize beautiful ordered projectile geometry, NOT character illustration, environment art or generic magical explosion.\nLayout: one large hero keyframe occupying upper75% and three small chronological keyframes in a clean strip below. Elegant dark charcoal/navy sheet, very restrained thin champagne-gold separators. Title in small neat Chinese at top: \"返魂蝶 · 弹幕演出概念\". Bottom captions exactly \"起势 0–2s\", \"展开 2–5s\", \"余韵 5–7s\". No other text, numbers or UI labels.\nHero: top-down 2D effect laid over a very faint dark green poker felt oval. A small horizontal dark rounded target nameplate near lower middle is left mostly readable and unpainted, small dark source plaque at upper middle. Plaques subordinate. No cards or chips foreground. Emitter is a small ghostly butterfly light near uppermiddle.\nHundreds of individually distinct small BUTTERFLY-SHAPED bullets, each with clear four-lobed wings, bright core, saturated blue-violet or crimson-magenta rim and SHORT soft halo. These discrete bullets are precisely spaced into nested expanding arcs and counter-rotating curving fan spokes. Inner waves sapphire-blue and violet, farther sweeping wave crimson/red-magenta, some cyan accents. Clearly visible dark gaps between bullets and between waves. Pink and cyan extremely thin straight laser rays radiate obliquely from small peripheral emitters, forming a geometric counterpoint, no huge white center. Show sweep direction through repeated positions and SMALL tapered tails, NOT continuous neon scribble ribbons. Crisp stylized 2D game sprites with high precision and restrained bloom, beautiful rhythmic bullet-hell symmetry, high density but readable pattern. Grand and intricate through choreography. No giant decorative realistic butterflies. No enormous butterfly outline, clock, zodiac or magic-circle filigree; geometry built out of actual bullets. No character portrait, no chibi, no castle, no garden, no big moon, no smoke or cloud covering bullets. No confetti or random glitter.\nThree lower frames depict same geometry evolving: left sparse small blue-purple butterfly rings beginning, middle full intertwined blue-purple and red butterfly wave with thin cyan/pink laser accents, right sparse outer magenta butterflies fading with dark gaps opening, target plaque clear. The overall sheet should communicate an achievable premium 2D animated gift with the DANMAKU ITSELF as visual star, not a cinematic poster. Concept adaptation rather than a claimed original game screenshot.",
+  "references": [
+    {
+      "url": "https://en.touhouwiki.net/index.php?mobileaction=toggle_view_desktop&title=Perfect_Cherry_Blossom%2FSpell_Cards%2FStage_6",
+      "used": "Indexed spell pattern description: alternating blue/purple and red butterfly waves, pink/cyan lasers.",
+      "limitation": "Direct screenshot inspection blocked by site access restrictions. Concept is an adaptation; screenshot fidelity not verified."
+    }
+  ],
+  "direction": "Danmaku geometry, spacing and layered motion are the primary spectacle. Characters and scenery are secondary. Duration may exceed five seconds per user. No lottery/config changes."
+}

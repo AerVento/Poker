@@ -1,0 +1,14 @@
+{
+  "tool": "built-in imagegen",
+  "date": "2026-10-03",
+  "prompts": {
+    "watch": "Use case: stylized-concept. Production game sprite, a traditional Western antique POCKET WATCH, straight-on front view, symmetric circular dial centered precisely at canvas center. Warm brushed brass case with engraved edges, cream ivory enamel dial, crisp dark Roman numerals I to XII and minute markings, small winding crown and bow at top. Elegant anime-painted item with clean silhouette, restrained realistic metal shading. IMPORTANT dial has NO HANDS at all, no hour/minute/second hands, leave center clean for independently animated hands. Single watch only, no chain, no glow, no blue, no magic symbols, no background or shadows outside object. 1024 square, true transparent alpha outside watch. Dial center at 50% x 50% y, dial radius about 34% canvas, body within 84%, crown within 94%.",
+    "hand": "Use case: stylized-concept. One isolated ornate antique Western pocket-watch hand sprite, dark charcoal blued steel with a thin warm brass highlight. Slender spear-shaped elegant hand pointing straight UP, a tiny round pivot hub precisely at center of square canvas (50%,50%), tip at (50%,10%), short decorative counterweight reaching down to (50%,60%). Single hand only. Clean readable silhouette for animation on an ivory clock dial, restrained anime item painting. No dial, no numbers, no background, no glow. 1024x1024 true transparent alpha. Keep broad empty transparent margins.",
+    "star": "Use case: stylized-concept. A single premium magical FIVE-POINT STAR projectile sprite for anime danmaku, straight-on centered symmetric five-point silhouette, one point exactly up. Luminous faceted crystal star with polished pearl-white faces, delicate silvery rim, bright internal white core and soft restrained halo close to contour. Render monochrome white and pale silver so Unity can tint it from midnight indigo to warm dawn gold. Clearly a five-point star, elegant dimensional beveled facets, crisp readable silhouette at 30-45 pixels, no tiny decorations. 1024x1024 true transparent alpha outside star. Star inside central 80% canvas. No trailing particles, no scene, no text, no other stars, no saturated baked-in colors."
+  },
+  "outputs": {
+    "watch": "Assets/Art/Gifts/TheWorld/time-clock.png",
+    "hand": "Assets/Art/Gifts/TheWorld/clock-hand.png",
+    "star": "Assets/Art/Gifts/HourOfDaybreak/crystal-star.png"
+  }
+}

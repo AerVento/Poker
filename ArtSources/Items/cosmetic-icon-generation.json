@@ -325,6 +325,20 @@
       ],
       "sourceFile": "ArtSources/Items/CosmeticIconOriginals/cardface-gensokyo.png",
       "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fc6a-afd0-7140-9bf2-63e93e6d6e5e\\exec-2ed530a5-f61d-4909-a2c2-136f87b9aadb.png"
+    },
+    {
+      "id": "namecard-gensokyo",
+      "name": "幻想乡夜绘",
+      "date": "2026-10-03",
+      "tool": "Built-in image_gen (no CLI)",
+      "path": "Assets/Sprites/Items/Namecards/namecard-gensokyo.png",
+      "generationPrompt": "Use case: style-transfer. Create matching Poker inventory icon namecard-gensokyo. Image1 is silhouette/style reference: preserve its horizontal rounded nameplate, thick rim, slight counterclockwise tilt and centered size. Image2 supplies Gensokyo palette. One rounded indigo nameplate with thick champagne-gold border, bold dark clean cartoon outline, simple cel shading. Face features one large ivory/gold yin-yang emblem and small simplified shrine torii silhouette, two tiny sakura accents. Keep few broad readable shapes at64px, no intricate filigree.1024x1024 square RGBA. All object within canvas with8%margin. Genuine alpha=0 outside object; no background shadow glow checkerboard. No text letters numbers or writing.",
+      "inputReferences": [
+        "ArtSources/CardFaces/Gensokyo/Deck/back.png",
+        "Assets/Sprites/Items/Namecards/namecard-default.png"
+      ],
+      "sourceFile": "ArtSources/Namecards/Gensokyo/icon-original.png",
+      "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a10125-64dc-7ff1-b92e-fc1bc3cd6507\\exec-fc006d03-da64-4375-a743-03013df47bb3.png"
     }
   ]
 }

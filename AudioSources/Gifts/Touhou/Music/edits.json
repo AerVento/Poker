@@ -1,0 +1,67 @@
+[
+  {
+    "character": "FantasySeal",
+    "providedSource": "C:\\Users\\jinshengkai\\Music\\9 - 少女綺想曲　～ Dream Battle.opus",
+    "archivedSource": "AudioSources\\Gifts\\Touhou\\Music\\FantasySeal.opus",
+    "sourceSha256": "0b5e75d44f0ac0ba9342b3d1060b9bb42ece19b004af498d811b9d9a55b1925b",
+    "startSeconds": 76.895,
+    "duration": 24.0,
+    "filter": "loudnorm=I=-19:TP=-2:LRA=8,afade=t=in:d=0.08,afade=t=out:st=23.35:d=0.65",
+    "output": "Assets\\Audio\\Music\\Gifts\\FantasySeal\\bgm-theme.ogg",
+    "peak": 0.3186369836330414,
+    "rms": 0.06833408027887344,
+    "selection": "Extended high-energy phrase from previous onset; final musical continuity requires listening review."
+  },
+  {
+    "character": "MasterSpark",
+    "providedSource": "C:\\Users\\jinshengkai\\Music\\10 - 恋色マスタースパーク.opus",
+    "archivedSource": "AudioSources\\Gifts\\Touhou\\Music\\MasterSpark.opus",
+    "sourceSha256": "989d67693b6622c6d4083c62e8df72a20c79ceb6413e8cf930103254adde214b",
+    "startSeconds": 90.555,
+    "duration": 24.0,
+    "filter": "loudnorm=I=-19:TP=-2:LRA=8,afade=t=in:d=0.08,afade=t=out:st=23.35:d=0.65",
+    "output": "Assets\\Audio\\Music\\Gifts\\MasterSpark\\bgm-theme.ogg",
+    "peak": 0.39428505301475525,
+    "rms": 0.07097699493169785,
+    "selection": "Extended high-energy phrase from previous onset; final musical continuity requires listening review."
+  },
+  {
+    "character": "TheWorld",
+    "providedSource": "C:\\Users\\jinshengkai\\Music\\触手猴 - 月時計 ～ ルナ・ダイアル.ogg",
+    "archivedSource": "AudioSources\\Gifts\\Touhou\\Music\\TheWorld.ogg",
+    "sourceSha256": "36b6186414e2359ad6f1e5eaf051cec8266467f5a45fcb4f07bb476b15ce993d",
+    "startSeconds": 90.645,
+    "duration": 23.832,
+    "filter": "loudnorm=I=-15:TP=-2:LRA=8,afade=t=in:d=0.08,afade=t=out:st=23.266054421768708:d=0.65",
+    "output": "Assets\\Audio\\Music\\Gifts\\TheWorld\\bgm-theme.ogg",
+    "peak": 0.7101852297782898,
+    "rms": 0.09815512597560883,
+    "selection": "Extended high-energy phrase from previous onset; final musical continuity requires listening review."
+  },
+  {
+    "character": "ResurrectionButterfly",
+    "providedSource": "C:\\Users\\jinshengkai\\Music\\上海爱莉丝幻乐团 (上海アリス幻樂団) - 幽雅に咲かせ、墨染の桜 ～ Border of Life (幽雅地绽放吧，墨染的樱花 ～ Border of Life).ogg",
+    "archivedSource": "AudioSources\\Gifts\\Touhou\\Music\\ResurrectionButterfly.ogg",
+    "sourceSha256": "ba68141b50be1533a069515f799448a714567f99de8f2873946829ee4597953e",
+    "startSeconds": 164.955,
+    "duration": 24.001,
+    "filter": "loudnorm=I=-19:TP=-2:LRA=8,afade=t=in:d=0.08,afade=t=out:st=23.35:d=0.65",
+    "output": "Assets\\Audio\\Music\\Gifts\\ResurrectionButterfly\\bgm-theme.ogg",
+    "peak": 0.25791189074516296,
+    "rms": 0.06697095930576324,
+    "selection": "Extended high-energy phrase from previous onset; final musical continuity requires listening review."
+  },
+  {
+    "character": "HourOfDaybreak",
+    "providedSource": "C:\\Users\\jinshengkai\\Music\\15 - 竹取飛翔　～ Lunatic Princess.opus",
+    "archivedSource": "AudioSources\\Gifts\\Touhou\\Music\\HourOfDaybreak.opus",
+    "sourceSha256": "72622a228c853d0244c3ac55de56af792439b6f3ace6bf07ba8f5e14b7bf71f5",
+    "startSeconds": 310.505,
+    "duration": 20.663,
+    "filter": "loudnorm=I=-19:TP=-2:LRA=8,afade=t=in:d=0.08,afade=t=out:st=20.03167800453515:d=0.65",
+    "output": "Assets\\Audio\\Music\\Gifts\\HourOfDaybreak\\bgm-theme.ogg",
+    "peak": 0.3349248766899109,
+    "rms": 0.0601155087351799,
+    "selection": "Kaguya: onset near 5:10 through source end. Others: extended high-energy phrase from previous onset; final musical continuity requires listening review."
+  }
+]

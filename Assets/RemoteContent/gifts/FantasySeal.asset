@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab2819ee38119fb4392d229fff82d624, type: 3}
+  m_Name: FantasySeal
+  m_EditorClassIdentifier: 
+  _script: {fileID: 4900000, guid: 2a33e1e575030f246820a1e71cae6beb, type: 3}
+  _dependencies:
+  - _address: lua/shared
+    _version: 1.1
+  _resources:
+  - _name: rigHead
+    _asset: {fileID: 21300000, guid: f7aff6014d359c64fa11fec8de1cac4f, type: 3}
+  - _name: rigBody
+    _asset: {fileID: 21300000, guid: 00e17b045c53ae244aaa6480332b35db, type: 3}
+  - _name: rigLower
+    _asset: {fileID: 21300000, guid: f1dd177e2d35f044fb49eb1f93fdae44, type: 3}
+  - _name: rigHair
+    _asset: {fileID: 21300000, guid: e9923bd41fdcee144a4afda5e490f16b, type: 3}
+  - _name: rigLeft
+    _asset: {fileID: 21300000, guid: c0fe662abbebf83468cd41b3fd3b3d71, type: 3}
+  - _name: rigRight
+    _asset: {fileID: 21300000, guid: d6437d87444b1f7489efca391690649c, type: 3}
+  - _name: magicCircle
+    _asset: {fileID: 21300000, guid: b5acd8a860643e847b446197c7482fb6, type: 3}
+  - _name: castSound
+    _asset: {fileID: 8300000, guid: 815c1cc8cc53c3c4ab9aca5e3e849acc, type: 3}
+  - _name: releaseSound
+    _asset: {fileID: 8300000, guid: 5aea192d42337f44ab559b24d34da6f9, type: 3}
+  - _name: impactSound
+    _asset: {fileID: 8300000, guid: beecab6026cd25647b169c25907e3cfb, type: 3}
+  - _name: themeMusic
+    _asset: {fileID: 8300000, guid: ffdf069e339afc3469ec735fbf16c879, type: 3}

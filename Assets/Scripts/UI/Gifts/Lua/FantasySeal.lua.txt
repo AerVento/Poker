@@ -1,0 +1,49 @@
+local S=require('TouhouSpell')
+local Music=require('TouhouMusic')
+local M={apiVersion=1,duration=6.4,resources=S.resources()}
+table.insert(M.resources,'impactSound')
+table.insert(M.resources,'themeMusic')
+function M.build(g)
+  local s=S.stage(g,M.duration,nil,nil,2.0)
+  local colors={{1,0.2,0.28},{0.2,0.48,1},{0.25,1,0.55},{1,0.78,0.15},{0.92,0.25,1},{0.22,0.95,1}}
+  for i=#colors,2,-1 do local j=math.floor(g.random()*i)+1;colors[i],colors[j]=colors[j],colors[i] end
+  local phase=g.random()*math.pi*2
+  local target={s.tx,s.ty}
+  for i,color in ipairs(colors) do
+    local a=phase+(i-1)*math.pi/3+(g.random()-0.5)*0.24;local rx,ry=math.cos(a),math.sin(a)
+    local p0={s.ax+rx*132,s.ay+ry*136}
+    local orb=S.bullet(s,'orb','Colored spirit orb '..i,78,78,color,p0)
+    g.show(orb,0.8);g.fade(orb,0.8,0.3,0,1,'OutSine');g.scale(orb,0.8,0.5,0.1,1,'OutBack')
+    g.move(orb,0.8,0.5,{s.ax,s.ay},p0,'OutCubic')
+    local end0=i<=2 and target or {s.tx+rx*55,s.ty+ry*55}
+    local bend=95+g.random()*100
+    local c1={p0[1]+rx*bend+(g.random()-0.5)*65,p0[2]+ry*bend+(g.random()-0.5)*65}
+    local drift=(i-3.5)*55+(g.random()-0.5)*120
+    local c2={s.tx-s.ux*90+s.nx*drift,s.ty-s.uy*90+s.ny*drift}
+    g.curve(orb,2,1,p0,c1,c2,end0)
+    local hit=3.0
+    if i>2 then
+      local recoil=a+(g.random()-0.5)*0.95;local radius=155+g.random()*75
+      local pushed={s.tx+math.cos(recoil)*radius,s.ty+math.sin(recoil)*radius}
+      local near=i<=4 and target or {s.tx+rx*48,s.ty+ry*48}
+      g.move(orb,3.0,0.23,end0,pushed,'OutCubic')
+      g.move(orb,3.23,0.24,pushed,near,'InCubic');hit=3.47
+      if i>4 then
+        local recoil2=a+(g.random()-0.5)*1.2;local radius2=170+g.random()*95
+        local far={s.tx+math.cos(recoil2)*radius2,s.ty+math.sin(recoil2)*radius2}
+        g.move(orb,3.47,0.25,near,far,'OutCubic')
+        g.move(orb,3.72,0.25,far,target,'InCubic');hit=3.97
+      end
+    end
+    g.fade(orb,hit,0.10,1,0,'OutSine',1);g.hide(orb,hit+0.12)
+  end
+  for wave,at in ipairs({3.0,3.47,3.97}) do
+    local flash=S.bullet(s,'orb','Seal chain explosion '..wave,160+wave*55,160+wave*55,{1,1,1},target)
+    S.reveal(s,flash,at,0.65);g.scale(flash,at,0.55,0.08,1.25,'OutCubic')
+    local ring=S.bullet(s,'ring','Seal chain shockwave '..wave,160,160,{0.86,0.93,1},target)
+    S.reveal(s,ring,at,0.65);g.scale(ring,at,0.65,0.15,1.7+wave*0.22,'OutCubic')
+  end
+  Music.play(g,'fantasy-seal',0.05,'themeMusic',0.78)
+  S.actor(s,0.95,'reimu');g.sound(2,'releaseSound',0.6);g.sound(3,'impactSound',0.64)
+end
+return M

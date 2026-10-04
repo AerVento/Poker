@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-03",
+  "tool": "Built-in image_gen",
+  "stage": "Revised five-spell concept storyboard; not runtime effects",
+  "output": "ArtSources/Gifts/Touhou/five-spell-storyboard.png",
+  "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a10125-64dc-7ff1-b92e-fc1bc3cd6507\\exec-adf6a8d9-94bb-4841-bf76-68580ab1a202.png",
+  "prompt": "Create ONE polished concept storyboard board of FIVE Touhou character gift effects. Portrait large 1536x2048 or larger. EXACTLY FIVE HORIZONTAL ROWS, each row contains THREE sequential frames read left-to-right. The rightmost effect frame is wider (roughly45%); first and second about25% each. Quiet matte dark blue-gray backgrounds and thin subtle separators, clean legible cream captions, no ornate frames. Header \"幻想乡 · 符卡礼物\". Column headers \"角色登场\", \"释放符卡\", \"弹幕展开\". Row labels below. No poker table, no cards, no gameplay HUD, no scene backgrounds. These are small friendly premium game gifts, NOT grand cinematic ultimate attacks. Simple appearance -> anime chibi performs spell -> short recognizable bullet effect.\nINPUT ROLE: images1-5 are supplied GAME SCREENSHOTS used only for projectile shapes, colors, pattern identity; do not copy screenshot HUD, pixel resolution, blown highlights or dense full-screen coverage. Character illustration style: clean warm outlines, about2.7 heads tall, expressive anime face, modest cel shading, simplified but recognizable clothes and a few folds. Do not draw decorative playing card frames. All five characters have individually different faces, eye colors, expressions; no identical red-eyed smirk.\nROW1 label \"幽幽子 · 反魂蝶\". Yuyuko: short wavy pale pink hair, blue mob cap with triangular white forehead cloth and small red swirl, blue and white kimono-like dress, gentle relaxed eyes, serene smile. Frame1 small fullbody floats into view. Frame2 opens a handheld fan with elegant wrist movement. Frame3 small caster remains visible at left as a compact partial ring of crimson butterfly bullets with bright pale centers expands; below it staggered outward chains of round red-rimmed white-core beads plus a few purple pointed bullets and 2 fine pale laser rays. Preserve screenshot1 distinguishing red ring and beaded red bullet field; NOT giant butterfly silhouette or blue butterfly garden.\nROW2 label \"灵梦 · 梦想封印\". Reimu black/dark brown hair, large red white-edged ribbon, red shrine maiden dress, detached white sleeves, brown eyes, calm focused face. Frame1 appears holding gohei. Frame2 raises gohei and floats slightly as several orbs gather. Frame3 six or seven LARGE separate round luminous orbs in red blue green yellow magenta cyan, soft colored halos and visible defined white cores, curving toward the right. White cores modest, no blowout. Like screenshot2 sphere identity, not hundreds of tiny bullets.\nROW3 label \"魔理沙 · Master Spark\". Marisa golden-blonde hair, amber eyes, big black witch hat white bow, black and white dress/apron. Frame1 cheerful confident arrival holding tiny octagonal hakkero. Frame2 braces in low stance aiming hakkero right, small concentric blue charging rings. Frame3 one powerful but localized horizontal widening white-core cyan beam with rainbow-edged concentric wavefronts, from her hands to right. Reference screenshot3 beam shape. Keep face and emitter clear, beam does not invade other rows. No giant explosion.\nROW4 label \"咲夜 · 幻世 The World\". Sakuya silver bob with side braids and green ribbons, blue eyes, white maid headband, navy blue maid dress with white apron. Composed precise expression, no smirk. Frame1 appears with pocket watch. Frame2 lifts watch as several silver knives hang motionless nearby, small clock hand cue only. Frame3 red softly glowing round bullets interleaved with many small white-silver pointed knives with pale green/cyan accents, organized into intersecting diagonal fans with gaps, one blue-accent knife stream. Based on screenshot4 red balls plus green-white knife formation, NOT giant clock as main effect.\nROW5 label \"辉夜 · 永夜返·光明之刻\". Kaguya long straight black hair with blunt bangs, dark brown eyes, pink/red kimono-style blouse and long burgundy skirt, dignified composed slight smile. Frame1 stands gracefully, fullbody. Frame2 opens sleeves with small yellow-green point of light between hands. Frame3 distinct multicolored projectile families spiraling outward: pale cyan elongated rice bullets, golden square talisman tiles, small mint-green stars, purple hollow rings, larger round red-rimmed white-core orbs. Reference screenshot5 densely layered mixed projectile spiral; reduce count for clear compact gift. NO sunrise scenery or huge moon.\nAcross all rows, characters consistent in scale and style but expressive poses specific to personality. Third frames showcase bullet geometry with visible spacing, count dozens rather than thousands, modest short glow, no dense fog or flares. Flat 2D side-view cartoon game animation concept, clear implementable sprites. Moderate charming detailed chibi faces and costumes, no doll faces, no photorealism. Each row shows same character across stages, no duplicates within one stage. High quality coherent art director storyboard, artwork occupies panels generously.",
+  "correctionPrompt": "Edit this concept board with two small precise corrections only. Keep all five rows, headings, characters, projectile patterns, layout, colors and illustration style unchanged. Correction1: in the SECOND ROW (Reimu 梦想封印), RIGHTMOST effect panel, Reimu is wrongly holding a PURPLE FOLDING FAN. REMOVE that purple fan entirely and replace it with a slim brown gohei wand bearing several white zigzag paper streamers, matching Reimu's gohei in the first two frames. Yuyuko in first row correctly has a purple fan; KEEP HER FAN unchanged. Correction2: REMOVE the entire decorative slogan and two dashes at very bottom under fifth row, leaving clean dark navy margin. No new text, no other changes.",
+  "references": [
+    {
+      "source": "C:/Users/JINSHE~1/AppData/Local/Temp/codex-clipboard-22fa71bf-5870-43d3-84fe-0e5ca3098bc5.png",
+      "saved": "ArtSources/Gifts/Touhou/References/spell-1.png",
+      "role": "反魂蝶"
+    },
+    {
+      "source": "C:/Users/JINSHE~1/AppData/Local/Temp/codex-clipboard-5e707a23-6ea1-4094-9578-fe49ad529db0.png",
+      "saved": "ArtSources/Gifts/Touhou/References/spell-2.png",
+      "role": "梦想封印"
+    },
+    {
+      "source": "C:/Users/JINSHE~1/AppData/Local/Temp/codex-clipboard-406b2e4e-5ea7-4c40-ba77-679d3f520a18.png",
+      "saved": "ArtSources/Gifts/Touhou/References/spell-3.png",
+      "role": "Master Spark"
+    },
+    {
+      "source": "C:/Users/JINSHE~1/AppData/Local/Temp/codex-clipboard-68f14d14-30d7-4eb8-a6d4-b7e524f00ff1.png",
+      "saved": "ArtSources/Gifts/Touhou/References/spell-4.png",
+      "role": "幻世 The World"
+    },
+    {
+      "source": "C:/Users/JINSHE~1/AppData/Local/Temp/codex-clipboard-ef7527d1-8e56-4927-8463-324073377b30.png",
+      "saved": "ArtSources/Gifts/Touhou/References/spell-5.png",
+      "role": "永夜返·光明之刻"
+    }
+  ],
+  "direction": "Q版人物登场 → 释放符卡 → 弹幕展开。参考用户截图的弹型与配色，采用统一动漫Q版风格；减轻盛大演出，角色表情单独设计。咲夜从咲夜的世界调整为幻世 The World。未修改配置。"
+}

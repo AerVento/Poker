@@ -46,6 +46,7 @@ namespace Game.UI.Gifts
             public bool CanPurchase { get; }
             public GiftOffer(uint price, bool canPurchase) { Price = price; CanPurchase = canPurchase; }
         }
+        private readonly List<GiftDefinition> _catalogGifts = new List<GiftDefinition>();
         private readonly List<GiftDefinition> _gifts = new List<GiftDefinition>();
         private static string _selectedGiftId;
         private int _selectedIndex;
@@ -120,14 +121,32 @@ namespace Game.UI.Gifts
             _menuBlockerButton = view.MenuBlockerButton;
         }
 
-        // The gift menu lists Configs/Items/Gifts.json in order, as received from the server.
+        // The gift menu follows Configs/Items/Gifts.json order, as received from the server.
         private void ReloadGifts()
         {
-            _gifts.Clear();
+            _catalogGifts.Clear();
             foreach (var gift in ClientCatalog.Current?.Gifts ?? Array.Empty<GiftDefinition>())
-                if (!string.IsNullOrWhiteSpace(gift.Effect) && ClientCatalog.FindItem(gift.ItemId) != null) _gifts.Add(gift);
-            _selectedIndex = Mathf.Max(0, _gifts.FindIndex(g => g.ItemId == _selectedGiftId));
+                if (!string.IsNullOrWhiteSpace(gift.Effect) && ClientCatalog.FindItem(gift.ItemId) != null) _catalogGifts.Add(gift);
+            FilterGifts();
         }
+
+        // Rebuilt whenever the catalog or the inventory changes; the selection survives while the gift stays listed.
+        private void FilterGifts()
+        {
+            _gifts.Clear();
+            _gifts.AddRange(VisibleGifts(_catalogGifts, _owned, ClientCatalog.FindOffer));
+            var index = _gifts.FindIndex(g => g.ItemId == _selectedGiftId);
+            _selectedIndex = index >= 0 ? index : Mathf.Clamp(_selectedIndex, 0, Mathf.Max(0, _gifts.Count - 1));
+        }
+
+        /// <summary>
+        /// A gift is listed while the player holds some, or while the shop sells it; anything else (such as a
+        /// lottery-only gift with no stock) stays hidden. Affordability does not hide a shop gift.
+        /// </summary>
+        public static IEnumerable<GiftDefinition> VisibleGifts(IEnumerable<GiftDefinition> gifts,
+            IReadOnlyDictionary<string, uint> owned, Func<string, ShopOffer> offer)
+            => gifts.Where(gift => (owned.TryGetValue(gift.ItemId, out var quantity) && quantity > 0) ||
+                offer(gift.ItemId)?.CanPurchase == true);
 
         private void OnCatalogChanged()
         {
@@ -623,6 +642,7 @@ namespace Game.UI.Gifts
             // Players serving a sentence cannot give gifts.
             _canSend = catalog == null || !catalog.IsServing(catalog.ServiceYears(
                 (snapshot.Items ?? Array.Empty<ItemStackMessage>()).Select(i => new ItemStack(i.ItemId, i.Quantity))));
+            FilterGifts();
             RefreshMenu();
         }
 

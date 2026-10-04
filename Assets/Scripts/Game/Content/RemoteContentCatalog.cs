@@ -15,15 +15,18 @@ namespace Game.Content
     public sealed class RemoteContentCatalog
     {
         private readonly IResourceLocator _locator;
+        private readonly RemoteContentManifest _manifest;
         private readonly Dictionary<string, RemoteContentRecord> _records = new Dictionary<string, RemoteContentRecord>(StringComparer.Ordinal);
         public RemoteContentVersion Version { get; }
 
-        public RemoteContentCatalog(RemoteContentVersion version, string json)
+        /// <param name="manifestJson">content-packages.json of the same build; null when the build has none.</param>
+        public RemoteContentCatalog(RemoteContentVersion version, string json, string manifestJson = null)
         {
             Version = version;
             var data = JsonUtility.FromJson<ContentCatalogData>(json);
             if (data == null) throw new ArgumentException("Remote catalog is empty.");
             _locator = data.CreateLocator();
+            _manifest = RemoteContentManifest.Parse(manifestJson);
         }
 
         public RemoteContentRecord Find(string address)
@@ -34,13 +37,14 @@ namespace Game.Content
             if (_locator.Locate(address, typeof(UnityEngine.Object), out var locations))
             {
                 var asset = locations.FirstOrDefault(location => location.HasDependencies);
-                if (asset != null) record = ToRecord(address, asset, Version.Format);
+                if (asset != null) record = ToRecord(address, asset, Version.Format, _manifest.Find(address));
             }
             _records[address] = record;
             return record;
         }
 
-        public static RemoteContentRecord ToRecord(string address, IResourceLocation asset, string format) => new RemoteContentRecord
+        public static RemoteContentRecord ToRecord(string address, IResourceLocation asset, string format,
+            RemoteContentManifest.Package package = null) => new RemoteContentRecord
         {
             Address = address,
             AssetId = asset.InternalId,
@@ -51,7 +55,9 @@ namespace Game.Content
                 Url = bundle.InternalId,
                 Provider = bundle.ProviderId,
                 Options = bundle.Data is AssetBundleRequestOptions options ? JsonUtility.ToJson(options) : string.Empty
-            }).ToList()
+            }).ToList(),
+            Version = package?.Version ?? string.Empty,
+            Dependencies = package?.Dependencies?.Where(d => d != null).ToList() ?? new List<RemoteContentDependency>()
         };
 
         /// <summary>Rebuilds Addressables locations from a record, so an old version loads without its catalog.</summary>

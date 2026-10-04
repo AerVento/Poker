@@ -1,0 +1,46 @@
+local S=require('TouhouSpell')
+local Music=require('TouhouMusic')
+local M={apiVersion=1,duration=8.2,resources=S.resources()}
+for _,key in ipairs({'stopSound','timeClock','clockHand','timeMaterial','themeMusic'}) do table.insert(M.resources,key) end
+function M.build(g)
+  local s=S.stage(g,M.duration,180,nil,1.85)
+  local freeze=g.screenEffect(g.layer,'timeMaterial')
+  g.screenParameter(freeze,'radius',2.3,0.42,0,1,'OutQuad')
+  g.screenParameter(freeze,'strength',4.45,1.2,1,0,'InOutSine')
+  local center={s.ax-s.dir*100,s.ay+70}
+  local clock=g.set(g.node(g.layer,'Pocket watch'),{position=center,visible=false})
+  g.set(g.image(clock,'Ivory pocket watch','timeClock',250,250),{pivot={0.49,0.432}})
+  local minute=g.image(clock,'Minute hand','clockHand',210,210)
+  local hour=g.image(clock,'Hour hand','clockHand',145,145)
+  g.set(minute,{rotation=60,pivot={0.49,0.529}});g.set(hour,{rotation=-70,pivot={0.49,0.529}})
+  S.reveal(s,clock,0.35,3.3);g.scale(clock,0.35,0.35,0.3,1,'OutCubic')
+  -- Continuous equal-angle arcs slow down over progressively longer tick intervals.
+  -- The sixth tick lands exactly when both hands finally stop.
+  local ticks={0.45,0.54,0.70,0.98,1.46,2.29}
+  for i=1,5 do
+    local length=ticks[i+1]-ticks[i]
+    local ease=i==5 and 'OutSine' or 'Linear'
+    g.rotate(minute,ticks[i],length,60-(i-1)*42,60-i*42,ease)
+    g.rotate(hour,ticks[i],length,-70-(i-1)*3.5,-70-i*3.5,ease)
+  end
+  g.sound(2.12,'stopSound',0.85)
+  for ring=0,2 do
+    local count=14+ring*4
+    local phase=g.random()*math.pi*2
+    for i=0,count-1 do
+      local a=2*math.pi*i/count+phase+(g.random()-0.5)*0.12
+      local radius=112+ring*53+(g.random()-0.5)*25
+      local appear=2.90+ring*0.11+i*0.012
+      local p={s.tx+math.cos(a)*radius,s.ty+math.sin(a)*radius}
+      local knife=S.bullet(s,'knife','Target orbit knife '..ring..'-'..i,59,23,{0.78,0.87,0.94},p)
+      g.set(knife,{rotation=math.deg(a)+180})
+      S.reveal(s,knife,appear,6.3-appear)
+      g.scale(knife,appear,0.2,0.08,1,'OutBack')
+      g.move(knife,4.48+ring*0.09+i*0.006,1.35,p,{s.tx,s.ty},'InCubic')
+    end
+  end
+  Music.play(g,'the-world',0.05,'themeMusic',0.95)
+  g.sound(4.92,'releaseSound',1.0)
+  S.actor(s,0.45,'sakuya')
+end
+return M

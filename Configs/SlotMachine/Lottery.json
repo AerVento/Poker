@@ -1,13 +1,13 @@
 {
   "enabled": true,
   "cost-dollars": 1000,
-  "none-weight": 1300,
+  "none-weight": 1000,
   "pity-draws": 10,
   "small": {
-    "weight": 583,
+    "weight": 870,
     "rewards": [
       {
-        "weight": 22,
+        "weight": 20,
         "reward": [
           {
             "kind": "Dollars",
@@ -16,7 +16,7 @@
         ]
       },
       {
-        "weight": 12,
+        "weight": 10,
         "reward": [
           {
             "kind": "Dollars",
@@ -25,56 +25,56 @@
         ]
       },
       {
-        "weight": 6,
+        "weight": 4,
         "reward": [
           {
             "kind": "Dollars",
-            "quantity": 3000
+            "quantity": 2500
           }
         ]
       },
       {
-        "weight": 15,
+        "weight": 12,
         "reward": [
           {
             "kind": "Item",
-            "quantity": 20,
+            "quantity": 12,
             "item-id": "rotten-egg"
           }
         ]
       },
       {
-        "weight": 12,
+        "weight": 10,
         "reward": [
           {
             "kind": "Item",
-            "quantity": 10,
+            "quantity": 6,
             "item-id": "champagne"
           }
         ]
       },
       {
-        "weight": 12,
+        "weight": 10,
         "reward": [
           {
             "kind": "Item",
-            "quantity": 10,
+            "quantity": 6,
             "item-id": "gunfire"
           }
         ]
       },
       {
-        "weight": 12,
+        "weight": 10,
         "reward": [
           {
             "kind": "Item",
-            "quantity": 10,
+            "quantity": 6,
             "item-id": "cigar"
           }
         ]
       },
       {
-        "weight": 9,
+        "weight": 6,
         "reward": [
           {
             "kind": "Item",
@@ -82,14 +82,64 @@
             "item-id": "swiss-bank-note"
           }
         ]
+      },
+      {
+        "weight": 4,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 1,
+            "item-id": "resurrection-butterfly"
+          }
+        ]
+      },
+      {
+        "weight": 4,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 1,
+            "item-id": "fantasy-seal"
+          }
+        ]
+      },
+      {
+        "weight": 4,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 1,
+            "item-id": "master-spark"
+          }
+        ]
+      },
+      {
+        "weight": 4,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 1,
+            "item-id": "the-world"
+          }
+        ]
+      },
+      {
+        "weight": 4,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 1,
+            "item-id": "hour-of-daybreak"
+          }
+        ]
       }
     ]
   },
   "medium": {
-    "weight": 105,
+    "weight": 118,
     "rewards": [
       {
-        "weight": 38,
+        "weight": 30,
         "reward": [
           {
             "kind": "Dollars",
@@ -98,7 +148,7 @@
         ]
       },
       {
-        "weight": 22,
+        "weight": 20,
         "reward": [
           {
             "kind": "Dollars",
@@ -107,7 +157,7 @@
         ]
       },
       {
-        "weight": 10,
+        "weight": 8,
         "reward": [
           {
             "kind": "Dollars",
@@ -116,36 +166,36 @@
         ]
       },
       {
-        "weight": 40,
+        "weight": 30,
         "reward": [
           {
             "kind": "Item",
-            "quantity": 40,
+            "quantity": 30,
             "item-id": "rotten-egg"
           },
           {
             "kind": "Item",
-            "quantity": 15,
+            "quantity": 10,
             "item-id": "champagne"
           },
           {
             "kind": "Item",
-            "quantity": 15,
+            "quantity": 10,
             "item-id": "gunfire"
           }
         ]
       },
       {
-        "weight": 40,
+        "weight": 30,
         "reward": [
           {
             "kind": "Item",
-            "quantity": 15,
+            "quantity": 10,
             "item-id": "cigar"
           },
           {
             "kind": "Item",
-            "quantity": 15,
+            "quantity": 10,
             "item-id": "champagne"
           },
           {
@@ -156,7 +206,37 @@
         ]
       },
       {
-        "weight": 30,
+        "weight": 25,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 2,
+            "item-id": "resurrection-butterfly"
+          },
+          {
+            "kind": "Item",
+            "quantity": 2,
+            "item-id": "fantasy-seal"
+          },
+          {
+            "kind": "Item",
+            "quantity": 2,
+            "item-id": "master-spark"
+          },
+          {
+            "kind": "Item",
+            "quantity": 2,
+            "item-id": "the-world"
+          },
+          {
+            "kind": "Item",
+            "quantity": 2,
+            "item-id": "hour-of-daybreak"
+          }
+        ]
+      },
+      {
+        "weight": 20,
         "reward": [
           {
             "kind": "Item",
@@ -166,7 +246,7 @@
         ]
       },
       {
-        "weight": 3,
+        "weight": 2,
         "reward": [
           {
             "kind": "Item",
@@ -176,7 +256,7 @@
         ]
       },
       {
-        "weight": 3,
+        "weight": 2,
         "reward": [
           {
             "kind": "Item",
@@ -186,7 +266,7 @@
         ]
       },
       {
-        "weight": 3,
+        "weight": 2,
         "reward": [
           {
             "kind": "Item",
@@ -196,7 +276,7 @@
         ]
       },
       {
-        "weight": 3,
+        "weight": 2,
         "reward": [
           {
             "kind": "Item",
@@ -206,12 +286,22 @@
         ]
       },
       {
-        "weight": 3,
+        "weight": 2,
         "reward": [
           {
             "kind": "Item",
             "quantity": 1,
             "item-id": "namecard-galaxy"
+          }
+        ]
+      },
+      {
+        "weight": 12,
+        "reward": [
+          {
+            "kind": "Item",
+            "quantity": 1,
+            "item-id": "namecard-gensokyo"
           }
         ]
       }

@@ -10,6 +10,7 @@ description: 在 Poker Unity 项目中新增或调整牌局礼物，包括物品
 - [礼物](../../../Docs/Systems/Gifts.md)：配置、服务器规则、客户端交互、Lua 脚本接口与预览。
 - [货币、商店与物品](../../../Docs/Systems/Economy.md)：`Configs/Items` 物品与功能目录、`Configs/Shop` 商城配置、消耗方式。
 - [远程资源](../../../Docs/Operations/RemoteArtwork.md)：打包、内容版本与发布顺序；配置与发布步骤见 [poker-dynamic-content](../poker-dynamic-content/SKILL.md)。
+- 单款礼物的动画与美术设计记录写在 `ArtSources/Gifts/<礼物>/README.md`，不要写进 `Docs/Systems/Gifts.md`；只有新增宿主能力或规则时才更新该文档。
 - 涉及界面、按钮或文案时完整阅读 [UI 规范](../../../Docs/Standards/UIConvention.md)；放置资源时使用 [poker-assets](../poker-assets/SKILL.md)。
 
 ## 各类文件的位置
@@ -20,7 +21,7 @@ description: 在 Poker Unity 项目中新增或调整牌局礼物，包括物品
 | 礼物列表（菜单顺序、特效地址） | `Configs/Items/Gifts.json` |
 | 价格与上架 | `Configs/Shop/Shop.json` |
 | 入口 Lua 模块 | `Assets/Scripts/UI/Gifts/Lua/<礼物大驼峰>.lua.txt` |
-| 共享 Lua 模块 | `Assets/Scripts/UI/Gifts/Lua/Shared/` |
+| 共享 Lua 模块 | `Assets/Scripts/UI/Gifts/Lua/Shared/`，打成共享 Lua 包 `lua/shared`（根资源 `Assets/RemoteContent/lua/Shared.asset`） |
 | 礼物包入口 `GiftEffectSO` | `Assets/RemoteContent/gifts/<礼物大驼峰>.asset`，地址 `gifts/<物品 ID>` |
 | 运行时图片、音效 | `Assets/Art/Gifts/`、`Assets/Audio/SFX/Gifts/` |
 | 菜单与商城图标 | `Assets/Sprites/Items/Gifts/<图标名>.png`，打进公共图标包 `icons/items` |
@@ -29,13 +30,13 @@ description: 在 Poker Unity 项目中新增或调整牌局礼物，包括物品
 
 ## 新增或调整一个礼物
 
-1. 确认稳定物品 ID（小写英文、数字、`-`）、名称、介绍、价格（美金）和总时长（小于 5 秒）。
-2. 在 `Items.json` 加入物品（`"consumable": true`、`"max-quantity": 4294967295`，`icon` 为图标文件名），在 `Gifts.json` 按菜单顺序加入 `{ "item-id", "effect": "gifts/<ID>" }`，在 `Shop.json` 加入 `{ "item-id", "price", "listed": true, "purchasable": true }`（缺货时按此价自动补买）。字段规则见 `Docs/Standards/Configuration.md`。
-3. 编写 Lua 入口模块：返回 `{ apiVersion, duration, resources, build }`。节奏参数写在模块里，`duration` 由参数算出且等于时间线终点；`resources` 列出用到的资源名；`build(g)` 只通过 `g` 搭节点、写初始状态和插入 Tween（接口见 [礼物](../../../Docs/Systems/Gifts.md)）。所有 Tween 显式给出起点和终点；同一属性多段同时变化时用不同通道。可 `require` 共享模块。
-4. 在 `GiftEffectSO` 上引用入口模块、用到的共享模块，并为每个资源名填写图片、音效或 UI prefab。
-5. 执行 `Poker/Remote Artwork/Prepare Catalogs and Groups`：注册礼物包、重建图标集并运行校验（资源名存在且唯一、模块可加载、礼物包之间不共享美术）。
+1. 确认稳定物品 ID（小写英文、数字、`-`）、名称、介绍、是否可购买、价格（美金）和总时长（宿主要求小于 10 秒；常规礼物约 5 秒内，用户允许的限定礼物可适当延长）。
+2. 在 `Items.json` 加入物品（`"consumable": true`、`"max-quantity": 4294967295`，`icon` 为图标文件名），在 `Gifts.json` 按菜单顺序加入 `{ "item-id", "effect": "gifts/<ID>" }`，需要商城购买时才在 `Shop.json` 加入 `{ "item-id", "price", "listed": true, "purchasable": true }`（缺货时按此价自动补买）。字段规则见 `Docs/Standards/Configuration.md`。
+3. 编写 Lua 入口模块：返回 `{ apiVersion, duration, resources, build }`。节奏参数写在模块里，`duration` 由参数算出且等于时间线终点；`resources` 列出用到的资源名；`build(g)` 只通过 `g` 搭节点、写初始状态和插入 Tween（接口见 [礼物](../../../Docs/Systems/Gifts.md)）。所有 Tween 显式给出起点和终点；同一属性多段同时变化时用不同通道。写之前先看 `Shared/` 中能否复用；放置、拆分与版本规则按 [Lua 规范](../../../Docs/Standards/LuaConvention.md)，修改共享模块后按规则修改 `Shared.asset` 的 `_version`。
+4. 在 `GiftEffectSO` 上引用入口模块；用到共享模块时在 `_dependencies` 写 `lua/shared` 与最低版本 `主.次`（不要直接引用共享模块文件）；为每个资源名填写图片、音效或 UI prefab。
+5. 执行 `Poker/Remote Artwork/Prepare Catalogs and Groups`：注册礼物包、收集共享 Lua 包、重建图标集并运行校验（资源名存在且唯一、模块可加载、礼物包之间不共享资源、依赖声明满足、版本号没有漏改）。
 6. 用 `Poker/Gifts/Play Gift Preview` 检查。Editor 预览直接读取磁盘上的 `.lua.txt`，保存后重新播放即生效。
-7. 只改 Lua、美术或配置时，重新打包远程内容并重启服务器即可；改了 `GiftScriptHost`、程序化图形或序列化字段时，执行 `XLua/Generate Code`，并与新页面一起发布（构建会提示内容格式变化）。
+7. 只改 Lua、美术或配置时，重新打包远程内容并重启服务器即可（构建更新的 `Assets/RemoteContent/packages-lock.json` 一起提交）；改了 `GiftScriptHost`、程序化图形或序列化字段时，执行 `XLua/Generate Code`，并与新页面一起发布（构建会提示内容格式变化）。
 
 不要为某个礼物单独写一次性的配置脚本；如确实临时需要，用完删除。
 

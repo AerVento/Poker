@@ -82,7 +82,10 @@ namespace Game.UI.Gifts
             _preview = preview;
             _muted = preview;
             var seed = preview ? PreviewSeed : Environment.TickCount ^ GetInstanceID();
+            BeginAudio();
             _host = new GiftScriptHost((RectTransform)transform, _layer, sender, target, _definition.FindResource, seed);
+            _host.AudioEnabled = () => SoundEnabled && isActiveAndEnabled;
+            _host.RetainAudioResources = RetainAudioResources;
             try
             {
                 GiftScriptRuntime.Build(_script, _host);
@@ -98,10 +101,11 @@ namespace Game.UI.Gifts
                 Stop();
                 return false;
             }
-            BeginAudio();
             _host.UpdateClocks(0f);
             return true;
         }
+
+        protected override void StopMusic() => _host?.EndAudio();
 
         private RectTransform CreateLayer()
         {

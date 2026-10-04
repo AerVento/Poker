@@ -31,8 +31,14 @@ MonoBehaviour:
     _sprite: {fileID: 21300000, guid: 0928a4c302b6e5a40aec2ae596ccddec, type: 3}
   - _name: devil-contract
     _sprite: {fileID: 21300000, guid: 06ef7464262f376448e1146618b34ff7, type: 3}
+  - _name: fantasy-seal
+    _sprite: {fileID: 21300000, guid: 6e3a7261c43cee14a92da7b3c0014a30, type: 3}
   - _name: gunfire
     _sprite: {fileID: 21300000, guid: 19d8e4d69e3ea8847a3a3b4a341eb2d1, type: 3}
+  - _name: hour-of-daybreak
+    _sprite: {fileID: 21300000, guid: 22ab3ff377cc2e1469edc1663fc27bb7, type: 3}
+  - _name: master-spark
+    _sprite: {fileID: 21300000, guid: a4ab0695ce4ec854f92a3ff3c726283e, type: 3}
   - _name: namecard-abyss
     _sprite: {fileID: 21300000, guid: 1d0e26f81aa04f24957306621233b77b, type: 3}
   - _name: namecard-archdevil-service
@@ -51,6 +57,8 @@ MonoBehaviour:
     _sprite: {fileID: 21300000, guid: 6daa830fdc9a44fc82a8533a2ecab5a0, type: 3}
   - _name: namecard-galaxy
     _sprite: {fileID: 21300000, guid: 013955e7f85b4e65b8f7b086293e9d2a, type: 3}
+  - _name: namecard-gensokyo
+    _sprite: {fileID: 21300000, guid: cf4e2ea5acdf465c846ac9d6360153eb, type: 3}
   - _name: namecard-gilded
     _sprite: {fileID: 21300000, guid: 4206fb106cdf4cec8243e022175d2656, type: 3}
   - _name: namecard-jade
@@ -69,9 +77,13 @@ MonoBehaviour:
     _sprite: {fileID: 21300000, guid: 4cab9d2b324e4f29b5e25bcd5a25c249, type: 3}
   - _name: namecard-twilight-duo
     _sprite: {fileID: 21300000, guid: 6c3fdc6eb2be4c73a3c057863fc11230, type: 3}
+  - _name: resurrection-butterfly
+    _sprite: {fileID: 21300000, guid: 163549199c3cfbe4a9adc289d14e29fc, type: 3}
   - _name: rotten-egg
     _sprite: {fileID: 21300000, guid: a07c03253ada8594682f2caf8ef3f7b1, type: 3}
   - _name: satan-contract
     _sprite: {fileID: 21300000, guid: c7646dfb210fbec41856138a8f259da9, type: 3}
   - _name: swiss-bank-note
     _sprite: {fileID: 21300000, guid: baad4df9377a9894498a037a04de2d1f, type: 3}
+  - _name: the-world
+    _sprite: {fileID: 21300000, guid: 5a4fd2217ad8d3947838afcf6e1e06de, type: 3}

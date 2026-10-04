@@ -70,5 +70,9 @@
   {
     "item-id": "namecard-royal-straight-flush",
     "artwork": "namecards/royal-straight-flush"
+  },
+  {
+    "item-id": "namecard-gensokyo",
+    "artwork": "namecards/gensokyo"
   }
 ]

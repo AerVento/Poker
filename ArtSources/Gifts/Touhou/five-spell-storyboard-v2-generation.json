@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-03",
+  "tool": "Built-in image_gen",
+  "stage": "Simplified character-signature concept only",
+  "output": "ArtSources/Gifts/Touhou/five-spell-storyboard-v2.png",
+  "generatedSource": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a10125-64dc-7ff1-b92e-fc1bc3cd6507\\exec-758e337d-5f8e-49a9-8089-8cb4624117bf.png",
+  "reference": "ArtSources/Gifts/Touhou/five-spell-storyboard.png",
+  "prompt": "Edit this five-row Touhou gift storyboard to SIMPLIFY the signature projectiles. Keep same portrait aspect, FIVE rows and THREE columns, exact headings and labels, same characters, faces, costumes, anime chibi style, poses, dark blue background and fine dividers. Maintain row1 Yuyuko, row2 Reimu, row3 Marisa, row4 Sakuya, row5 Kaguya. Keep Reimu's rainbow glowing spheres and gohei, and Marisa's large rainbow-edged laser exactly as shown. Do not add any new captions or slogan.\nMake these precise substantive changes:\nROW1 YUYUKO: completely replace the rightmost effect with ONLY luminous BUTTERFLIES and THREE slender lilac/cyan laser streaks. Remove ALL round red bullets, all bead chains, and the thick red-white doughnut ring. Show 14-20 clearly separated pink and pale-blue stylized butterfly silhouettes flowing gracefully in two open curved streams beside and ahead of her, short tails, a few larger butterflies to establish shape. Three fine laser rays fan outward between the butterfly streams. Beautiful quiet elegance, dark gaps between elements, no giant explosion, no dense lattice. She remains visible on left holding fan. Her first two frames retain her fan and a few small butterflies, avoid extra projectile types.\nROW4 SAKUYA: the rightmost effect uses ONLY silver throwing knives with cool blue/teal edges, NO red light orbs whatsoever, NO red glow, NO balls. About14-18 clean, elegant, correctly shaped silver knives in two or three spaced diagonal fan formations moving rightward; subtle short blue movement traces, strong dark negative space. She stays visible and composed on left. In middle casting frame keep modest faint clock face and suspended knives, as time-control cue; clock never replaces knife effect. No additional stars or symbols.\nROW5 KAGUYA: simplify ALL spell imagery to FIVE-POINT STAR projectiles and soft dawn-colored illumination. Remove ALL square talismans, paper rectangles, rice/oval bullets, round balls, hollow rings, and rainbow bullet spiral. In middle frame, replace green spherical light between hands with one small warm-gold five-point STAR; only a few tiny star motes gather near her sleeves. In rightmost effect frame show 18-24 distinct five-point stars in an airy expanding upward-right fan, from cool lavender and pale blue near Kaguya transitioning into champagne gold and warm ivory at the leading edge. Stars have clearly defined shapes and short faint tails. A very subtle localized amber glow behind the gold stars suggests emerging daylight; navy remains visible, NO landscape, NO sun disc, NO whiteout, NO large beam or explosion. Kaguya remains visible and graceful left side.\nOverall this is a concise friendly cosmetic gift, each character recognizable by one or two unique projectile types. Less dense, more breathing space, polished gentle anime game VFX. Preserve character anatomy and individuality. No recreation of enemy boss bullet fields. Do not change row2 or row3.",
+  "direction": {
+    "flow": "Q版角色出现 → 释放符卡 → 播放特效",
+    "yuyuko": "蝴蝶与细激光，去掉红色珠弹与密集弹环",
+    "reimu": "彩色光球",
+    "marisa": "大激光",
+    "sakuya": "仅飞刀；施法阶段保留轻量时间提示",
+    "kaguya": "仅星弹，由冷色转向暖金，表达回到光明"
+  },
+  "scope": "Concept art; no runtime or configuration changes."
+}

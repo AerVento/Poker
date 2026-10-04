@@ -20,8 +20,10 @@ namespace Game.Content
             public UniTaskCompletionSource<bool> Done;
         }
 
-        // One download per address; it always targets the version in the accepted catalog.
+        // One download per address; it always targets the version in the accepted catalog. Downloading never commits.
         private static readonly Dictionary<string, Transfer> Transfers = new Dictionary<string, Transfer>();
+        // Targets of the batches being downloaded or committed; their bundles are never deleted meanwhile.
+        private static readonly List<IReadOnlyList<RemoteContentRecord>> Batches = new List<IReadOnlyList<RemoteContentRecord>>();
         // Addresses whose old version is being unloaded and replaced; acquirers wait for the new one.
         private static readonly Dictionary<string, UniTaskCompletionSource<bool>> Swaps = new Dictionary<string, UniTaskCompletionSource<bool>>();
         private static readonly Queue<string> UpdateQueue = new Queue<string>();
@@ -35,25 +37,40 @@ namespace Game.Content
             ? RemoteContentState.Unavailable
             : RemoteContentRules.Judge(_records.Get(address), _catalog.Find(address), ClientBuild.ContentFormat);
 
+        /// <summary>
+        /// Downloaded: the address and everything it depends on have compatible versions in the browser (current ones,
+        /// or old ones being updated). Downloading: a package it needs is being downloaded or committed.
+        /// </summary>
         public static RemoteDownloadState DownloadState(string address)
         {
             if (string.IsNullOrEmpty(address)) return RemoteDownloadState.Downloaded;
 #if UNITY_EDITOR
             if (ReadsLocalAssets) return LocalAssetExists(address) ? RemoteDownloadState.Downloaded : RemoteDownloadState.Failed;
 #endif
-            var state = StateOf(address);
-            if (state == RemoteContentState.Current || state == RemoteContentState.Stale) return RemoteDownloadState.Downloaded;
-            if (Transfers.ContainsKey(address)) return RemoteDownloadState.Downloading;
-            if (state == RemoteContentState.Missing)
-                return FailedDownloads.Contains(address) ? RemoteDownloadState.Failed : RemoteDownloadState.Available;
-            return _initialization == null && _retryInitializationAt > 0 ? RemoteDownloadState.Failed : RemoteDownloadState.Unknown;
+            if (StateOf(address) == RemoteContentState.Unavailable)
+                return _initialization == null && _retryInitializationAt > 0 ? RemoteDownloadState.Failed : RemoteDownloadState.Unknown;
+            var plan = Plan(address);
+            if (!plan.Success) return RemoteDownloadState.Failed;
+            if (plan.Updates.Count == 0) return RemoteDownloadState.Downloaded;
+            if (plan.Updates.Any(IsFetching)) return RemoteDownloadState.Downloading;
+            return FailedDownloads.Contains(address) ? RemoteDownloadState.Failed : RemoteDownloadState.Available;
         }
 
         /// <summary>A usable version is in the browser: the current one, or an old one that is being updated.</summary>
         public static bool IsDownloaded(string address) => DownloadState(address) == RemoteDownloadState.Downloaded;
 
-        public static float DownloadProgress(string address) => string.IsNullOrEmpty(address) ? 1f :
-            Transfers.TryGetValue(address, out var transfer) ? transfer.Progress : IsDownloaded(address) ? 1f : 0f;
+        /// <summary>Progress over every package the address still needs.</summary>
+        public static float DownloadProgress(string address)
+        {
+            if (string.IsNullOrEmpty(address) || IsDownloaded(address)) return 1f;
+            if (_catalog == null || _records == null) return 0f;
+            var plan = Plan(address);
+            if (!plan.Success || plan.Updates.Count == 0) return 0f;
+            // A package downloaded but waiting for its batch to commit counts as nearly done.
+            return plan.Updates.Average(a => Transfers.TryGetValue(a, out var transfer) ? transfer.Progress : IsFetching(a) ? 0.99f : 0f);
+        }
+
+        private static bool IsFetching(string address) => Batches.Any(batch => batch.Any(target => target.Address == address));
 
         // Reads only the local records against the remote catalog; never downloads artwork merely to browse an item.
         public static UniTask<bool> CheckDownloadAsync(string address, CancellationToken cancellationToken = default)
@@ -75,7 +92,7 @@ namespace Game.Content
             return IsDownloaded(address);
         }
 
-        /// <summary>Downloads a missing address without loading it. Cancellation detaches only this caller.</summary>
+        /// <summary>Downloads what an address still needs without loading it. Cancellation detaches only this caller.</summary>
         public static UniTask<bool> DownloadAsync(string address, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -93,14 +110,12 @@ namespace Game.Content
             if (ReadsLocalAssets) return IsDownloaded(address);
 #endif
             if (!await Initialize().AttachExternalCancellation(cancellationToken)) return false;
-            switch (StateOf(address))
-            {
-                case RemoteContentState.Current: return true;
-                case RemoteContentState.Stale: QueueUpdate(address); return true;
-                case RemoteContentState.Missing:
-                    return await FetchAsync(address, _catalog.Find(address)).AttachExternalCancellation(cancellationToken);
-                default: return false;
-            }
+            if (StateOf(address) == RemoteContentState.Unavailable) return false;
+            var plan = Plan(address);
+            if (!plan.Success) return false;
+            QueueStale(plan);
+            return plan.Updates.Count == 0 ||
+                await FetchAsync(address, plan.Updates).AttachExternalCancellation(cancellationToken);
         }
 
         /// <summary>
@@ -130,16 +145,23 @@ namespace Game.Content
                 }
                 if (_initialization != null && !_initialization.Task.Status.IsCompleted()) return;
                 var version = await FetchVersionAsync();
-                if (!RemoteContentRules.ShouldSwitch(_catalog.Version, version, ClientBuild.ContentFormat)) return;
-                _catalog = await FetchCatalogAsync(version);
+                if (RemoteContentRules.ShouldSwitch(_catalog.Version, version, ClientBuild.ContentFormat))
+                {
+                    _catalog = await FetchCatalogAsync(version);
+                    FailedDownloads.Clear();
+                    Purge();
+                }
+                // Updates that failed earlier (download error, old version still in use) are retried at every lobby entry.
                 FailedUpdates.Clear();
-                FailedDownloads.Clear();
-                Purge();
-                foreach (var record in _records.All.ToArray())
+                // Packages others depend on first: an update then rarely leaves a dependent incompatible for a while.
+                foreach (var record in _records.All.OrderByDescending(r => DependentCount(r.Address)).ToArray())
                     if (StateOf(record.Address) == RemoteContentState.Stale) QueueUpdate(record.Address);
             }
             catch (Exception exception) { Debug.LogWarning("Remote content update check failed: " + exception.Message); }
         }
+
+        private static int DependentCount(string address) =>
+            _records.All.Count(record => record.Dependencies != null && record.Dependencies.Any(d => d?.Address == address));
 
         private static void QueueUpdate(string address)
         {
@@ -148,7 +170,7 @@ namespace Game.Content
             if (!_updating) RunUpdates().Forget();
         }
 
-        // Background updates run one at a time so they do not compete with downloads the player is waiting for.
+        // Background updates run one batch at a time so they do not compete with downloads the player is waiting for.
         private static async UniTaskVoid RunUpdates()
         {
             _updating = true;
@@ -159,30 +181,62 @@ namespace Game.Content
                     var address = UpdateQueue.Dequeue();
                     Queued.Remove(address);
                     if (StateOf(address) != RemoteContentState.Stale) continue;
-                    if (!await FetchAsync(address, _catalog.Find(address))) FailedUpdates.Add(address);
+                    // Moves the dependencies it needs and the local packages it would break, keeping all records compatible.
+                    var plan = RemoteContentPlanner.ForUpdate(address, _records.All.Select(r => r.Address).ToArray(),
+                        LocalRecord, candidate => _catalog?.Find(candidate));
+                    if (!plan.Success) Debug.LogWarning("Remote content update skipped: " + plan.Error);
+                    if (!plan.Success || !await FetchAsync(null, plan.Updates))
+                        foreach (var failed in plan.Success ? plan.Updates : new[] { address }) FailedUpdates.Add(failed);
                 }
             }
             finally { _updating = false; }
         }
 
-        private static UniTask<bool> FetchAsync(string address, RemoteContentRecord target)
+        /// <summary>
+        /// Downloads the latest version of every address, then commits them together. If any download or drain fails
+        /// nothing is committed, and the bundles downloaded for this batch alone are deleted again.
+        /// </summary>
+        private static async UniTask<bool> FetchAsync(string requester, IReadOnlyCollection<string> addresses)
         {
-            if (target == null) return UniTask.FromResult(false);
-            if (Transfers.TryGetValue(address, out var running) && running.Target.SameContent(target)) return running.Done.Task;
-            var transfer = new Transfer { Target = target, Done = new UniTaskCompletionSource<bool>() };
-            Transfers[address] = transfer;
-            FailedDownloads.Remove(address);
-            RunTransfer(address, transfer).Forget();
-            return transfer.Done.Task;
-        }
-
-        private static async UniTaskVoid RunTransfer(string address, Transfer transfer)
-        {
+            var targets = addresses.Select(address => _catalog?.Find(address)).ToArray();
+            if (targets.Length == 0 || targets.Any(target => target == null)) return false;
+            if (requester != null) FailedDownloads.Remove(requester);
+            Batches.Add(targets);
             var success = false;
             try
             {
-                var target = transfer.Target;
-                var local = _records.Get(address);
+                var downloads = await UniTask.WhenAll(targets.Select(DownloadTarget));
+                success = downloads.All(done => done) && await Commit(targets);
+            }
+            catch (Exception exception) { Debug.LogWarning("Remote download failed: " + string.Join(", ", addresses) + " / " + exception.Message); }
+            finally
+            {
+                Batches.Remove(targets);
+                if (!success)
+                {
+                    DeleteBundles(targets.SelectMany(target => target.Bundles));
+                    if (requester != null) FailedDownloads.Add(requester);
+                }
+            }
+            return success;
+        }
+
+        private static UniTask<bool> DownloadTarget(RemoteContentRecord target)
+        {
+            if (Transfers.TryGetValue(target.Address, out var running) && running.Target.SameContent(target)) return running.Done.Task;
+            var transfer = new Transfer { Target = target, Done = new UniTaskCompletionSource<bool>() };
+            Transfers[target.Address] = transfer;
+            RunTransfer(transfer).Forget();
+            return transfer.Done.Task;
+        }
+
+        private static async UniTaskVoid RunTransfer(Transfer transfer)
+        {
+            var target = transfer.Target;
+            var success = false;
+            try
+            {
+                var local = _records.Get(target.Address);
                 var bundles = target.Bundles;
                 for (var index = 0; index < bundles.Count; index++)
                 {
@@ -194,58 +248,89 @@ namespace Game.Content
                         value => transfer.Progress = Mathf.Min(0.99f, (offset + value) / bundles.Count)))
                         throw new InvalidOperationException("Download failed: " + url);
                 }
-                success = await Commit(address, target);
+                success = true;
             }
-            catch (Exception exception) { Debug.LogWarning("Remote download failed: " + address + " / " + exception.Message); }
-            if (Transfers.TryGetValue(address, out var current) && current == transfer) Transfers.Remove(address);
-            if (!success && !RemoteContentRules.IsUsable(_records.Get(address), ClientBuild.ContentFormat)) FailedDownloads.Add(address);
+            catch (Exception exception) { Debug.LogWarning("Remote download failed: " + target.Address + " / " + exception.Message); }
+            if (Transfers.TryGetValue(target.Address, out var current) && current == transfer) Transfers.Remove(target.Address);
             transfer.Progress = success ? 1f : 0f;
             transfer.Done.TrySetResult(success);
         }
 
         /// <summary>
-        /// The new version is downloaded but not loaded. Unload the old version once its users release it,
-        /// delete it from the browser cache, then point the record at the new version. The next acquire loads it.
+        /// The new versions are downloaded but not loaded. Retire the loaded old versions together with every loaded
+        /// package that depends on them, wait until their users release them, then point all records at the new versions
+        /// at once and delete the old bundles no record uses any more. The next acquire loads the new versions.
         /// </summary>
-        private static async UniTask<bool> Commit(string address, RemoteContentRecord target)
+        private static async UniTask<bool> Commit(IReadOnlyList<RemoteContentRecord> targets)
         {
-            var old = _records.Get(address);
-            if (old != null && old.SameContent(target)) return true;
-            // A download that finished after the catalog moved on must not replace a newer record.
-            if (_catalog?.Find(address)?.SameContent(target) != true) return false;
+            List<RemoteContentRecord> pending;
+            while (true)
+            {
+                // A download that finished after the catalog moved on must not replace a newer record.
+                if (targets.Any(target => _catalog?.Find(target.Address)?.SameContent(target) != true)) return false;
+                pending = targets.Where(target => _records.Get(target.Address)?.SameContent(target) != true).ToList();
+                if (pending.Count == 0) return true;
+                var busy = pending.Select(target => Swaps.TryGetValue(target.Address, out var other) ? other : null)
+                    .FirstOrDefault(other => other != null);
+                if (busy == null) break;
+                await busy.Task;
+            }
             var swap = new UniTaskCompletionSource<bool>();
-            Swaps[address] = swap;
+            foreach (var target in pending) Swaps[target.Address] = swap;
+            var retired = new List<Entry>();
             try
             {
-                if (Entries.TryGetValue(address, out var entry))
+                foreach (var target in pending)
                 {
+                    if (!Entries.TryGetValue(target.Address, out var entry)) continue;
                     // An entry still loading the old version finishes first; one that failed holds nothing.
                     while (entry.Record != null && !entry.Finished) await UniTask.Yield();
-                    if (entry.Record != null && !entry.Removed)
-                    {
-                        entry.Retired = true;
-                        Updated?.Invoke(address);
-                        if (entry.Users == 0) Remove(entry);
-                        var deadline = Time.realtimeSinceStartupAsDouble + DrainTimeoutSeconds;
-                        while (!entry.Removed && Time.realtimeSinceStartupAsDouble < deadline) await UniTask.Yield();
-                        if (!entry.Removed)
-                        {
-                            // A holder did not release the old version; keep it and retry at the next lobby check.
-                            entry.Retired = false;
-                            throw new TimeoutException("Old version is still in use: " + address);
-                        }
-                    }
+                    if (entry.Record != null && !entry.Removed) retired.Add(entry);
+                }
+                AddDependents(retired);
+                foreach (var entry in retired) entry.Retired = true;
+                foreach (var entry in retired) Updated?.Invoke(entry.Address);
+                foreach (var entry in retired)
+                    if (entry.Users == 0 && entry.Finished && !entry.Removed) Remove(entry);
+                var deadline = Time.realtimeSinceStartupAsDouble + DrainTimeoutSeconds;
+                while (retired.Any(entry => !entry.Removed) && Time.realtimeSinceStartupAsDouble < deadline) await UniTask.Yield();
+                var held = retired.Where(entry => !entry.Removed).ToArray();
+                if (held.Length > 0)
+                {
+                    // A holder did not release an old version; keep them all and retry at the next lobby check.
+                    foreach (var entry in held) entry.Retired = false;
+                    throw new TimeoutException("Old version is still in use: " + string.Join(", ", held.Select(e => e.Address)));
                 }
                 await WaitForUnloads();
-                if (old != null) DeleteBundles(old.BundlesNotIn(target));
-                _records.Set(target);
+                var old = pending.Select(target => _records.Get(target.Address)).Where(record => record != null).ToArray();
+                foreach (var target in pending) _records.Set(target);
                 SaveRecords();
+                // After the records move, so a bundle the old and new versions share stays.
+                DeleteBundles(old.SelectMany(record => record.Bundles));
                 return true;
             }
             finally
             {
-                Swaps.Remove(address);
+                foreach (var target in pending) Swaps.Remove(target.Address);
                 swap.TrySetResult(true);
+            }
+        }
+
+        /// <summary>
+        /// Adds every entry that holds a retired one, directly or not: it was initialized with the old version and must
+        /// load again with the new one. Entries still loading are told to drop their dependencies and start over.
+        /// </summary>
+        private static void AddDependents(List<Entry> retired)
+        {
+            for (var index = 0; index < retired.Count; index++)
+            {
+                var dependency = retired[index];
+                foreach (var entry in Entries.Values.ToArray())
+                {
+                    if (entry.Removed || retired.Contains(entry) || !entry.Dependencies.Any(lease => lease.Entry == dependency)) continue;
+                    if (entry.Finished && entry.Record != null || entry.Finished && entry.LocalAsset != null) retired.Add(entry);
+                    else entry.Restart = true;
+                }
             }
         }
 
@@ -271,10 +356,12 @@ namespace Game.Content
 
         private static void DeleteBundles(IEnumerable<RemoteBundleRecord> bundles)
         {
-            foreach (var bundle in bundles)
+            foreach (var bundle in bundles.ToArray())
             {
-                // Another address may still use a bundle shared with this one.
-                if (_records.All.Any(record => record.Bundles.Any(bundle.Same))) continue;
+                // Another address may still use a bundle shared with this one, or a batch may be about to commit it.
+                if (_records.All.Any(record => record.Bundles.Any(bundle.Same)) ||
+                    Batches.Any(batch => batch.Any(target => target.Bundles.Any(bundle.Same))))
+                    continue;
                 try { _store.Delete(TransformUrl(bundle.Url, _baseUrl), RemoteContentCatalog.Options(bundle)); }
                 catch (Exception exception) { Debug.LogWarning("Cannot delete cached bundle: " + bundle.Url + " / " + exception.Message); }
             }

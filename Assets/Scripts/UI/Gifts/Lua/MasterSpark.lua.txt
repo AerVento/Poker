@@ -1,0 +1,35 @@
+local S=require('TouhouSpell')
+local Music=require('TouhouMusic')
+local M={apiVersion=1,duration=6.2,resources=S.resources()}
+table.insert(M.resources,'themeMusic')
+function M.build(g)
+  local s=S.stage(g,M.duration,nil,{106,32},2.15)
+  local orb=S.bullet(s,'orb','Hakkero charge',92,92,{0.4,0.78,1},{s.ex,s.ey})
+  S.reveal(s,orb,0.9,1.8);g.scale(orb,0.9,1.3,0.05,1.2,'InQuad')
+  local l,b=g.screen(0,0);local r,t=g.screen(1,1)
+  local exit=100000
+  if s.ux>0.0001 then exit=math.min(exit,(r-s.ex)/s.ux) elseif s.ux < -0.0001 then exit=math.min(exit,(l-s.ex)/s.ux) end
+  if s.uy>0.0001 then exit=math.min(exit,(t-s.ey)/s.uy) elseif s.uy < -0.0001 then exit=math.min(exit,(b-s.ey)/s.uy) end
+  local length=math.max(exit,s.length)+260
+  local colors={{0.8,0.3,1},{0.25,0.5,1},{0.2,1,0.9},{1,0.9,0.5},{1,1,1}}
+  for i,c in ipairs(colors) do
+    local ray=S.bullet(s,'cannon','Piercing Master Spark '..i,length,330-i*45,c,{s.ex,s.ey})
+    g.concurrentScale(ray,'master-spark',2.15,2.65,0.22,2.5)
+    g.set(ray,{pivot={0,0.5},rotation=s.angle})
+    S.reveal(s,ray,2.15,2.65);g.scale(ray,2.15,0.16,{0.02,0.2},{1,1},'OutCubic')
+    g.loop(g.scale(ray,2.45,0.22,{1,0.94},{1,1.05},'InOutSine',2),8,true)
+  end
+  for i=1,6 do
+    local start={s.ex+s.ux*50,s.ey+s.uy*50}
+    local finish={s.ex+s.ux*length,s.ey+s.uy*length}
+    local ring=S.bullet(s,'ring','Beam wavefront',40,245,{0.5,0.9,1},start)
+    g.set(ring,{rotation=s.angle});S.reveal(s,ring,2.18+i*0.16,0.9)
+    g.move(ring,2.18+i*0.16,0.9,start,finish,'Linear');g.scale(ring,2.18+i*0.16,0.9,0.9,1.0,'Linear')
+  end
+  local actor=S.actor(s,0.8,'marisa')
+  g.move(actor,2.15,0.18,{0,0},{-s.dir*12,0},'OutQuad',3)
+  g.move(actor,2.33,0.55,{-s.dir*12,0},{0,0},'OutSine',3)
+  Music.play(g,'master-spark',0.05,'themeMusic',0.72)
+  g.sound(2.15,'releaseSound',1.0)
+end
+return M

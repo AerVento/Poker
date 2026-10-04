@@ -1,6 +1,6 @@
 # 幻想乡绘札生成素材
 
-使用内置 imagegen。清单与设计要求见 [设计方案](../../../Docs/Proposals/GensokyoCardFaces.md)。
+使用内置 imagegen。清单与设计要求见 [README](README.md)。
 
 `card-frame-reference.png` 是简化装饰参考；`heart-k-concept.png` 是红桃 K 人物样张，尚未导入 Unity。概念图尺寸不作为正式导出规格，正式牌面统一为 17:24。
 

@@ -1,0 +1,25 @@
+{
+  "tool": "built-in imagegen",
+  "date": "2026-10-03",
+  "entries": [
+    {
+      "key": "hexagram",
+      "prompt": "Use case: stylized-concept. Create a premium transparent 2D game VFX sprite, square 1024x1024. ONE perfectly centered circular blue magic seal, straight-on orthographic view. A precise SIX-POINTED HEXAGRAM made of TWO interlocking equilateral triangles, bright icy cyan fine etched lines, clearly six tips. Two concentric circular borders, refined engraved arc segments and small abstract mystical marks on the outer band, symmetric elegant fine filigree, delicate cobalt inner line and a restrained cyan glow hugging lines. The center and gaps MUST be truly transparent so a character is readable in front. No opaque disk, no filled triangles, no text labels, no real alphabet words, no stars scattered beyond circle, no scene, no character, no perspective or ground. Fit entire seal within 88 percent of canvas with clear transparent margin. Thin but legible lines designed for display at 330px. High quality anime fantasy magical effect, not a rough diagram. True alpha transparency outside and between every line. A single complete isolated asset ready to rotate and scale in Unity."
+    },
+    {
+      "key": "clock",
+      "prompt": "Use case: stylized-concept. ONE isolated luminous pocket-watch inspired TIME STOP CLOCK FACE game VFX sprite on true transparent alpha, square1024x1024. Perfect front view round face, centered, entirely inside90%canvas. Elegant silver blue rim with subtle engraved metal ornament, twelve clearly spaced hour indices and smaller minute ticks, tasteful Roman numerals I to XII where readable. Thin ice blue inner circle, TWO distinct ornate clock hands stopping at roughly10:10 with a tiny silver center pin. Delicate cool cyan glow. Transparent inner face between indices and hands, NOT a filled clock disk. No chain, no case lid, no pedestal, no scene, no character. Polished Touhou Sakuya spell effect aesthetic, clean fine artwork, readable at260px. No separate scattered debris. Standalone sprite, truly transparent background and transparent holes."
+    },
+    {
+      "key": "ripple",
+      "prompt": "Use case: stylized-concept. ONE isolated TIME DILATION SHOCKWAVE sprite for Unity on genuine transparent background, square1024x1024. Centered perfectly circular expanding energy front, front-on, complete ring within85%canvas. Sophisticated translucent icy blue/cyan rippling rim like light passing through warped glass, thin bright leading edge, two faint closely trailing concentric ripples. A few refined curved refraction streaks within the rim, slight blue violet chromatic separation, smooth flowing edge. Large EMPTY transparent center, no opaque fill, no central flash, no clock, no symbols, no particles elsewhere, no text, no background, no perspective. Soft but defined premium anime magical distortion ring. Transparent exterior and center. This will expand slowly to imply time stop propagating through space; elegant energy texture rather than a basic solid stroke."
+    },
+    {
+      "key": "yuyuko-eyes",
+      "prompt": "Use case: precise-object-edit. Edit target is the supplied isolated Yuyuko chibi HEAD sprite. Make her eyes OPEN with gentle relaxed eyelids, warm dark rose/reddish-brown irises, friendly serene gaze to the viewer's right, gentle subtle smile. Retain EXACT same pink hair, hat shape, blue cap, forehead white triangle red swirl, cel shading, linework, face shape, head angle and tiny neck stump. Match original pixel bounds/composition and transparent silhouette as closely as possible, no added margin or resizing of the head within the canvas. Change ONLY eyes and immediately surrounding eyelid lines. No torso, no extra accessories. Transparent background, preserve alpha, clean anime chibi.",
+      "referenced_image_paths": [
+        "D:/GitHubRepos/Poker/Assets/Art/Gifts/ResurrectionButterfly/rig-head.png"
+      ]
+    }
+  ]
+}

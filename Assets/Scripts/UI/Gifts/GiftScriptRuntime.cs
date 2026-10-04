@@ -75,8 +75,8 @@ local function sandbox()
   }
 end
 
--- sources: module name -> source text. Returns the entry module table or nil, message.
-local function define(entry, sources)
+-- sources: module name -> source text (the gift's entry module and the modules of the Lua packages it depends on).
+local function environment(sources)
   local env = sandbox()
   local loaded = {}
   env.require = function(name)
@@ -86,7 +86,7 @@ local function define(entry, sources)
       return value
     end
     local source = sources[name]
-    if type(source) ~= 'string' then error('module is not part of this gift: ' .. tostring(name), 2) end
+    if type(source) ~= 'string' then error('module is not available to this gift: ' .. tostring(name), 2) end
     local chunk, message = load(source, '=' .. name, 't', env)
     if not chunk then error(message, 0) end
     loaded[name] = loaded
@@ -95,6 +95,12 @@ local function define(entry, sources)
     loaded[name] = value
     return value
   end
+  return env
+end
+
+-- Returns the entry module table or nil, message.
+local function define(entry, sources)
+  local env = environment(sources)
   local ok, module = guarded(env.require, entry)
   if not ok then return nil, module end
   if type(module) ~= 'table' then return nil, 'module must return a table' end
@@ -111,8 +117,30 @@ local function pair(a, b, default)
   return a, b == nil and a or b
 end
 
+-- Explicit cross-gift state; ordinary require caches remain isolated per definition.
+-- Shared modules stay stateless. Playback data and Unity resource handles belong here or inside build().
+local shared_states, shared_count = {}, 0
+local function shared_state(key)
+  if type(key) ~= 'string' or #key == 0 or #key > 96 then error('invalid shared state key', 2) end
+  if shared_states[key] == nil then
+    if shared_count >= 64 then error('too many shared states', 2) end
+    shared_states[key] = {}
+    shared_count = shared_count + 1
+  end
+  return shared_states[key]
+end
+
 local function facade(host)
   local g = { layer = 0 }
+  function g.curve(node, at, d, a, b, c, dest, ease) return host:Curve(node, at, d, a[1], a[2], b[1], b[2], c[1], c[2], dest[1], dest[2], ease or 'Linear') end
+  function g.concurrentScale(node, key, at, d, growth, limit) host:ConcurrentScale(node, key, at, d, growth, limit) end
+  g.sharedState = shared_state
+  function g.onStop(fn) host:OnStop(fn) end
+  function g.onAudioStop(fn) host:OnAudioStop(fn) end
+  function g.musicStart(clip, volume, loop) return host:MusicStart(clip, volume or 1, loop == true) end
+  function g.musicAlive(handle) return host:MusicAlive(handle) end
+  function g.musicRetain(handle) return host:MusicRetain(handle) end
+  function g.musicFade(handle, volume, seconds, stop) host:MusicFade(handle, volume, seconds, stop == true) end
   function g.random() return host:Random() end
   function g.bounds() return host:Bounds() end
   function g.screen(u, v) return host:ScreenPoint(u or 0.5, v or 0.5) end
@@ -122,6 +150,10 @@ local function facade(host)
   function g.targetSize() return host:TargetSize() end
   function g.node(parent, name, w, h) return host:Node(parent or 0, name or 'Node', w or 0, h or 0) end
   function g.image(parent, name, sprite, w, h) return host:Image(parent or 0, name or 'Image', sprite, w or 0, h or 0) end
+  function g.joint(node, reach, direction) host:Joint(node, reach, direction or 1) end
+  function g.screenEffect(parent, material) return host:ScreenEffect(parent or 0, material) end
+  function g.screenParameter(node, parameter, at, d, from, to, ease) return host:ScreenParameter(node, parameter, at, d, from, to, ease or 'Linear') end
+  function g.tint(node, at, d, from, to, ease) return host:Tint(node, at, d, from[1], from[2], from[3], to[1], to[2], to[3], ease or 'Linear') end
   function g.shape(parent, name, kind, w, h, color)
     local id = host:Shape(parent or 0, name or kind, kind, w or 0, h or 0)
     if color then host:SetColor(id, color[1], color[2], color[3], color[4] or 1) end
@@ -182,13 +214,29 @@ local function call(fn)
   return guarded(fn)
 end
 
-return define, build, call
+-- The sorted string keys of the table a module returns: what a shared module offers (package lock file).
+local function exports(name, sources)
+  local env = environment(sources)
+  local ok, module = guarded(env.require, name)
+  if not ok then return nil, module end
+  local names = {}
+  if type(module) == 'table' then
+    for key in pairs(module) do
+      if type(key) == 'string' then names[#names + 1] = key end
+    end
+  end
+  table.sort(names)
+  return names
+end
+
+return define, build, call, exports
 ";
 
         private static LuaEnv _env;
         private static LuaFunction _define;
         private static LuaFunction _build;
         private static LuaFunction _call;
+        private static LuaFunction _exports;
         private static float _nextTick;
 
         public static bool IsAvailable
@@ -207,15 +255,33 @@ return define, build, call
         {
             if (_env != null) return;
             if (!IsAvailable) throw new InvalidOperationException("Gift scripts run only on clients.");
-            // About 30 animated nodes with several properties each; ten overlapping eggs exceed DOTween's defaults.
+            // Reserve the bounded per-gift budget for ten concurrent gifts, with room for other UI tweens.
             DOTween.Init(false, true, LogBehaviour.ErrorsOnly);
-            DOTween.SetTweensCapacity(3000, 200);
+            DOTween.SetTweensCapacity(GiftScriptHost.MaxTweens * 12, 200);
             _env = new LuaEnv();
             using var loader = _env.LoadString(Bootstrap, "GiftScriptBootstrap");
             var functions = loader.Call(InstructionBudget);
             _define = (LuaFunction)functions[0];
             _build = (LuaFunction)functions[1];
             _call = (LuaFunction)functions[2];
+            _exports = (LuaFunction)functions[3];
+        }
+
+        /// <summary>The names a module's returned table offers, sorted. Used by the build to compare package versions.</summary>
+        public static IReadOnlyList<string> Exports(string module, IReadOnlyDictionary<string, string> sources)
+        {
+            EnsureEnvironment();
+            using var table = _env.NewTable();
+            foreach (var source in sources) table.Set(source.Key, source.Value);
+            var results = _exports.Call(module, table);
+            if (!(results?.Length > 0 && results[0] is LuaTable list))
+                throw new GiftScriptException(results?.Length > 1 ? Convert.ToString(results[1]) : "Lua module failed to load: " + module);
+            using (list)
+            {
+                var names = new List<string>();
+                for (var i = 1; i <= list.Length; i++) names.Add(list.Get<int, string>(i));
+                return names;
+            }
         }
 
         /// <summary>Loads and validates a gift's modules. Throws with the script error when it is unusable.</summary>
@@ -279,10 +345,11 @@ return define, build, call
                 _define?.Dispose();
                 _build?.Dispose();
                 _call?.Dispose();
+                _exports?.Dispose();
                 _env?.Dispose();
             }
             catch (Exception exception) { Debug.LogWarning("Gift script environment was not released: " + exception.Message); }
-            _define = _build = _call = null;
+            _define = _build = _call = _exports = null;
             _env = null;
         }
     }

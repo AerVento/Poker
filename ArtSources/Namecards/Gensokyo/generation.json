@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-03",
+  "tool": "Built-in image_gen (no CLI)",
+  "name": "幻想乡夜绘",
+  "scope": "Artwork only; no item, shop, lottery or Addressables configuration changes.",
+  "theme": "Companion to 幻想乡绘札: indigo shrine landscape, champagne-gold thin frame, sakura and yin-yang accents.",
+  "assets": [
+    {
+      "id": "wide",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a10125-64dc-7ff1-b92e-fc1bc3cd6507\\exec-3ead80a2-75c3-4839-9723-8e0b9b24e0a0.png",
+      "output": "Assets/Sprites/Namecards/gensokyo-wide.png",
+      "prompt": "Use case: stylized-concept. Create a finished game player namecard background, landscape EXACT 8:3, 2048x768. Reference image is ONLY palette and Touhou Gensokyo ornamental identity, NOT composition. Match its deep indigo and champagne-gold printed illustration aesthetic. Full opaque dark blue illustrated background, extremely subtle broad silhouettes of distant shrine torii and misty hills in center, muted indigo 12-25% brightness, no light hotspots. A fine elegant rounded gold hairline border follows outer edges. Tiny cherry blossoms and paper talisman motifs tucked into corners, a TINY yin-yang roundel embedded in top border. ALL bright gold/ivory marks and ornaments confined within outer 48 pixels (maximum64) of closest edge. Spacious quiet dark center will hold game player text: absolutely no central medallion, foreground people, text, UI, letters, numbers, writing, guides. Soft drawn linework and restrained flat shading, delicate Japanese fantasy illustration matching Touhou-themed deck. Do not copy dense cardback design. Card fills entire canvas front-on, no perspective, no outer mockup background, no cast shadow. Central scenery present but very low contrast; highest detail only thin perimeter. No wide blank black hole; rich indigo atmosphere.",
+      "refinementPrompt": "Edit this namecard background. Preserve EXACT 2048x768 8:3 aspect, deep indigo landscape, torii, fine gold frame and no text. Fix border safe area: REMOVE ALL large corner flowers, talismans and gold clouds. Replace with VERY TINY sakura blossoms no bigger than 26px attached directly to outer hairline border at 20px from edges. Top center yin-yang reduce to 36px diameter centered y=24px. All bright gold or ivory pixels must stay within 48px of nearest canvas edge, no exceptions. Corner motifs must be minuscule elegant accents, never bouquets. Central area x64..1984 y64..704 completely dark blue scenery, NO gold ivory or bright spots there. No guides. Do not brighten scenery. No new objects."
+    },
+    {
+      "id": "compact",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a10125-64dc-7ff1-b92e-fc1bc3cd6507\\exec-8babb273-2688-420f-bb99-186f01b02a7e.png",
+      "output": "Assets/Sprites/Namecards/gensokyo-4x3.png",
+      "prompt": "Use case: stylized-concept. Create a separately recomposed compact 4:3 player namecard background, EXACT1024x768. Reference is matching wide namecard: same dark indigo low contrast shrine and mountains, fine champagne gold edge ornament, tiny sakura accents and tiny top yin-yang. Recompose landscape for4:3, do NOT crop or squeeze wide. Front-on rectangular full image opaque deep navy. Very thin rounded gold outline 12px from edges. Tiny 24px sakura flowers attached at corners, tiny36px yin-yang at topcenter y24. All bright ornaments entirely in outer48px border (absolute max64px). Center x64..960 y64..704 has only dark indigo scenery with tonal brightness12-25%, no gold light specks. Large tranquil low contrast scene with torii on right hillside, mist below, readable at small size. No characters no text no letters no UI no large central emblem no vignette hole. Keep delicate drawn style and sparse ornamental detail."
+    },
+    {
+      "id": "icon",
+      "source": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a10125-64dc-7ff1-b92e-fc1bc3cd6507\\exec-fc006d03-da64-4375-a743-03013df47bb3.png",
+      "output": "Assets/Sprites/Items/Namecards/namecard-gensokyo.png",
+      "prompt": "Use case: style-transfer. Create matching Poker inventory icon namecard-gensokyo. Image1 is silhouette/style reference: preserve its horizontal rounded nameplate, thick rim, slight counterclockwise tilt and centered size. Image2 supplies Gensokyo palette. One rounded indigo nameplate with thick champagne-gold border, bold dark clean cartoon outline, simple cel shading. Face features one large ivory/gold yin-yang emblem and small simplified shrine torii silhouette, two tiny sakura accents. Keep few broad readable shapes at64px, no intricate filigree.1024x1024 square RGBA. All object within canvas with8%margin. Genuine alpha=0 outside object; no background shadow glow checkerboard. No text letters numbers or writing."
+    }
+  ],
+  "references": [
+    "ArtSources/CardFaces/Gensokyo/Deck/back.png",
+    "Assets/Sprites/Items/Namecards/namecard-default.png"
+  ],
+  "export": "Uniform bicubic resize only; preserve generated alpha; retain originals."
+}

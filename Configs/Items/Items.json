@@ -208,6 +208,14 @@
     "max-quantity": 1
   },
   {
+    "id": "namecard-gensokyo",
+    "name": "幻想乡夜绘",
+    "description": "靛蓝夜色映着神社与远山，金边樱花点缀幻想乡的静谧。",
+    "icon": "namecard-gensokyo",
+    "consumable": false,
+    "max-quantity": 1
+  },
+  {
     "id": "cardface-default",
     "name": "经典牌面",
     "description": "熟悉的经典扑克牌风格。",
@@ -246,5 +254,45 @@
     "icon": "cardface-gensokyo",
     "consumable": false,
     "max-quantity": 1
+  },
+  {
+    "id": "resurrection-butterfly",
+    "name": "反魂蝶·八分咲",
+    "description": "幽幽子轻挥折扇，西行妖绚烂盛开，八分花满。",
+    "icon": "resurrection-butterfly",
+    "consumable": true,
+    "max-quantity": 4294967295
+  },
+  {
+    "id": "fantasy-seal",
+    "name": "灵符「梦想封印」",
+    "description": "灵梦唤出彩色灵珠，退治你的目标。",
+    "icon": "fantasy-seal",
+    "consumable": true,
+    "max-quantity": 4294967295
+  },
+  {
+    "id": "master-spark",
+    "name": "恋符「Master Spark」",
+    "description": "魔理沙蓄满八卦炉，用七彩的光束轰飞你的目标。",
+    "icon": "master-spark",
+    "consumable": true,
+    "max-quantity": 4294967295
+  },
+  {
+    "id": "the-world",
+    "name": "幻世「The World」",
+    "description": "咲夜停止时间，清理你的客人。",
+    "icon": "the-world",
+    "consumable": true,
+    "max-quantity": 4294967295
+  },
+  {
+    "id": "hour-of-daybreak",
+    "name": "永夜返·光明之世",
+    "description": "辉夜使用永远的力量，强行留住天上的虚假之月。",
+    "icon": "hour-of-daybreak",
+    "consumable": true,
+    "max-quantity": 4294967295
   }
 ]

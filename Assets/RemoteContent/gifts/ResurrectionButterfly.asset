@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab2819ee38119fb4392d229fff82d624, type: 3}
+  m_Name: ResurrectionButterfly
+  m_EditorClassIdentifier: 
+  _script: {fileID: 4900000, guid: d3f9513baee4d634ba4dc2b3684e07e2, type: 3}
+  _dependencies:
+  - _address: lua/shared
+    _version: 1.1
+  _resources:
+  - _name: rigHead
+    _asset: {fileID: 21300000, guid: dea7ed4b3e842654c92a8880647b0e7f, type: 3}
+  - _name: rigBody
+    _asset: {fileID: 21300000, guid: aa6901f2a55e5ec4886cf31abff14acf, type: 3}
+  - _name: rigLower
+    _asset: {fileID: 21300000, guid: 3b78c7c75d21f914b8b1b1f179b21e51, type: 3}
+  - _name: rigHair
+    _asset: {fileID: 21300000, guid: 36b7ffd07a1645a47a313727bc8359d8, type: 3}
+  - _name: rigLeft
+    _asset: {fileID: 21300000, guid: 56e09a4a41931b6458fb4caa9c7a63a5, type: 3}
+  - _name: rigRight
+    _asset: {fileID: 21300000, guid: e148ed46891f005448fd37d3ad022cea, type: 3}
+  - _name: magicCircle
+    _asset: {fileID: 21300000, guid: 2aa54f3546c014a4b8056de4cb460cc4, type: 3}
+  - _name: castSound
+    _asset: {fileID: 8300000, guid: 9bc62adbbe280314c95ff193621f853c, type: 3}
+  - _name: releaseSound
+    _asset: {fileID: 8300000, guid: 6f21bff8ccd5c7845b0731b32166c07b, type: 3}
+  - _name: themeMusic
+    _asset: {fileID: 8300000, guid: 4097e316ad3d9174fabe49e53e568236, type: 3}
+  - _name: sakuraTree
+    _asset: {fileID: 21300000, guid: bb2070646ca5b0c46bb09b799dafdfdf, type: 3}
+  - _name: spellFan
+    _asset: {fileID: 21300000, guid: 146f2e4fe7f70fb44bc52eec94df23b4, type: 3}
+  - _name: laserSound
+    _asset: {fileID: 8300000, guid: b6d0b41b835d9ce45a05d86343421bef, type: 3}

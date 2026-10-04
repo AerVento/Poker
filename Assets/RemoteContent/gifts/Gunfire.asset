@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _prefab: {fileID: 0}
   _script: {fileID: 4900000, guid: 4d03f0e00fd68024eb6fb242b3d9d12b, type: 3}
-  _modules:
-  - {fileID: 4900000, guid: 0945563e0840eeb45b98bfe530051e8d, type: 3}
+  _dependencies:
+  - _address: lua/shared
+    _version: 1.0
   _resources:
   - _name: frame
     _asset: {fileID: -4341425983264385216, guid: 037f3616486201149aa6497b0182bc72, type: 3}

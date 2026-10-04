@@ -1,0 +1,74 @@
+-- Six independently drawn layers, joined at waist, shoulders and neck.
+local R = {}
+local profiles = {
+  reimu  = { head={128,114,0.58,0.10}, body={62,72}, lower={132,104}, hair={135,110}, left={90,82,0.90,0.86}, right={118,96,0.045,0.76} },
+  marisa = { head={164,127,0.58,0.09}, body={65,77}, lower={138,107}, hair={143,115}, left={100,55,0.14,0.65}, right={116,49,0.12,0.44} },
+  sakuya = { head={126,112,0.53,0.17}, body={66,59}, lower={132,126}, hair={121,105}, left={66,63,0.82,0.86}, right={116,39,0.12,0.54} },
+  kaguya = { head={126,122,0.54,0.21}, body={55,80}, lower={123,122}, hair={141,180}, left={101,99,0.90,0.88}, right={100,93,0.08,0.90} },
+  yuyuko = { head={143,132,0.56,0.08}, body={68,67}, lower={134,126}, hair={120,100}, left={107,95,0.88,0.89}, right={112,100,0.10,0.68} }
+}
+
+function R.resources()
+  return {'rigHead','rigBody','rigLower','rigHair','rigLeft','rigRight','magicCircle','castSound','releaseSound'}
+end
+
+local function part(g,parent,name,key,w,h,x,y,px,py)
+  return g.set(g.image(parent,name,key,w,h),{pivot={px,py},position={x,y}})
+end
+
+function R.build(s,castAt,style)
+  local g,p = s.g,profiles[style]
+  local root=g.set(g.node(g.layer,'Spell character'),{position={s.ax,s.ay},scale={s.dir,1}})
+  g.move(root,0,0.45,{s.ax,s.ay-24},{s.ax,s.ay},'OutCubic')
+  g.scale(root,0,0.45,{s.dir*0.9,0.9},{s.dir,1},'OutBack')
+  local neckY=p.body[2]-4
+  -- Rear hair follows the same joints, behind the skirt as well as the torso.
+  local backTorso=g.set(g.node(root,'Rear waist joint'),{position={0,-24}})
+  local backNeck=g.set(g.node(backTorso,'Rear neck joint'),{position={0,neckY}})
+  local hair=part(g,backNeck,'Trailing hair','rigHair',p.hair[1],p.hair[2],-14,p.head[2]*0.59,0.5,1)
+  local lower=part(g,root,'Skirt and feet','rigLower',p.lower[1],p.lower[2],0,-5,0.5,0.98)
+  local torso=g.set(g.node(root,'Waist joint'),{position={0,-24}})
+  local neck=g.set(g.node(torso,'Neck joint'),{position={0,neckY}})
+  part(g,torso,'Torso','rigBody',p.body[1],p.body[2],0,0,0.5,0.02)
+  local left=part(g,torso,'Watch or supporting arm','rigLeft',p.left[1],p.left[2],-p.body[1]*0.38,neckY-20,p.left[3],p.left[4])
+  -- Head is above the rear arm. The casting arm is in front of the torso.
+  part(g,neck,'Character face','rigHead',p.head[1],p.head[2],0,0,p.head[3],p.head[4])
+  local right=part(g,torso,'Casting arm','rigRight',p.right[1],p.right[2],p.body[1]*0.36,neckY-20,p.right[3],p.right[4])
+  g.joint(left,p.left[1]*0.38,style=='marisa' and 1 or -1)
+  g.joint(right,p.right[1]*0.38,1)
+  local release=({sakuya=4.45,marisa=2.15,reimu=2.0,yuyuko=1.6,kaguya=2.45})[style]
+  local ready=math.max(0.35,release-0.32)
+  g.set(right,{rotation=-18})
+  g.rotate(right,ready,0.28,-18,-26,'InOutSine')
+  g.rotate(right,release,0.4,-26,0,'OutCubic')
+  g.rotate(right,s.finish-1.45,0.7,0,-14,'InOutSine')
+  g.set(left,{rotation=style=='marisa' and -14 or 12})
+  g.rotate(left,0.35,0.6,style=='marisa' and -14 or 12,style=='sakuya' and -22 or (style=='marisa' and -6 or 0),'InOutSine')
+  if style=='sakuya' then g.rotate(left,4.45,0.42,-22,8,'OutCubic') end
+  for _,joint in ipairs({torso,backTorso}) do
+    g.rotate(joint,ready,0.28,0,-5,'InOutSine')
+    g.rotate(joint,release,0.45,-5,3,'OutCubic')
+    g.rotate(joint,release+0.45,0.7,3,0,'InOutSine')
+  end
+  for _,joint in ipairs({neck,backNeck}) do
+    g.rotate(joint,ready,0.28,0,4,'InOutSine')
+    g.rotate(joint,release+0.08,0.65,4,-2,'InOutSine')
+    g.rotate(joint,release+0.73,0.65,-2,0,'InOutSine')
+  end
+  -- Delayed follow-through; Sakuya holds absolutely still during the stop.
+  local swayAt=style=='sakuya' and 4.7 or release+0.12
+  local cycles=math.max(1,math.floor((s.finish-swayAt-0.5)/0.55))
+  g.loop(g.rotate(hair,swayAt,0.55,0,5,'InOutSine',1),cycles,true)
+  g.loop(g.rotate(lower,swayAt+0.08,0.55,0,-2.5,'InOutSine',1),cycles,true)
+  if style=='marisa' then
+    g.rotate(right,2.15,0.13,0,8,'OutQuad',2)
+    g.rotate(right,2.28,0.55,8,0,'OutSine',2)
+    for _,joint in ipairs({neck,backNeck}) do
+      g.rotate(joint,2.18,0.18,0,5,'OutQuad',2)
+      g.rotate(joint,2.36,0.5,5,0,'OutSine',2)
+    end
+  end
+  g.sound(castAt,'castSound',0.75)
+  return root
+end
+return R

@@ -24,7 +24,7 @@ description: 在 Poker Unity 项目中决定新文件放在哪里、如何命名
 | 音乐与音效 | `Assets/Audio/Music/`、`Assets/Audio/SFX/<分类>/` |
 | 运行时 SO（音频库、本地默认外观） | `Assets/Resources/SO/` 根目录；物品与商品定义在 `Configs/Items/*.json`、`Configs/Shop/Shop.json` |
 | 远程资源入口 | `Assets/RemoteContent/<namecards/cardfaces/gifts>/`、`icons/Items.asset`、`previews/Cardfaces.asset`；物品图标在 `Assets/Sprites/Items/<分类>/`（文件名即配置中的图标名） |
-| 礼物 Lua 脚本 | `Assets/Scripts/UI/Gifts/Lua/<礼物>.lua.txt`，共享模块在 `Shared/` |
+| 礼物 Lua 脚本 | `Assets/Scripts/UI/Gifts/Lua/<礼物>.lua.txt`，共享模块在 `Shared/`（进入共享 Lua 包，见 [Lua 规范](../../../Docs/Standards/LuaConvention.md)） |
 | 生成原图、提示词、导出脚本、原始音频 | 仓库根目录 `ArtSources/`、`AudioSources/`，不进 `Assets` |
 | 设计、规范、说明文档 | `Docs/<Systems/Operations/Standards/Proposals>/`，规则见 `Docs/AGENTS.md`；测试报告与截图放 `Logs/` |
 | 部署配置 | `Configs/` |

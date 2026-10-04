@@ -1,0 +1,81 @@
+-- Shared staging for the five spell gifts. Bullets stay in root coordinates; only actors mirror.
+local motion = require('GiftMotion')
+local rig = require('TouhouRig')
+local S = {resources=rig.resources}
+
+function S.stage(g, finish, margin, emitter, chargeEnd)
+  margin = margin or 145
+  local tx, ty = g.target()
+  local left, bottom, right, top = g.bounds()
+  local ax, ay = g.screen(0.5,0.5)
+  local dir = tx < ax and -1 or 1
+  local ex, ey = ax + dir * (emitter and emitter[1] or 70), ay + (emitter and emitter[2] or 0)
+  local dx, dy = tx - ex, ty - ey
+  local length = math.sqrt(dx * dx + dy * dy)
+  if length < 80 then dx, dy, length = dir * 80, 0, 80 end
+  local ux, uy = dx / length, dy / length
+  g.set(g.layer, { alpha = 0 })
+  g.fade(g.layer, 0, 0.3, 0, 1, 'OutSine')
+  g.fade(g.layer, finish - 0.55, 0.55, 1, 0, 'InSine', 1)
+  -- The transparent magic seal is always behind actor and bullets.
+  chargeEnd=chargeEnd or 1.75
+  local seal=g.set(g.image(g.layer,'Blue hexagram','magicCircle',350,350),{position={ax,ay+12},alpha=0})
+  g.fade(seal,0.25,0.45,0,0.66,'OutSine')
+  g.scale(seal,0.25,chargeEnd-0.25,0.12,1,'OutCubic')
+  g.rotate(seal,0.25,chargeEnd-0.25,-35,65,'InOutSine')
+  g.scale(seal,chargeEnd,0.55,1,1.18,'OutSine')
+  g.fade(seal,chargeEnd,0.55,1,0,'OutSine',1)
+  g.hide(seal,chargeEnd+0.55)
+  -- Create the actor after the bullets so projectile light stays behind her.
+  return { g = g, finish = finish, ax = ax, ay = ay, dir = dir, ex = ex, ey = ey,
+    tx = tx, ty = ty, ux = ux, uy = uy, nx = -uy, ny = ux, length = length,
+    angle = math.deg(math.atan(dy, dx)), left = left, bottom = bottom, right = right, top = top }
+end
+
+function S.point(s, t, side)
+  return { motion.clamp(s.ex + (s.tx - s.ex) * t + s.nx * side, s.left + 22, s.right - 22),
+    motion.clamp(s.ey + (s.ty - s.ey) * t + s.ny * side, s.bottom + 22, s.top - 22) }
+end
+
+function S.actor(s, castAt, style)
+  return rig.build(s,castAt,style)
+end
+
+function S.bullet(s, kind, name, w, h, color, point)
+  return s.g.set(s.g.shape(s.g.layer, name, kind, w, h, color),
+    { position = point, visible = false })
+end
+
+function S.reveal(s, node, at, life)
+  local g = s.g
+  g.show(node, at)
+  g.fade(node, at, 0.12, 0, 1, 'OutSine')
+  g.fade(node, at + life - 0.3, 0.3, 1, 0, 'InSine', 1)
+  g.hide(node, at + life)
+end
+
+function S.curve(a,b,c,d,t)
+  local u=1-t
+  return {u*u*u*a[1]+3*u*u*t*b[1]+3*u*t*t*c[1]+t*t*t*d[1],u*u*u*a[2]+3*u*u*t*b[2]+3*u*t*t*c[2]+t*t*t*d[2]}
+end
+
+function S.flight(s, node, at, life, points)
+  local segment = life / (#points - 1)
+  for i = 2, #points do
+    s.g.move(node, at + (i - 2) * segment, segment, points[i - 1], points[i], 'Linear')
+  end
+end
+
+function S.ray(s, at, life, side, color, thickness)
+  local g = s.g
+  local to = S.point(s, 1, side)
+  local dx, dy = to[1] - s.ex, to[2] - s.ey
+  local length = math.sqrt(dx * dx + dy * dy)
+  local ray = S.bullet(s, 'beam', 'Fine spell ray', length, thickness, color, { s.ex, s.ey })
+  g.set(ray, { pivot = { 0, 0.5 }, rotation = math.deg(math.atan(dy, dx)) })
+  S.reveal(s, ray, at, life)
+  g.scale(ray, at, 0.2, { 0.02, 0.2 }, { 1, 1 }, 'OutCubic')
+  return ray
+end
+
+return S

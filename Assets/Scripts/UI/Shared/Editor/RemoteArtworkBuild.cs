@@ -6,6 +6,7 @@ using Game.Content;
 using Game.Editor;
 using Game.Network;
 using Game.SO;
+using Game.UI.Gifts;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Build;
@@ -55,6 +56,8 @@ namespace Game.UI.Editor
                     throw new InvalidOperationException("Gift " + gift.ItemId + " needs a Lua entry module: " + path);
                 Register(settings, "Gift_" + gift.ItemId, path, gift.Effect);
             }
+            // Every shared Lua module in one package that gifts declare as a dependency; its version is kept.
+            Register(settings, "Lua_shared", BuildLuaLibrary(SharedLuaAddress, SharedLuaFolder), SharedLuaAddress);
             // All item icons in one shared bundle, all card face previews in another; the classic preview stays local.
             Register(settings, "Icons_items", BuildSpriteSet(ItemArt.ItemIconsAddress, ItemIconRoot, _ => true), ItemArt.ItemIconsAddress);
             Register(settings, "Previews_cardfaces", BuildSpriteSet(ItemArt.CardFacePreviewsAddress, CardFacePreviewBuilder.DirectoryPath,
@@ -63,10 +66,34 @@ namespace Game.UI.Editor
             AssetDatabase.SaveAssets();
             Validate();
             Debug.Log("Remote content prepared: " + (definitions.Namecards.Length - 1) + " namecards, " + (definitions.CardFaces.Length - 1) +
-                " card faces, " + definitions.Gifts.Length + " gifts, item icons and card face previews.");
+                " card faces, " + definitions.Gifts.Length + " gifts, shared Lua, item icons and card face previews.");
         }
 
         public const string ItemIconRoot = "Assets/Sprites/Items";
+        public const string SharedLuaAddress = "lua/shared";
+        private const string SharedLuaFolder = GiftLuaRoot + "Shared";
+
+        // Collects every .lua.txt under the folder into the package root; a new root starts at 1.0.0.
+        private static string BuildLuaLibrary(string address, string folder)
+        {
+            var path = RemoteAssets.SourcePath(address);
+            Folder(path.Substring(0, path.LastIndexOf('/')));
+            var library = AssetDatabase.LoadAssetAtPath<LuaLibrarySO>(path);
+            if (library == null)
+            {
+                library = ScriptableObject.CreateInstance<LuaLibrarySO>();
+                AssetDatabase.CreateAsset(library, path);
+            }
+            var modules = AssetDatabase.FindAssets("t:TextAsset", new[] { folder }).Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => p.EndsWith(".lua.txt", StringComparison.Ordinal)).OrderBy(p => p, StringComparer.Ordinal)
+                .Select(AssetDatabase.LoadAssetAtPath<TextAsset>).ToArray();
+            var data = new SerializedObject(library);
+            var list = data.FindProperty("_modules");
+            list.arraySize = modules.Length;
+            for (var i = 0; i < modules.Length; i++) list.GetArrayElementAtIndex(i).objectReferenceValue = modules[i];
+            data.ApplyModifiedPropertiesWithoutUndo();
+            return path;
+        }
 
         private static string RequireSource<T>(string address, string id) where T : UnityEngine.Object
         {
@@ -159,7 +186,10 @@ namespace Game.UI.Editor
             .Select(AssetDatabase.GUIDToAssetPath).ToArray();
 
         [MenuItem("Poker/Remote Artwork/Validate First Build Dependencies")]
-        public static void Validate()
+        public static void Validate() => ValidateCore();
+
+        // Returns the package manifest of this build and the lock entries a successful build writes.
+        private static (RemoteContentManifest Manifest, List<RemotePackageLock.Package> Lock) ValidateCore()
         {
             var settings = AddressableAssetSettingsDefaultObject.Settings;
             var definitions = CatalogConfiguration.Load();
@@ -175,7 +205,7 @@ namespace Game.UI.Editor
             var addresses = definitions.Namecards.Where(c => !c.IsDefault).Select(c => c.Artwork)
                 .Concat(definitions.CardFaces.Where(f => !f.IsDefault).Select(f => f.Cards))
                 .Concat(definitions.Gifts.Select(g => g.Effect))
-                .Concat(new[] { ItemArt.ItemIconsAddress, ItemArt.CardFacePreviewsAddress });
+                .Concat(new[] { ItemArt.ItemIconsAddress, ItemArt.CardFacePreviewsAddress, SharedLuaAddress });
             foreach (var address in addresses)
             {
                 var path = RemoteAssets.SourcePath(address);
@@ -209,9 +239,8 @@ namespace Game.UI.Editor
                 if (dependencies.Any(p => p != root && p.StartsWith(Root + "/", StringComparison.Ordinal)))
                     throw new InvalidOperationException("Gift must not depend on another remote content root: " + gift.ItemId);
                 ValidateGiftScript(gift.ItemId, effect);
-                // Gift bundles may share Lua module text, which is copied into each bundle, but never artwork or audio.
-                foreach (var dependency in dependencies.Where(p => p != root && !p.EndsWith(".cs", StringComparison.Ordinal) &&
-                    !p.StartsWith(GiftLuaRoot + "Shared/", StringComparison.Ordinal)))
+                // Gift bundles share nothing: shared Lua lives in its own package, never copied into a gift bundle.
+                foreach (var dependency in dependencies.Where(p => p != root && !p.EndsWith(".cs", StringComparison.Ordinal)))
                 {
                     if (giftAssets.TryGetValue(dependency, out var other) && other != gift.ItemId)
                         throw new InvalidOperationException("Gifts " + other + " and " + gift.ItemId + " share " + dependency);
@@ -221,12 +250,127 @@ namespace Game.UI.Editor
             var cards = ShopLocalArtSO.Instance != null ? ShopLocalArtSO.Instance.ClassicCards : null;
             if (cards == null || cards.Back == null || Poker.GetAll().Any(p => cards.GetSprite(p) == null))
                 throw new InvalidOperationException("ShopLocalArt must contain the complete classic deck.");
-            Debug.Log("Remote content validation passed: " + roots.Length + " isolated groups; the page references no remote art.");
+            var packages = roots.Select(root => (Address: settings.FindAssetEntry(AssetDatabase.AssetPathToGUID(root)).address, Path: root,
+                    Package: AssetDatabase.LoadAssetAtPath<ScriptableObject>(root) as IRemoteContentPackage))
+                .Where(p => p.Package != null).ToDictionary(p => p.Address, p => (p.Path, p.Package), StringComparer.Ordinal);
+            var manifest = ValidatePackages(packages);
+            var locked = DescribeLock(packages);
+            var previous = RemotePackageLock.Load();
+            var errors = locked.Select(current => RemotePackageLock.Compare(previous.Find(current.Address), current)).Where(e => e != null).ToArray();
+            if (errors.Length > 0) throw new InvalidOperationException("Package versions are out of date:\n" + string.Join("\n", errors));
+            Debug.Log("Remote content validation passed: " + roots.Length + " isolated groups, " + manifest.Packages.Count +
+                " versioned packages; the page references no remote art.");
+            return (manifest, locked);
+        }
+
+        /// <summary>
+        /// Every dependency names a package of this build that declares a version meeting the requirement, and the
+        /// dependencies form no cycle. Together these make the latest versions of one build mutually compatible.
+        /// </summary>
+        private static RemoteContentManifest ValidatePackages(IReadOnlyDictionary<string, (string Path, IRemoteContentPackage Package)> packages)
+        {
+            var manifest = new RemoteContentManifest();
+            foreach (var pair in packages.OrderBy(p => p.Key, StringComparer.Ordinal))
+            {
+                var address = pair.Key;
+                var version = pair.Value.Package.Version ?? string.Empty;
+                if (version.Length > 0 && !SemanticVersion.TryParse(version, out _))
+                    throw new InvalidOperationException("Package " + address + " has an invalid version '" + version + "'; use major.minor.patch.");
+                var dependencies = (pair.Value.Package.Dependencies ?? Array.Empty<RemoteContentDependency>()).ToList();
+                foreach (var dependency in dependencies)
+                {
+                    if (dependency == null || string.IsNullOrEmpty(dependency.Address))
+                        throw new InvalidOperationException("Package " + address + " has an empty dependency entry.");
+                    if (!SemanticVersion.TryParseRequirement(dependency.Version, out _))
+                        throw new InvalidOperationException("Package " + address + " requires " + dependency.Address + " '" + dependency.Version +
+                            "'; write the minimum version as major.minor.");
+                    if (!packages.TryGetValue(dependency.Address, out var target) || string.IsNullOrEmpty(target.Package.Version))
+                        throw new InvalidOperationException("Package " + address + " depends on " + dependency.Address +
+                            ", which is not a package with a version in this build.");
+                    if (!SemanticVersion.Satisfies(target.Package.Version, dependency.Version))
+                        throw new InvalidOperationException("Package " + address + " requires " + dependency.Address + " " + dependency.Version +
+                            ", but this build has " + target.Package.Version + ".");
+                }
+                if (dependencies.Select(d => d.Address).Distinct(StringComparer.Ordinal).Count() != dependencies.Count)
+                    throw new InvalidOperationException("Package " + address + " lists a dependency twice.");
+                if (version.Length > 0 || dependencies.Count > 0)
+                    manifest.Packages.Add(new RemoteContentManifest.Package { Address = address, Version = version, Dependencies = dependencies });
+            }
+            var finished = new HashSet<string>(StringComparer.Ordinal);
+            var path = new List<string>();
+            void Visit(string address)
+            {
+                if (finished.Contains(address)) return;
+                if (path.Contains(address))
+                    throw new InvalidOperationException("Package dependencies form a cycle: " + string.Join(" -> ", path.Skip(path.IndexOf(address))) + " -> " + address);
+                path.Add(address);
+                foreach (var dependency in manifest.Find(address)?.Dependencies ?? new List<RemoteContentDependency>()) Visit(dependency.Address);
+                path.RemoveAt(path.Count - 1);
+                finished.Add(address);
+            }
+            foreach (var package in manifest.Packages) Visit(package.Address);
+            return manifest;
+        }
+
+        // The lock entry of every versioned package as it is now.
+        private static List<RemotePackageLock.Package> DescribeLock(IReadOnlyDictionary<string, (string Path, IRemoteContentPackage Package)> packages) =>
+            packages.Where(p => !string.IsNullOrEmpty(p.Value.Package.Version)).OrderBy(p => p.Key, StringComparer.Ordinal)
+                .Select(p => new RemotePackageLock.Package
+                {
+                    Address = p.Key,
+                    Version = p.Value.Package.Version,
+                    Hash = ContentHash(p.Value.Path),
+                    Exports = p.Value.Package is LuaLibrarySO library ? LuaExports(library) : new List<string>()
+                }).ToList();
+
+        private static readonly HashSet<string> TextExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { ".txt", ".lua", ".json", ".asset", ".prefab", ".mat", ".anim", ".controller", ".shader", ".meta" };
+
+        // Source files and their import settings; line endings are ignored so every checkout hashes the same.
+        private static string ContentHash(string root)
+        {
+            var lines = new List<string>();
+            foreach (var path in AssetDatabase.GetDependencies(root, true).Where(p => !p.EndsWith(".cs", StringComparison.Ordinal))
+                .OrderBy(p => p, StringComparer.Ordinal))
+            {
+                var content = FileContent(path);
+                // The version field is the thing being checked, not content.
+                if (path == root)
+                    content = string.Join("\n", content.Split('\n').Where(line => !line.StartsWith("  _version:", StringComparison.Ordinal)));
+                lines.Add(path + ":" + ContentFormatVersion.Hash(new[] { content }) + ":" + ContentFormatVersion.Hash(new[] { FileContent(path + ".meta") }));
+            }
+            return ContentFormatVersion.Hash(lines);
+        }
+
+        private static string FileContent(string path)
+        {
+            if (!File.Exists(path)) return string.Empty;
+            return TextExtensions.Contains(Path.GetExtension(path))
+                ? File.ReadAllText(path).Replace("\r\n", "\n")
+                : Convert.ToBase64String(File.ReadAllBytes(path));
+        }
+
+        // Each module, and each name its returned table offers, read from the files on disk.
+        private static List<string> LuaExports(LuaLibrarySO library)
+        {
+            var sources = library.Modules.Where(m => m != null)
+                .ToDictionary(GiftEffectSO.ModuleName, m => File.ReadAllText(AssetDatabase.GetAssetPath(m)), StringComparer.Ordinal);
+            var names = new List<string>();
+            foreach (var module in sources.Keys.OrderBy(k => k, StringComparer.Ordinal))
+            {
+                names.Add(module);
+                try { names.AddRange(GiftScriptRuntime.Exports(module, sources).Select(name => module + "." + name)); }
+                catch (GiftScriptException exception)
+                {
+                    throw new InvalidOperationException("Lua module " + module + " does not load: " + exception.Message);
+                }
+            }
+            return names;
         }
 
         private const string GiftLuaRoot = "Assets/Scripts/UI/Gifts/Lua/";
 
-        // Every declared resource name exists once; modules live in the gift Lua folder; the module loads and validates.
+        // Every declared resource name exists once; the entry module lives in the gift Lua folder; the module loads and validates.
         private static void ValidateGiftScript(string id, GiftEffectSO effect)
         {
             var names = new HashSet<string>();
@@ -238,9 +382,8 @@ namespace Game.UI.Editor
             }
             if (!AssetDatabase.GetAssetPath(effect.Script).StartsWith(GiftLuaRoot, StringComparison.Ordinal))
                 throw new InvalidOperationException("Gift " + id + " entry module must be in " + GiftLuaRoot);
-            foreach (var module in effect.Modules)
-                if (module == null || !AssetDatabase.GetAssetPath(module).StartsWith(GiftLuaRoot + "Shared/", StringComparison.Ordinal))
-                    throw new InvalidOperationException("Gift " + id + " shared modules must be in " + GiftLuaRoot + "Shared/");
+            if (AssetDatabase.GetAssetPath(effect.Script).StartsWith(SharedLuaFolder + "/", StringComparison.Ordinal))
+                throw new InvalidOperationException("Gift " + id + " entry module must not be a shared module.");
             effect.ReloadFromDisk();
             if (!effect.TryDefine(out var script)) throw new InvalidOperationException("Gift " + id + " script: " + effect.ScriptError);
             foreach (var name in script.Resources)
@@ -250,7 +393,7 @@ namespace Game.UI.Editor
         [MenuItem("Poker/Remote Artwork/Build for Active Platform")]
         public static void Build()
         {
-            Validate();
+            var (manifest, locked) = ValidateCore();
             AddressableAssetSettings.BuildPlayerContent(out AddressablesPlayerBuildResult result);
             if (!string.IsNullOrEmpty(result.Error)) throw new InvalidOperationException(result.Error);
             var folder = Output + "/" + EditorUserBuildSettings.activeBuildTarget;
@@ -260,8 +403,11 @@ namespace Game.UI.Editor
             foreach (var bundle in Directory.GetFiles(folder, "*.bundle").Where(p => !referenced.Contains(Path.GetFileName(p))))
                 File.Delete(bundle);
             var format = ContentFormatVersion.Compute();
-            var version = new RemoteContentVersion(DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'"), format, catalog);
+            File.WriteAllText(Path.Combine(folder, RemoteContentManifest.FileName), JsonUtility.ToJson(manifest, true));
+            var version = new RemoteContentVersion(DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'"), format, catalog, RemoteContentManifest.FileName);
             File.WriteAllText(Path.Combine(folder, RemoteContentVersion.FileName), version.ToString());
+            // The built versions become the baseline the next build is compared with.
+            new RemotePackageLock { Packages = locked }.Save();
             var report = new List<string> { "Platform: " + EditorUserBuildSettings.activeBuildTarget, "Unity: " + Application.unityVersion,
                 "Content: " + version.Version, "Format: " + format };
             foreach (var file in Directory.GetFiles(folder).Where(p => Path.GetFileName(p) != "files.txt").OrderBy(p => p))

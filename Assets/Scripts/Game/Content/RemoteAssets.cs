@@ -62,12 +62,17 @@ namespace Game.Content
             // A newer version is ready: no new users, unloaded as soon as the last lease is released.
             public bool Retired;
             public bool Removed;
+            // Leases on the packages this one depends on, held until it is removed.
+            public readonly List<Lease<UnityEngine.Object>> Dependencies = new List<Lease<UnityEngine.Object>>();
+            // A dependency is being replaced while this entry is still loading: drop what it holds and start over.
+            public bool Restart;
         }
 
         public sealed class Lease<T> : IDisposable where T : UnityEngine.Object
         {
             private Entry _entry;
             public T Asset { get; }
+            internal Entry Entry => _entry;
             internal Lease(Entry entry, T asset) { _entry = entry; Asset = asset; }
             public void Dispose()
             {
@@ -118,16 +123,15 @@ namespace Game.Content
                     await UniTask.WaitUntil(() => entry.Removed || !entry.Retired, cancellationToken: cancellationToken);
                     continue;
                 }
-                else
-                {
-                    if (entry.Type != typeof(T)) throw new InvalidOperationException("Resource address used with different types: " + address);
-                    entry.Users++;
-                }
+                else entry.Users++;
                 try
                 {
-                    var asset = await entry.Ready.Task.AttachExternalCancellation(cancellationToken) as T;
+                    // Dependencies are acquired as UnityEngine.Object; a typed caller may share the same entry.
+                    var loaded = await entry.Ready.Task.AttachExternalCancellation(cancellationToken);
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (asset != null) return new Lease<T>(entry, asset);
+                    if (loaded is T asset) return new Lease<T>(entry, asset);
+                    // The catch below releases the entry.
+                    if (loaded != null) throw new InvalidOperationException("Resource address used with different types: " + address);
                     Release(entry);
                     return null;
                 }
@@ -151,39 +155,150 @@ namespace Game.Content
 #if UNITY_EDITOR
                 if (ReadsLocalAssets)
                 {
+                    // Source assets are one build's worth of content: dependencies load the same way, unplanned.
                     asset = LoadLocalAsset(entry);
                     if (asset == null) Debug.LogWarning("Remote content source asset is missing: " + SourcePath(entry.Address));
+                    else if (!await AcquireDependencies(entry, (asset as IRemoteContentPackage)?.Dependencies))
+                    {
+                        Debug.LogWarning("Remote content dependencies unavailable: " + entry.Address);
+                        asset = null;
+                    }
+                    else Attach(entry, asset);
                     return;
                 }
 #endif
-                if (await Initialize())
-                {
-                    var latest = _catalog.Find(entry.Address);
-                    var local = _records.Get(entry.Address);
-                    var state = RemoteContentRules.Judge(local, latest, ClientBuild.ContentFormat);
-                    if (state == RemoteContentState.Stale) QueueUpdate(entry.Address);
-                    if (state == RemoteContentState.Current || state == RemoteContentState.Stale)
-                    {
-                        asset = await LoadRecordAsync<T>(entry, local);
-                        // The old version is gone from the browser cache and the site: forget it and fetch the current one.
-                        if (asset == null && state == RemoteContentState.Stale)
-                        {
-                            Forget(entry.Address);
-                            state = RemoteContentState.Missing;
-                        }
-                    }
-                    if (state == RemoteContentState.Missing && await FetchAsync(entry.Address, latest))
-                        asset = await LoadRecordAsync<T>(entry, _records.Get(entry.Address));
-                }
+                if (await Initialize()) asset = await LoadPlanned<T>(entry);
                 if (asset == null) Debug.LogWarning("Remote content unavailable; using default: " + entry.Address);
             }
             catch (Exception exception) { Debug.LogWarning("Remote content unavailable: " + entry.Address + " / " + exception.Message); }
             finally
             {
+                if (asset == null) ReleaseDependencies(entry);
                 entry.Finished = true;
                 entry.Ready.TrySetResult(asset);
                 if (asset == null && entry.Users == 0) Remove(entry);
             }
+        }
+
+        /// <summary>
+        /// Computes which packages must move to their latest version, downloads and commits them as one batch, then
+        /// loads the dependencies before the package itself. Concurrent replacements send it back to planning.
+        /// </summary>
+        private static async UniTask<UnityEngine.Object> LoadPlanned<T>(Entry entry) where T : UnityEngine.Object
+        {
+            for (var attempt = 0; attempt < MaxPlanAttempts; attempt++)
+            {
+                var plan = Plan(entry.Address);
+                if (!plan.Success)
+                {
+                    Debug.LogWarning("Remote content dependencies unavailable: " + entry.Address + " / " + plan.Error);
+                    return null;
+                }
+                QueueStale(plan);
+                if (plan.Updates.Count > 0)
+                {
+                    if (!await FetchAsync(entry.Address, plan.Updates)) return null;
+                    // Plan again on the committed records; acquiring starts only from a settled, acyclic plan.
+                    continue;
+                }
+                var record = _records.Get(entry.Address);
+                if (!await AcquireDependencies(entry, record.Dependencies)) continue;
+                var asset = entry.Restart ? null : await LoadRecordAsync<T>(entry, record);
+                if (asset != null && !entry.Restart)
+                {
+                    Attach(entry, asset);
+                    return asset;
+                }
+                var restarted = entry.Restart;
+                UnloadRecord(entry);
+                ReleaseDependencies(entry);
+                if (restarted) continue;
+                // The old version is gone from the browser cache and the site: forget it and fetch the current one.
+                if (StateOf(entry.Address) != RemoteContentState.Stale) return null;
+                Forget(entry.Address);
+            }
+            return null;
+        }
+
+        // Each forgotten old version, committed batch or concurrent replacement costs one attempt.
+        private const int MaxPlanAttempts = 5;
+
+        private static RemoteContentRecord LocalRecord(string address)
+        {
+            var record = _records?.Get(address);
+            return RemoteContentRules.IsUsable(record, ClientBuild.ContentFormat) ? record : null;
+        }
+
+        private static RemoteContentPlan Plan(string address) =>
+            RemoteContentPlanner.ForUse(address, LocalRecord, candidate => _catalog?.Find(candidate));
+
+        // Old versions used for now are brought up to date in the background.
+        private static void QueueStale(RemoteContentPlan plan)
+        {
+            foreach (var address in plan.Closure)
+                if (StateOf(address) == RemoteContentState.Stale) QueueUpdate(address);
+        }
+
+        /// <summary>
+        /// Leases every declared dependency and checks its version against the declaration. The entry never holds a
+        /// dependency while waiting for a replacement, so the replacement can drain.
+        /// </summary>
+        private static async UniTask<bool> AcquireDependencies(Entry entry, IReadOnlyList<RemoteContentDependency> dependencies)
+        {
+            var declared = dependencies?.Where(d => d != null).ToArray() ?? Array.Empty<RemoteContentDependency>();
+            if (declared.Length == 0) return true;
+            for (var attempt = 0; attempt < 10; attempt++)
+            {
+                ReleaseDependencies(entry);
+                entry.Restart = false;
+                var complete = true;
+                foreach (var dependency in declared)
+                {
+                    if (Swaps.TryGetValue(dependency.Address, out var swap))
+                    {
+                        ReleaseDependencies(entry);
+                        await swap.Task;
+                        complete = false;
+                        break;
+                    }
+                    var lease = await AcquireCore<UnityEngine.Object>(dependency.Address, CancellationToken.None);
+                    if (lease == null) return false;
+                    entry.Dependencies.Add(lease);
+                    if (entry.Restart) { complete = false; break; }
+                }
+                if (!complete) continue;
+                for (var i = 0; i < declared.Length; i++)
+                    if (!SemanticVersion.Satisfies(VersionOf(entry.Dependencies[i]), declared[i].Version))
+                    {
+                        ReleaseDependencies(entry);
+                        return false;
+                    }
+                return true;
+            }
+            ReleaseDependencies(entry);
+            return false;
+        }
+
+        private static string VersionOf(Lease<UnityEngine.Object> lease) =>
+            lease.Entry.Record?.Version ?? (lease.Asset as IRemoteContentPackage)?.Version;
+
+        private static void ReleaseDependencies(Entry entry)
+        {
+            var leases = entry.Dependencies.ToArray();
+            entry.Dependencies.Clear();
+            foreach (var lease in leases) lease.Dispose();
+        }
+
+        private static void Attach(Entry entry, UnityEngine.Object asset)
+        {
+            if (asset is IRemoteContentPackage package) package.AttachDependencies(entry.Dependencies.Select(lease => lease.Asset).ToArray());
+        }
+
+        private static void UnloadRecord(Entry entry)
+        {
+            if (entry.Handle.IsValid()) Addressables.Release(entry.Handle);
+            entry.Handle = default;
+            entry.Record = null;
         }
 
         private static async UniTask<UnityEngine.Object> LoadRecordAsync<T>(Entry entry, RemoteContentRecord record)
@@ -289,8 +404,13 @@ namespace Game.Content
             return version;
         }
 
-        private static async UniTask<RemoteContentCatalog> FetchCatalogAsync(RemoteContentVersion version) =>
-            new RemoteContentCatalog(version, await FetchTextAsync(ContentFolderUrl + "/" + version.Catalog, version.Version));
+        private static async UniTask<RemoteContentCatalog> FetchCatalogAsync(RemoteContentVersion version)
+        {
+            var catalog = await FetchTextAsync(ContentFolderUrl + "/" + version.Catalog, version.Version);
+            var packages = version.Packages.Length == 0 ? null
+                : await FetchTextAsync(ContentFolderUrl + "/" + version.Packages, version.Version);
+            return new RemoteContentCatalog(version, catalog, packages);
+        }
 
         // Small text files always bypass caches; the query pins the catalog to the version that named it.
         private static async UniTask<string> FetchTextAsync(string url, string query)
@@ -345,6 +465,8 @@ namespace Game.Content
             entry.Handle = default;
             entry.LocalAsset = null;
             entry.Removed = true;
+            // After this entry is unloaded, so a dependency is never unloaded under a loaded dependent.
+            ReleaseDependencies(entry);
         }
 
         internal static void Trim()
@@ -370,6 +492,7 @@ namespace Game.Content
         {
             Entries.Clear();
             Transfers.Clear();
+            Batches.Clear();
             Swaps.Clear();
             UpdateQueue.Clear();
             Queued.Clear();

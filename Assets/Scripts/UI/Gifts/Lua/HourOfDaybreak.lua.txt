@@ -1,0 +1,45 @@
+local S=require('TouhouSpell')
+local Music=require('TouhouMusic')
+local M={apiVersion=1,duration=7.0,resources=S.resources()}
+for _,key in ipairs({'starSprite','ofudaSprite','themeMusic'}) do table.insert(M.resources,key) end
+function M.build(g)
+  local s=S.stage(g,M.duration,180,nil,2.45)
+  local origin={s.ax,s.ay+12}
+  for wave=0,5 do
+    local phase=g.random()*math.pi*2
+    for i=0,15 do
+      local appear=0.8+wave*0.055+g.random()*0.08
+      local fire=2.45+g.random()*0.65;local life=1.7+g.random()*0.7
+      local a=2*math.pi*i/16+phase+(g.random()-0.5)*0.25
+      local radius=82+wave*24+(g.random()-0.5)*44
+      local petal={origin[1]+math.cos(a)*radius,origin[2]+math.sin(a)*radius}
+      local target={s.tx+(g.random()-0.5)*235,s.ty+(g.random()-0.5)*155}
+      local bend=(g.random()-0.5)*480;local bend2=(g.random()-0.5)*340
+      local c1={petal[1]+s.ux*80+s.nx*bend,petal[2]+s.uy*80+s.ny*bend}
+      local c2={target[1]-s.ux*150+s.nx*bend2,target[2]-s.uy*150+s.ny*bend2}
+      local night={0.24+g.random()*0.08,0.23,0.65+g.random()*0.15}
+      local day={1,0.90+g.random()*0.1,0.65+g.random()*0.35}
+      local kind=i%4;local bullet
+      if kind<2 then
+        local size=36+g.random()*14
+        bullet=g.set(g.image(g.layer,'Dawn star '..wave..'-'..i,'starSprite',size,size),{position=origin,color=night,visible=false})
+      elseif kind==2 then
+        bullet=g.set(g.image(g.layer,'Dawn ofuda '..wave..'-'..i,'ofudaSprite',38,46),{position=origin,color=night,visible=false})
+      else
+        bullet=S.bullet(s,'butterfly','Dawn butterfly '..wave..'-'..i,35,39,night,origin)
+      end
+      S.reveal(s,bullet,appear,fire-appear+life+0.18)
+      g.move(bullet,appear,0.68,origin,petal,'OutCubic')
+      g.curve(bullet,fire,life,petal,c1,c2,target)
+      local spin=g.random()*360
+      g.set(bullet,{rotation=spin})
+      g.rotate(bullet,fire,life,spin,spin+(g.random()-0.5)*320,'InOutSine')
+      g.scale(bullet,appear,0.4,0.1,1,'OutBack')
+      if kind==3 then g.loop(g.scale(bullet,fire,0.19,{1,1},{0.36,1},'InOutSine',2),10,true) end
+      g.tint(bullet,fire,life*0.85,night,day,'InOutSine')
+    end
+  end
+  S.actor(s,0.95,'kaguya');g.sound(2.45,'releaseSound',0.52)
+  Music.play(g,'hour-of-daybreak',0.05,'themeMusic',0.78)
+end
+return M

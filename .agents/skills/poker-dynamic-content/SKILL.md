@@ -20,6 +20,7 @@ description: 在 Poker 项目中不重新构建页面地更新商品与远程内
 | 新增普通物品、礼物、名片、牌面，或调整契约数值、服刑名片门槛 | 需要远程内容时先发布，再改 `Configs/Items/` 与 `Configs/Shop/`、重启服务器 |
 | 修改新账号初始发放 | 只改 `Configs/Accounts/StarterGrants.json`，重启服务器；只影响之后创建的账号 |
 | 换图、换音效、改礼物 Lua 节奏或效果 | 只发布远程内容；已下载的玩家回到大厅时在后台更新 |
+| 改共享 Lua 模块 | 按 [Lua 规范](../../../Docs/Standards/LuaConvention.md) 修改 `Shared.asset` 的版本号（升主版本时同步修改依赖它的礼物），只发布远程内容；只有共享 Lua 包需要重新下载 |
 | 改了礼物宿主接口、程序化图形、远程内容用到的脚本类型或序列化字段 | 内容格式变化：执行 `XLua/Generate Code`（宿主接口变化时），页面、服务端和内容一起发布 |
 | 新的消耗方式、新的功能目录、成就奖励逻辑 | 需要改代码，页面与服务端一起发布 |
 
@@ -32,9 +33,9 @@ description: 在 Poker 项目中不重新构建页面地更新商品与远程内
 
 ## 发布远程内容
 
-1. 执行 `Poker/Remote Artwork/Prepare Catalogs and Groups`：按配置注册分组、重建物品图标集与牌面预览集并校验。
-2. 切到 WebGL 平台，执行 `Poker/Remote Artwork/Build for Active Platform`。Console 若提示内容格式与上次页面构建不同，这份内容只能与新页面一起部署。
-3. 上传 `Build/RemoteContent/Content/v1/WebGL/`：先所有 `.bundle`，再 `catalog_v1.*`，最后 `content-version.txt`；全部完成后删除网站上不在 `files.txt` 中的旧包。
+1. 执行 `Poker/Remote Artwork/Prepare Catalogs and Groups`：按配置注册分组、收集共享 Lua 包、重建物品图标集与牌面预览集并校验（含包依赖与锁文件）。
+2. 切到 WebGL 平台，执行 `Poker/Remote Artwork/Build for Active Platform`。Console 若提示内容格式与上次页面构建不同，这份内容只能与新页面一起部署。构建更新的 `Assets/RemoteContent/packages-lock.json` 与内容改动一起提交。
+3. 上传 `Build/RemoteContent/Content/v1/WebGL/`：先所有 `.bundle`，再 `catalog_v1.*` 与 `content-packages.json`，最后 `content-version.txt`；全部完成后删除网站上不在 `files.txt` 中的旧包。
 4. 需要改配置时，内容上传完成后再改配置、重启服务器。
 
 ## 发布新页面

@@ -12,6 +12,7 @@ description: 在 Poker Unity 项目中新增、替换、改价、上下架名片
 - [UI 规范](../../../Docs/Standards/UIConvention.md) 第 8.4 节：名片和牌面的配套物品图标；新增款式时必须同时制作。
 - [牌面](../../../Docs/Systems/CardFaces.md)：52 张正面加牌背的规格、数据结构、商城与装备。
 - [远程资源](../../../Docs/Operations/RemoteArtwork.md)：Addressables 分组、构建菜单、内容版本与部署。
+- 不要把新增的内容逐项写进 `Docs/`：清单、价格与获取途径以配置为准；单款的设计记录写在 `ArtSources/` 对应目录的 README。只有新增机制时才更新系统文档（见 [Docs/AGENTS.md](../../../Docs/AGENTS.md)）。
 - 放置和命名资源时使用 [poker-assets](../poker-assets/SKILL.md)；改配置与发布内容的步骤见 [poker-dynamic-content](../poker-dynamic-content/SKILL.md)。
 
 ## 各类文件的位置

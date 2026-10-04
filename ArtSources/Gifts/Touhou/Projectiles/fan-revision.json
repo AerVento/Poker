@@ -1,0 +1,8 @@
+{
+  "tool": "image_gen built-in",
+  "date": "2026-10-04",
+  "prompt": "Edit the first image (the isolated open fan asset). Use the second image only as the game reference for the fan's color and graphic treatment. Keep a single fully opened fan, transparent background, broad symmetric arc and bottom-center pivot. Replace pale floral silk artwork with a spectral dark indigo/icy blue left half transitioning through muted violet to dark crimson/rose right half, a thin rose rim, flowing pale blue and pink ornamental cloud lines and abstract ghost/sakura motifs, like Yuyuko's large spell fan in the supplied game screenshot. Elegant anime game backdrop, readable big motifs rather than tiny flowers; no readable letters or text, no HUD, no character, no tree, no moon, no new scene background. Keep rib structure restrained behind the spectral fan surface, 5% transparent margin on all sides. The result is an isolated spell backdrop fan, not a screenshot.",
+  "reference": "codex-clipboard-1a199b63-eaac-4dc8-a131-a30d3ddd6cbe.png",
+  "source": "exec-73c9f34c-e43d-4393-a156-6169a0b3bda8.png",
+  "output": "Assets/Art/Gifts/ResurrectionButterfly/spirit-fan.png"
+}

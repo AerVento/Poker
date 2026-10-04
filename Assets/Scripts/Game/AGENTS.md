@@ -14,7 +14,7 @@
 | `Tasks/` | 可配置每日任务的规则、奖励与配置解析，以及任务使用的牌局事实 `HandFacts` |
 | `Events/` | 玩家事件模型与事件来源注册 |
 | `Audio/` | 音频库、音频管理与牌局音效状态 |
-| `Content/` | 远程内容管理器 `RemoteAssets`：内容版本与目录、浏览器本地记录、缺失／失效／生效判定、下载与替换、引用计数与绑定；纯规则在 `RemoteContentRules.cs` |
+| `Content/` | 远程内容管理器 `RemoteAssets`：内容版本与目录、浏览器本地记录、缺失／失效／生效判定、包依赖与版本、批量下载与替换、引用计数与绑定；纯规则在 `RemoteContentRules.cs`、`RemoteContentPackages.cs`、`RemoteContentPlanner.cs` |
 | `Input/` | 牌局快捷键绑定 |
 | `Editor/` | 长期使用的 Editor 工具：构建钩子、配置编辑器、Inspector 扩展与校验菜单 |
 

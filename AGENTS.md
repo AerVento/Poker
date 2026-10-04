@@ -15,6 +15,7 @@ Skill 中的具体需求以当前用户要求为准。
 
 ## UI 工作强制规范
 
+- 编写或修改任何随远程内容更新的 Lua（礼物入口与共享模块）前，阅读 [Lua 规范](Docs/Standards/LuaConvention.md)：共享逻辑放进共享 Lua 包，修改后按规则升版本号。
 - 凡涉及界面设计、布局、UI 文案、图标、按钮、交互、UI 脚本、prefab、UI 美术资源或生成／修改 UI 的 Editor 工具，开始设计或修改前必须完整阅读并遵守 [项目 UI 规范](Docs/Standards/UIConvention.md)。不能只在修改 prefab 时才阅读。
 - UI 规范是本项目界面工作的验收要求，不是可选建议。必须按功能目录归档资源，沿用统一美术风格和圆角组件，复用统一图标按钮，保持玩家文案简洁，并完成规范中的视觉与交互检查。
 - 禁止以实现方便为理由用文字按钮替代已有约定图标，或用冗长说明文字补救不直观的交互。名称、介绍、价格、规则、重置时间等必要信息必须保留。
@@ -46,7 +47,7 @@ Skill 中的具体需求以当前用户要求为准。
 
 - `Assets/Resources/SO`：运行时按路径加载的 SO 数据（`GameAudioLibrary`、本地默认外观 `ShopLocalArt`）。物品与商品不用 SO 定义，见 `Configs/Items/`、`Configs/Shop/`；SO 只承载需要引用 Unity 资源的美术与特效。`Resources` 下只放运行时要加载的资源，不放文档。
 - `Assets/Resources/UI/Achievements`：成就图标，按 `IconPath` 路径加载。
-- `Assets/RemoteContent`：Addressables 远程资源入口（名片、牌面、礼物包、物品图标集、牌面预览集）。礼物 Lua 源码在 `Assets/Scripts/UI/Gifts/Lua/`。
+- `Assets/RemoteContent`：Addressables 远程资源入口（名片、牌面、礼物包、共享 Lua 包、物品图标集、牌面预览集）与包版本锁文件 `packages-lock.json`。礼物 Lua 源码在 `Assets/Scripts/UI/Gifts/Lua/`，共享模块在其 `Shared/`。
 - `Assets/Prefabs`：`Manager/` 为入口管理器 prefab，`UI/` 为 Canvas、面板与共享控件，`Gifts/` 为礼物特效和礼物菜单。
 - `Assets/Sprites`、`Assets/Art`、`Assets/Audio`、`Assets/Font`：导入后的美术、音频和字体。生成源图、原始音频、导出脚本放在仓库根目录的 `ArtSources/`、`AudioSources/`，不要放进 `Assets`。
 - `Assets/Scenes/Game.unity`：唯一启用的构建场景。`GiftPreview.unity` 是礼物预览工具场景。

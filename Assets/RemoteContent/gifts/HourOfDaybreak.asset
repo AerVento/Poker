@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab2819ee38119fb4392d229fff82d624, type: 3}
+  m_Name: HourOfDaybreak
+  m_EditorClassIdentifier: 
+  _script: {fileID: 4900000, guid: f5d1a8a5e84567b49ace9568697434c4, type: 3}
+  _dependencies:
+  - _address: lua/shared
+    _version: 1.1
+  _resources:
+  - _name: rigHead
+    _asset: {fileID: 21300000, guid: be4f95086f068d04fb36116f989371f9, type: 3}
+  - _name: rigBody
+    _asset: {fileID: 21300000, guid: 299911ea07f3844429026ce89f631da1, type: 3}
+  - _name: rigLower
+    _asset: {fileID: 21300000, guid: 6276ae0979dbaaa41b83216511c2b9b3, type: 3}
+  - _name: rigHair
+    _asset: {fileID: 21300000, guid: 2d2afba8d94f9284bb14287fa8c26dfe, type: 3}
+  - _name: rigLeft
+    _asset: {fileID: 21300000, guid: 4dcbc91c081cfab45a319b44d302b5ef, type: 3}
+  - _name: rigRight
+    _asset: {fileID: 21300000, guid: 45e91a24630e5b3478502707f210e94a, type: 3}
+  - _name: magicCircle
+    _asset: {fileID: 21300000, guid: fc038b0b09b220049af20110a4ffdffb, type: 3}
+  - _name: castSound
+    _asset: {fileID: 8300000, guid: 7d627a3fc265c8b4fb128ffed182d509, type: 3}
+  - _name: releaseSound
+    _asset: {fileID: 8300000, guid: 4b24f762b2b43ce448c3f93ab37e4e35, type: 3}
+  - _name: starSprite
+    _asset: {fileID: 21300000, guid: 15422be398974e44f8343c5d50820458, type: 3}
+  - _name: themeMusic
+    _asset: {fileID: 8300000, guid: 63909c5c73bbb394b8bac10226db89a3, type: 3}
+  - _name: ofudaSprite
+    _asset: {fileID: -1658600138702182639, guid: af38ba0385cf60342a3403d4f6881ccf, type: 3}

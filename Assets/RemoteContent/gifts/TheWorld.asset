@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab2819ee38119fb4392d229fff82d624, type: 3}
+  m_Name: TheWorld
+  m_EditorClassIdentifier: 
+  _script: {fileID: 4900000, guid: 4cadfcc38068fc34da3876e3852382d8, type: 3}
+  _dependencies:
+  - _address: lua/shared
+    _version: 1.1
+  _resources:
+  - _name: rigHead
+    _asset: {fileID: 21300000, guid: 74a777379d3f62849996ca7cc0a0a136, type: 3}
+  - _name: rigBody
+    _asset: {fileID: 21300000, guid: 1efb8c21b3506774bbf8ebefe80dc9fa, type: 3}
+  - _name: rigLower
+    _asset: {fileID: 21300000, guid: 35adc1e2b1aa52e4f87fd6f24cb90c92, type: 3}
+  - _name: rigHair
+    _asset: {fileID: 21300000, guid: d108d66416fa69e43a72a2607e7aece8, type: 3}
+  - _name: rigLeft
+    _asset: {fileID: 21300000, guid: 0d253a3e1e0f54940b8a392ab70f3654, type: 3}
+  - _name: rigRight
+    _asset: {fileID: 21300000, guid: ab173eeadfb6c004da7f90ddcdc1f807, type: 3}
+  - _name: magicCircle
+    _asset: {fileID: 21300000, guid: 1a09cbf46514f5746973c6d035877ffa, type: 3}
+  - _name: castSound
+    _asset: {fileID: 8300000, guid: 59b310b35c742e84cad12f1b92e97de3, type: 3}
+  - _name: releaseSound
+    _asset: {fileID: 8300000, guid: bf29b7580eaebb74fb49f0d71b797112, type: 3}
+  - _name: stopSound
+    _asset: {fileID: 8300000, guid: 21cf149553eb8e94eb0cd4334efe2155, type: 3}
+  - _name: timeClock
+    _asset: {fileID: 21300000, guid: e58a93c63868bc24ea21ac5fc8def11d, type: 3}
+  - _name: clockHand
+    _asset: {fileID: 21300000, guid: ac4637cf7aad35f47b2f8981e27a7136, type: 3}
+  - _name: timeMaterial
+    _asset: {fileID: 2100000, guid: 16d4df3194c49824ea9cf01f35f06b7d, type: 2}
+  - _name: themeMusic
+    _asset: {fileID: 8300000, guid: c428244dfc0e8a14a9743c16fbc04166, type: 3}

@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _prefab: {fileID: 0}
   _script: {fileID: 4900000, guid: 3020750a6f0de4340ad1b275e5f8091a, type: 3}
-  _modules:
-  - {fileID: 4900000, guid: 0945563e0840eeb45b98bfe530051e8d, type: 3}
+  _dependencies:
+  - _address: lua/shared
+    _version: 1.0
   _resources:
   - _name: egg
     _asset: {fileID: 21300000, guid: 0bf88d9cc657e904cbb39d174e28e89e, type: 3}

@@ -1,0 +1,36 @@
+{
+    "Packages": [
+        {
+            "Address": "lua/shared",
+            "Version": "1.1.0",
+            "Hash": "29a3eef2ac49c361",
+            "Exports": [
+                "GiftMotion",
+                "GiftMotion.SMOOTH",
+                "GiftMotion.arc",
+                "GiftMotion.bump",
+                "GiftMotion.clamp",
+                "GiftMotion.cycle",
+                "GiftMotion.lerp",
+                "GiftMotion.mix",
+                "GiftMotion.pulse",
+                "GiftMotion.rotate",
+                "TouhouMusic",
+                "TouhouMusic.play",
+                "TouhouRig",
+                "TouhouRig.build",
+                "TouhouRig.resources",
+                "TouhouSpell",
+                "TouhouSpell.actor",
+                "TouhouSpell.bullet",
+                "TouhouSpell.curve",
+                "TouhouSpell.flight",
+                "TouhouSpell.point",
+                "TouhouSpell.ray",
+                "TouhouSpell.resources",
+                "TouhouSpell.reveal",
+                "TouhouSpell.stage"
+            ]
+        }
+    ]
+}

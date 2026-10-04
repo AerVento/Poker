@@ -13,6 +13,7 @@ namespace Game.UI.Gifts
         public const int Channels = 8;
         public readonly RectTransform Rect;
         private readonly Graphic _graphic;
+        private GiftJointMesh _joint;
         private CanvasGroup _group;
         private readonly Vector2[] _position = new Vector2[Channels];
         private readonly float[] _rotation = new float[Channels];
@@ -41,6 +42,15 @@ namespace Game.UI.Gifts
             Sprite = Image != null ? Image.sprite : null;
         }
 
+        public void ConfigureJoint(float reach, float direction)
+        {
+            _joint = Rect.GetComponent<GiftJointMesh>() ?? Rect.gameObject.AddComponent<GiftJointMesh>();
+            _joint.Configure(reach, direction);
+            float sum = 0f;
+            for (var i = 0; i < Channels; i++) sum += _rotation[i];
+            _joint.SetAngle(sum);
+        }
+
         public void SetPosition(int channel, Vector2 value)
         {
             _position[channel] = value;
@@ -55,6 +65,7 @@ namespace Game.UI.Gifts
             var sum = 0f;
             for (var i = 0; i < Channels; i++) sum += _rotation[i];
             Rect.localRotation = Quaternion.Euler(0f, 0f, sum);
+            if (_joint != null) _joint.SetAngle(sum);
         }
 
         public void SetScale(int channel, Vector2 value)

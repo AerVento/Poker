@@ -21,8 +21,16 @@ namespace XLua.CSObjectWrap
         {
 			ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
 			System.Type type = typeof(Game.UI.Gifts.GiftScriptHost);
-			Utils.BeginObjectRegister(type, L, translator, 0, 35, 0, 0);
+			Utils.BeginObjectRegister(type, L, translator, 0, 47, 0, 0);
 			
+			Utils.RegisterFunc(L, Utils.METHOD_IDX, "ConcurrentScale", _m_ConcurrentScale);
+			Utils.RegisterFunc(L, Utils.METHOD_IDX, "Curve", _m_Curve);
+			Utils.RegisterFunc(L, Utils.METHOD_IDX, "OnStop", _m_OnStop);
+			Utils.RegisterFunc(L, Utils.METHOD_IDX, "OnAudioStop", _m_OnAudioStop);
+			Utils.RegisterFunc(L, Utils.METHOD_IDX, "MusicStart", _m_MusicStart);
+			Utils.RegisterFunc(L, Utils.METHOD_IDX, "MusicAlive", _m_MusicAlive);
+			Utils.RegisterFunc(L, Utils.METHOD_IDX, "MusicRetain", _m_MusicRetain);
+			Utils.RegisterFunc(L, Utils.METHOD_IDX, "MusicFade", _m_MusicFade);
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "SenderPoint", _m_SenderPoint);
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "TargetPoint", _m_TargetPoint);
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "SenderSize", _m_SenderSize);
@@ -32,6 +40,10 @@ namespace XLua.CSObjectWrap
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "Random", _m_Random);
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "Node", _m_Node);
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "Image", _m_Image);
+			Utils.RegisterFunc(L, Utils.METHOD_IDX, "Joint", _m_Joint);
+			Utils.RegisterFunc(L, Utils.METHOD_IDX, "ScreenEffect", _m_ScreenEffect);
+			Utils.RegisterFunc(L, Utils.METHOD_IDX, "ScreenParameter", _m_ScreenParameter);
+			Utils.RegisterFunc(L, Utils.METHOD_IDX, "Tint", _m_Tint);
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "Shape", _m_Shape);
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "Instantiate", _m_Instantiate);
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "Find", _m_Find);
@@ -92,6 +104,255 @@ namespace XLua.CSObjectWrap
         
         
         
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _m_ConcurrentScale(RealStatePtr L)
+        {
+		    try {
+            
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+            
+            
+                Game.UI.Gifts.GiftScriptHost gen_to_be_invoked = (Game.UI.Gifts.GiftScriptHost)translator.FastGetCSObj(L, 1);
+            
+            
+                
+                {
+                    int _node = LuaAPI.xlua_tointeger(L, 2);
+                    string _key = LuaAPI.lua_tostring(L, 3);
+                    float _at = (float)LuaAPI.lua_tonumber(L, 4);
+                    float _duration = (float)LuaAPI.lua_tonumber(L, 5);
+                    float _growth = (float)LuaAPI.lua_tonumber(L, 6);
+                    float _limit = (float)LuaAPI.lua_tonumber(L, 7);
+                    
+                    gen_to_be_invoked.ConcurrentScale( _node, _key, _at, _duration, _growth, _limit );
+                    
+                    
+                    
+                    return 0;
+                }
+                
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _m_Curve(RealStatePtr L)
+        {
+		    try {
+            
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+            
+            
+                Game.UI.Gifts.GiftScriptHost gen_to_be_invoked = (Game.UI.Gifts.GiftScriptHost)translator.FastGetCSObj(L, 1);
+            
+            
+                
+                {
+                    int _node = LuaAPI.xlua_tointeger(L, 2);
+                    float _at = (float)LuaAPI.lua_tonumber(L, 3);
+                    float _duration = (float)LuaAPI.lua_tonumber(L, 4);
+                    float _x0 = (float)LuaAPI.lua_tonumber(L, 5);
+                    float _y0 = (float)LuaAPI.lua_tonumber(L, 6);
+                    float _x1 = (float)LuaAPI.lua_tonumber(L, 7);
+                    float _y1 = (float)LuaAPI.lua_tonumber(L, 8);
+                    float _x2 = (float)LuaAPI.lua_tonumber(L, 9);
+                    float _y2 = (float)LuaAPI.lua_tonumber(L, 10);
+                    float _x3 = (float)LuaAPI.lua_tonumber(L, 11);
+                    float _y3 = (float)LuaAPI.lua_tonumber(L, 12);
+                    string _ease = LuaAPI.lua_tostring(L, 13);
+                    
+                        var gen_ret = gen_to_be_invoked.Curve( _node, _at, _duration, _x0, _y0, _x1, _y1, _x2, _y2, _x3, _y3, _ease );
+                        LuaAPI.xlua_pushinteger(L, gen_ret);
+                    
+                    
+                    
+                    return 1;
+                }
+                
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _m_OnStop(RealStatePtr L)
+        {
+		    try {
+            
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+            
+            
+                Game.UI.Gifts.GiftScriptHost gen_to_be_invoked = (Game.UI.Gifts.GiftScriptHost)translator.FastGetCSObj(L, 1);
+            
+            
+                
+                {
+                    XLua.LuaFunction _function = (XLua.LuaFunction)translator.GetObject(L, 2, typeof(XLua.LuaFunction));
+                    
+                    gen_to_be_invoked.OnStop( _function );
+                    
+                    
+                    
+                    return 0;
+                }
+                
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _m_OnAudioStop(RealStatePtr L)
+        {
+		    try {
+            
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+            
+            
+                Game.UI.Gifts.GiftScriptHost gen_to_be_invoked = (Game.UI.Gifts.GiftScriptHost)translator.FastGetCSObj(L, 1);
+            
+            
+                
+                {
+                    XLua.LuaFunction _function = (XLua.LuaFunction)translator.GetObject(L, 2, typeof(XLua.LuaFunction));
+                    
+                    gen_to_be_invoked.OnAudioStop( _function );
+                    
+                    
+                    
+                    return 0;
+                }
+                
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _m_MusicStart(RealStatePtr L)
+        {
+		    try {
+            
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+            
+            
+                Game.UI.Gifts.GiftScriptHost gen_to_be_invoked = (Game.UI.Gifts.GiftScriptHost)translator.FastGetCSObj(L, 1);
+            
+            
+                
+                {
+                    string _clip = LuaAPI.lua_tostring(L, 2);
+                    float _volume = (float)LuaAPI.lua_tonumber(L, 3);
+                    bool _loop = LuaAPI.lua_toboolean(L, 4);
+                    
+                        var gen_ret = gen_to_be_invoked.MusicStart( _clip, _volume, _loop );
+                        LuaAPI.xlua_pushinteger(L, gen_ret);
+                    
+                    
+                    
+                    return 1;
+                }
+                
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _m_MusicAlive(RealStatePtr L)
+        {
+		    try {
+            
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+            
+            
+                Game.UI.Gifts.GiftScriptHost gen_to_be_invoked = (Game.UI.Gifts.GiftScriptHost)translator.FastGetCSObj(L, 1);
+            
+            
+                
+                {
+                    int _handle = LuaAPI.xlua_tointeger(L, 2);
+                    
+                        var gen_ret = gen_to_be_invoked.MusicAlive( _handle );
+                        LuaAPI.lua_pushboolean(L, gen_ret);
+                    
+                    
+                    
+                    return 1;
+                }
+                
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _m_MusicRetain(RealStatePtr L)
+        {
+		    try {
+            
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+            
+            
+                Game.UI.Gifts.GiftScriptHost gen_to_be_invoked = (Game.UI.Gifts.GiftScriptHost)translator.FastGetCSObj(L, 1);
+            
+            
+                
+                {
+                    int _handle = LuaAPI.xlua_tointeger(L, 2);
+                    
+                        var gen_ret = gen_to_be_invoked.MusicRetain( _handle );
+                        LuaAPI.lua_pushboolean(L, gen_ret);
+                    
+                    
+                    
+                    return 1;
+                }
+                
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _m_MusicFade(RealStatePtr L)
+        {
+		    try {
+            
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+            
+            
+                Game.UI.Gifts.GiftScriptHost gen_to_be_invoked = (Game.UI.Gifts.GiftScriptHost)translator.FastGetCSObj(L, 1);
+            
+            
+                
+                {
+                    int _handle = LuaAPI.xlua_tointeger(L, 2);
+                    float _volume = (float)LuaAPI.lua_tonumber(L, 3);
+                    float _seconds = (float)LuaAPI.lua_tonumber(L, 4);
+                    bool _stop = LuaAPI.lua_toboolean(L, 5);
+                    
+                    gen_to_be_invoked.MusicFade( _handle, _volume, _seconds, _stop );
+                    
+                    
+                    
+                    return 0;
+                }
+                
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            
+        }
         
         [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
         static int _m_SenderPoint(RealStatePtr L)
@@ -383,6 +644,139 @@ namespace XLua.CSObjectWrap
                     float _height = (float)LuaAPI.lua_tonumber(L, 6);
                     
                         var gen_ret = gen_to_be_invoked.Image( _parent, _name, _sprite, _width, _height );
+                        LuaAPI.xlua_pushinteger(L, gen_ret);
+                    
+                    
+                    
+                    return 1;
+                }
+                
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _m_Joint(RealStatePtr L)
+        {
+		    try {
+            
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+            
+            
+                Game.UI.Gifts.GiftScriptHost gen_to_be_invoked = (Game.UI.Gifts.GiftScriptHost)translator.FastGetCSObj(L, 1);
+            
+            
+                
+                {
+                    int _node = LuaAPI.xlua_tointeger(L, 2);
+                    float _reach = (float)LuaAPI.lua_tonumber(L, 3);
+                    float _direction = (float)LuaAPI.lua_tonumber(L, 4);
+                    
+                    gen_to_be_invoked.Joint( _node, _reach, _direction );
+                    
+                    
+                    
+                    return 0;
+                }
+                
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _m_ScreenEffect(RealStatePtr L)
+        {
+		    try {
+            
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+            
+            
+                Game.UI.Gifts.GiftScriptHost gen_to_be_invoked = (Game.UI.Gifts.GiftScriptHost)translator.FastGetCSObj(L, 1);
+            
+            
+                
+                {
+                    int _parent = LuaAPI.xlua_tointeger(L, 2);
+                    string _material = LuaAPI.lua_tostring(L, 3);
+                    
+                        var gen_ret = gen_to_be_invoked.ScreenEffect( _parent, _material );
+                        LuaAPI.xlua_pushinteger(L, gen_ret);
+                    
+                    
+                    
+                    return 1;
+                }
+                
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _m_ScreenParameter(RealStatePtr L)
+        {
+		    try {
+            
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+            
+            
+                Game.UI.Gifts.GiftScriptHost gen_to_be_invoked = (Game.UI.Gifts.GiftScriptHost)translator.FastGetCSObj(L, 1);
+            
+            
+                
+                {
+                    int _node = LuaAPI.xlua_tointeger(L, 2);
+                    string _parameter = LuaAPI.lua_tostring(L, 3);
+                    float _at = (float)LuaAPI.lua_tonumber(L, 4);
+                    float _duration = (float)LuaAPI.lua_tonumber(L, 5);
+                    float _from = (float)LuaAPI.lua_tonumber(L, 6);
+                    float _to = (float)LuaAPI.lua_tonumber(L, 7);
+                    string _ease = LuaAPI.lua_tostring(L, 8);
+                    
+                        var gen_ret = gen_to_be_invoked.ScreenParameter( _node, _parameter, _at, _duration, _from, _to, _ease );
+                        LuaAPI.xlua_pushinteger(L, gen_ret);
+                    
+                    
+                    
+                    return 1;
+                }
+                
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _m_Tint(RealStatePtr L)
+        {
+		    try {
+            
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+            
+            
+                Game.UI.Gifts.GiftScriptHost gen_to_be_invoked = (Game.UI.Gifts.GiftScriptHost)translator.FastGetCSObj(L, 1);
+            
+            
+                
+                {
+                    int _node = LuaAPI.xlua_tointeger(L, 2);
+                    float _at = (float)LuaAPI.lua_tonumber(L, 3);
+                    float _duration = (float)LuaAPI.lua_tonumber(L, 4);
+                    float _r0 = (float)LuaAPI.lua_tonumber(L, 5);
+                    float _g0 = (float)LuaAPI.lua_tonumber(L, 6);
+                    float _b0 = (float)LuaAPI.lua_tonumber(L, 7);
+                    float _r1 = (float)LuaAPI.lua_tonumber(L, 8);
+                    float _g1 = (float)LuaAPI.lua_tonumber(L, 9);
+                    float _b1 = (float)LuaAPI.lua_tonumber(L, 10);
+                    string _ease = LuaAPI.lua_tostring(L, 11);
+                    
+                        var gen_ret = gen_to_be_invoked.Tint( _node, _at, _duration, _r0, _g0, _b0, _r1, _g1, _b1, _ease );
                         LuaAPI.xlua_pushinteger(L, gen_ret);
                     
                     

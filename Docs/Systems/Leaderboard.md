@@ -7,7 +7,7 @@
 | 榜单 | 排序依据 | 相同时 |
 | --- | --- | --- |
 | 富豪榜 | 总资产（美金 + 筹码）降序 | 注册时间早者在前，再按账户 ID 的二进制顺序 |
-| 服役榜 | 服刑年数降序：Σ 每种契约的持有数 × 该契约的 `ServiceYears`（`Configs/Items/Contracts.json`，当前为 1 / 10 / 100 年） | 同上 |
+| 服役榜 | 服刑年数降序：Σ 每种契约的持有数 × 该契约的 `service-years`（`Configs/Items/Contracts.json`） | 同上 |
 
 - 两榜各显示前 10 名，另有一行固定显示本人的真实名次，即使不在前 10 名。
 - 包含离线账户与零契约账户。年数按数据库当前库存计算，还款消耗契约后年数随之减少。
@@ -15,7 +15,7 @@
 
 ## 显示
 
-- 富豪榜使用玩家装备的名片外观；服刑年数达到 `Contracts.json` 中服刑名片的门槛（当前 100 / 500 / 1000）时替换为对应的恶魔名片，姓名显示为红字黑描边（见 [名片](Namecards.md)）。
+- 富豪榜使用玩家装备的名片外观；服刑年数达到 `Contracts.json` 中服刑名片的门槛时替换为对应的恶魔名片，姓名显示为红字黑描边（见 [名片](Namecards.md)）。
 - 服役榜使用独立的 `ServiceLeaderboardRow` prefab 和地狱契约背景 `Assets/Sprites/Leaderboard/infernal-archive.png`（生成提示词在 `ArtSources/`）。三种契约图标只出现在表头，行内只显示数量；三列依次对应 `Contracts.json` 的前三份契约，调整契约顺序或数量时同步修改表头。
 - 列表为纵向 ScrollRect，本人行不随列表滚动。
 

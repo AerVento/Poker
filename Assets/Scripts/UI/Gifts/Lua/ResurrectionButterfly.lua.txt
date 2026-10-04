@@ -1,0 +1,57 @@
+local S=require('TouhouSpell')
+local Music=require('TouhouMusic')
+local M={apiVersion=1,duration=6.8,resources=S.resources()}
+for _,key in ipairs({'sakuraTree','spellFan','themeMusic','laserSound'}) do table.insert(M.resources,key) end
+function M.build(g)
+  local s=S.stage(g,M.duration,nil,nil,1.6)
+  local tree=g.set(g.image(g.layer,'Saigyou Ayakashi backdrop','sakuraTree',760,507),{position={s.ax,s.ay+70},alpha=0})
+  g.fade(tree,0.15,0.65,0,0.58,'OutSine');g.scale(tree,0.15,0.85,0.88,1,'OutSine')
+  local fan=g.set(g.image(g.layer,'Blooming spirit fan','spellFan',560,280),{position={s.ax,s.ay-24},pivot={0.5,0.1},alpha=0})
+  g.fade(fan,0.62,0.16,0,0.92,'OutSine')
+  g.scale(fan,0.62,0.28,{0.035,0.78},{1,1},'OutBack')
+  local palette={{1,0.83,0.32},{0.48,1,0.62},{0.42,0.75,1},{1,0.5,0.79},{0.78,0.53,1}}
+  for wave=0,1 do
+    local launch=1.65+wave*1.2
+    -- Main three-row volley still comes from in front of Yuyuko.
+    for row=0,2 do
+      for i=1,12 do
+        local at,life=launch+row*0.09+i*0.006,2.15
+        local side=(i-6.5)*23+(row-1)*10
+        local p0,p1,p2,p3=S.point(s,0,(row-1)*7),S.point(s,0.3,side*0.65),S.point(s,0.72,side),S.point(s,1,side*0.6)
+        local b=S.bullet(s,'butterfly','Butterfly wave '..wave..'-'..row..'-'..i,39,43,palette[(i+row+wave)%5+1],p0)
+        S.reveal(s,b,at,life);g.curve(b,at,life,p0,p1,p2,p3)
+        g.set(b,{rotation=s.angle-90})
+        g.loop(g.scale(b,at,0.18,{1,1},{0.35,1},'InOutSine',2),12,true)
+      end
+    end
+    -- One expanding arc from each fixed point on the fan. Each bullet follows a straight ray.
+    for emitter=0,1 do
+      local p={s.ax+(emitter==0 and -170 or 170),s.ay+108}
+      local dx,dy=s.tx-p[1],s.ty-p[2]
+      local distance=math.sqrt(dx*dx+dy*dy)
+      local heading=distance>20 and math.deg(math.atan(dy,dx)) or s.angle
+      for i=0,9 do
+        local angle=math.rad(heading-32+i*64/9)
+        local reach=math.max(240,distance+100)
+        local destination={p[1]+math.cos(angle)*reach,p[2]+math.sin(angle)*reach}
+        local b=S.bullet(s,'butterfly','Fan ripple '..wave..'-'..emitter..'-'..i,33,37,palette[(i+emitter+wave)%5+1],p)
+        S.reveal(s,b,launch+0.04,2.5);g.move(b,launch+0.04,2.5,p,destination,'Linear')
+        g.set(b,{rotation=math.deg(angle)-90})
+        g.loop(g.scale(b,launch+0.04,0.20,{1,1},{0.38,1},'InOutSine',2),12,true)
+      end
+    end
+    g.sound(launch+1.62,'laserSound',wave==0 and 0.42 or 0.46)
+    -- Lasers catch up only as the leading butterflies approach the target.
+    for _,side in ipairs(wave==0 and {-105,105} or {-105,0,105}) do
+      local to=S.point(s,1,side)
+      local dx,dy=to[1]-s.ex,to[2]-s.ey
+      local ray=S.bullet(s,'beam','Delayed ray '..wave..'-'..side,math.sqrt(dx*dx+dy*dy),11,{0.78,0.6,1},{s.ex,s.ey})
+      g.set(ray,{pivot={0,0.5},rotation=math.deg(math.atan(dy,dx))})
+      S.reveal(s,ray,launch+1.62,0.9)
+      g.scale(ray,launch+1.62,0.38,{0.001,0.4},{1,1},'Linear')
+    end
+  end
+  S.actor(s,0.85,'yuyuko');g.sound(1.65,'releaseSound',0.22)
+  Music.play(g,'resurrection-butterfly',0.05,'themeMusic',0.78)
+end
+return M

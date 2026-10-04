@@ -18,5 +18,25 @@
   {
     "item-id": "cigar",
     "effect": "gifts/cigar"
+  },
+  {
+    "item-id": "resurrection-butterfly",
+    "effect": "gifts/resurrection-butterfly"
+  },
+  {
+    "item-id": "fantasy-seal",
+    "effect": "gifts/fantasy-seal"
+  },
+  {
+    "item-id": "master-spark",
+    "effect": "gifts/master-spark"
+  },
+  {
+    "item-id": "the-world",
+    "effect": "gifts/the-world"
+  },
+  {
+    "item-id": "hour-of-daybreak",
+    "effect": "gifts/hour-of-daybreak"
   }
 ]

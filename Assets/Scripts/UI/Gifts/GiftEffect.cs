@@ -19,17 +19,43 @@ namespace Game.UI.Gifts
             set
             {
                 _soundEnabled = value;
-                if (!value && _giftAudio != null) _giftAudio.Stop();
+                if (!value)
+                {
+                    if (_giftAudio != null) _giftAudio.Stop();
+                    StopMusic();
+                }
             }
         }
 
         private AudioSource _giftAudio;
-        private System.IDisposable _resources;
+        private ResourceReference _resources;
+
+        // Additional holders keep the exact loaded bundle version alive after the visual effect is destroyed.
+        private sealed class ResourceReference : System.IDisposable
+        {
+            private sealed class Shared
+            {
+                public System.IDisposable Resource;
+                public int Count;
+            }
+            private Shared _shared;
+            public ResourceReference(System.IDisposable resource) { _shared = new Shared { Resource = resource, Count = 1 }; }
+            private ResourceReference(Shared shared) { _shared = shared; shared.Count++; }
+            public System.IDisposable Retain() => new ResourceReference(_shared);
+            public void Dispose()
+            {
+                if (_shared == null) return;
+                if (--_shared.Count == 0) _shared.Resource?.Dispose();
+                _shared = null;
+            }
+        }
+
+        protected System.IDisposable RetainAudioResources() => _resources?.Retain();
 
         internal void RetainResources(System.IDisposable resources)
         {
             _resources?.Dispose();
-            _resources = resources;
+            _resources = new ResourceReference(resources);
         }
         protected void BeginAudio()
         {
@@ -52,6 +78,8 @@ namespace Game.UI.Gifts
             _giftAudio.PlayOneShot(clip, Mathf.Clamp01(volumeScale));
         }
 
+        protected virtual void StopMusic() { }
+
         private void ApplyAudioPreferences()
         {
             if (_giftAudio == null) return;
@@ -69,6 +97,7 @@ namespace Game.UI.Gifts
 
         protected void StopAudio()
         {
+            StopMusic();
             AudioPreferences.Changed -= ApplyAudioPreferences;
             if (_giftAudio != null) _giftAudio.Stop();
         }

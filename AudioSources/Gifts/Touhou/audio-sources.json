@@ -1,0 +1,59 @@
+{
+  "license": "CC0-1.0",
+  "music": "No music recording or synthesized melody included.",
+  "sources": [
+    {
+      "author": "Kenney",
+      "page": "https://kenney.nl/assets/rpg-audio",
+      "licenseFile": "External/RPG/License.txt"
+    },
+    {
+      "author": "Kenney",
+      "page": "https://kenney.nl/assets/impact-sounds",
+      "licenseFile": "External/Impact/License.txt"
+    },
+    {
+      "author": "Zermonth",
+      "title": "Clock Tick.wav",
+      "page": "https://freesound.org/people/Zermonth/sounds/116636/",
+      "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "download": "https://cdn.freesound.org/previews/116/116636_994962-hq.mp3",
+      "note": "Public high-quality preview, trimmed and filtered."
+    }
+  ],
+  "files": [
+    {
+      "path": "Impact/Audio/impactGlass_light_002.ogg",
+      "sha256": "710db7451bb7857b9140dfe6afe4621ea2188ad65eda3919c569d1bb285b933d"
+    },
+    {
+      "path": "Impact/Audio/impactMetal_heavy_001.ogg",
+      "sha256": "83554049f81f4db9209379e103c30bfa63f65c42189a03f300b045c2c82e23ae"
+    },
+    {
+      "path": "Impact/Audio/impactPlate_heavy_000.ogg",
+      "sha256": "112d4f93ddcc370b410630f971c0f5d991856102da9c76bc5c5540d388e75aaa"
+    },
+    {
+      "path": "Impact/Audio/impactPunch_heavy_000.ogg",
+      "sha256": "b33a8f14068aec24ec69ba85e5e87fdc41228975f6a1a3e44a6e7d6fc3d9f8d8"
+    },
+    {
+      "path": "RPG/Audio/cloth1.ogg",
+      "sha256": "ddb93a3671233f95da0e0b10367f082f7eb42fa6caaddcf776410aa8833c747d"
+    },
+    {
+      "path": "RPG/Audio/drawKnife2.ogg",
+      "sha256": "d5df6a4130cbb016f97b4883769a418917b9629cb4c21717030b186e0c73281a"
+    },
+    {
+      "path": "RPG/Audio/knifeSlice.ogg",
+      "sha256": "4cd96dc630bed9840c15f1dd2306da2cc56a4da26a5d3f1a03c5a7265ac5e54f"
+    },
+    {
+      "path": "clock-tick-preview.mp3",
+      "sha256": "70c55326f5c92f3d78e9dcd6382a9d48d19476669eead3c99b62b27ad502462f"
+    }
+  ],
+  "status": "Rejected sample-based experiment; none of these recordings are used by the current build_spell_audio.py or runtime gift audio."
+}

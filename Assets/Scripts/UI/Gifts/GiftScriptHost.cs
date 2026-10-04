@@ -21,7 +21,7 @@ namespace Game.UI.Gifts
         public const int ApiVersion = 1;
         public const int MaxNodes = 160;
         public const int MaxTweens = 800;
-        public const float MaxDuration = 5f;
+        public const float MaxDuration = 10f;
 
         private sealed class TweenSpec
         {
@@ -54,11 +54,148 @@ namespace Game.UI.Gifts
         private readonly List<(float At, LuaFunction Function)> _callbacks = new List<(float, LuaFunction)>();
         private readonly List<(ChampagneGlassGraphic Graphic, float Offset)> _clocks = new List<(ChampagneGlassGraphic, float)>();
         private bool _finished;
+        private Sequence _timeline;
+        private Canvas _concurrencyScope;
+        private readonly HashSet<GiftScriptHost> _countedHosts = new HashSet<GiftScriptHost>();
+        private readonly Dictionary<string, int> _concurrentCounts = new Dictionary<string, int>();
+        internal Func<bool> AudioEnabled { get; set; }
+        internal Func<IDisposable> RetainAudioResources { get; set; }
+        private readonly List<LuaFunction> _stopCallbacks = new List<LuaFunction>();
+        private readonly List<LuaFunction> _audioStopCallbacks = new List<LuaFunction>();
+        private readonly HashSet<int> _musicHandles = new HashSet<int>();
+        private Func<bool> _muted;
+        private bool _audioStopped;
+        private bool _disposed;
+        private sealed class ConcurrentBinding
+        {
+            public GiftScriptHost Host;
+            public GiftNode Node;
+            public string Key;
+            public float Start, End, Growth, Limit;
+        }
+        private static readonly List<ConcurrentBinding> ConcurrentBindings = new List<ConcurrentBinding>();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetConcurrentBindings() => ConcurrentBindings.Clear();
+
+        // One host counts once, even when several colored beam layers share the binding.
+        public void ConcurrentScale(int node, string key, float at, float duration, float growth, float limit)
+        {
+            CheckEnd(at);
+            CheckEnd(at + duration);
+            if (string.IsNullOrEmpty(key) || duration <= 0f || !IsFinite(growth) || !IsFinite(limit) || growth < 0f || limit < 1f || limit > 4f)
+                throw new ArgumentException("Invalid concurrent scale.");
+            if (ConcurrentBindings.Any(binding => binding.Host == this && binding.Node == NodeAt(node)))
+                throw new ArgumentException("Node already has a concurrent scale binding.");
+            ConcurrentBindings.Add(new ConcurrentBinding { Host = this, Node = NodeAt(node), Key = key,
+                Start = at, End = at + duration, Growth = growth, Limit = limit });
+        }
+
+        private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
+
+        private void UpdateConcurrentScales()
+        {
+            _concurrentCounts.Clear();
+            foreach (var binding in ConcurrentBindings)
+            {
+                if (binding.Host != this) continue;
+                if (!_concurrentCounts.TryGetValue(binding.Key, out int count))
+                {
+                    _countedHosts.Clear();
+                    foreach (var other in ConcurrentBindings)
+                    {
+                        var host = other.Host;
+                        if (other.Key != binding.Key || host._root == null || host._timeline == null || !host._timeline.IsActive()) continue;
+                        if (host._concurrencyScope != _concurrencyScope) continue;
+                        float elapsed = host._timeline.Elapsed();
+                        if (elapsed >= other.Start && elapsed < other.End && _countedHosts.Add(host)) count++;
+                    }
+                    _concurrentCounts[binding.Key] = count;
+                }
+                binding.Node.SetScale(7, new Vector2(1f, Mathf.Min(binding.Limit, 1f + binding.Growth * Mathf.Max(0, count - 1))));
+            }
+        }
+
+        public int Curve(int node, float at, float duration, float x0, float y0, float x1, float y1,
+            float x2, float y2, float x3, float y3, string ease)
+        {
+            var target = NodeAt(node);
+            var a = new Vector2(x0, y0); var b = new Vector2(x1, y1);
+            var c = new Vector2(x2, y2); var d = new Vector2(x3, y3);
+            return AddTween(at, duration, ease, t =>
+            {
+                float u = 1f - t;
+                target.SetPosition(0, u * u * u * a + 3f * u * u * t * b + 3f * u * t * t * c + t * t * t * d);
+            });
+        }
+
+        public void OnStop(LuaFunction function) => AddCleanup(_stopCallbacks, function);
+        public void OnAudioStop(LuaFunction function) => AddCleanup(_audioStopCallbacks, function);
+
+        private void AddCleanup(List<LuaFunction> callbacks, LuaFunction function)
+        {
+            if (_finished || _disposed || function == null || callbacks.Count >= 16)
+                throw new ArgumentException("Invalid cleanup callback.");
+            callbacks.Add(function);
+        }
+
+        // Playback handles carry no music policy: Lua decides which requests share or replace a track.
+        public int MusicStart(string clip, float volume, bool loop)
+        {
+            if (!CanStartMusic) return 0;
+            if (!IsFinite(volume)) throw new ArgumentException("Invalid music gain.");
+            var handle = GiftMusicPlayback.Start(Resource<AudioClip>(clip), Mathf.Clamp01(volume), loop, this, RetainAudioResources);
+            if (handle != 0) _musicHandles.Add(handle);
+            return handle;
+        }
+
+        public bool MusicAlive(int handle) => GiftMusicPlayback.Find(handle) != null;
+
+        public bool MusicRetain(int handle)
+        {
+            if (!CanStartMusic) return false;
+            var playback = GiftMusicPlayback.Find(handle);
+            if (playback == null) return false;
+            playback.Retain(this);
+            _musicHandles.Add(handle);
+            return true;
+        }
+
+        public void MusicFade(int handle, float volume, float seconds, bool stop)
+        {
+            if (!IsFinite(volume) || !IsFinite(seconds) || seconds < 0f || seconds > MaxDuration)
+                throw new ArgumentException("Invalid music fade.");
+            if (_musicHandles.Contains(handle)) GiftMusicPlayback.Find(handle)?.Fade(Mathf.Clamp01(volume), seconds, stop);
+        }
+
+        private bool CanStartMusic => !_disposed && !_audioStopped && _finished &&
+            _muted != null && !_muted() && AudioEnabled != null && AudioEnabled();
+
+        internal void EndAudio()
+        {
+            if (_audioStopped) return;
+            _audioStopped = true;
+            RunCleanup(_audioStopCallbacks);
+            foreach (var handle in _musicHandles) GiftMusicPlayback.Find(handle)?.Release(this);
+            _musicHandles.Clear();
+        }
+
+        private void RunCleanup(List<LuaFunction> callbacks)
+        {
+            foreach (var function in callbacks)
+            {
+                try { if (_finished && _muted != null && !_muted()) GiftScriptRuntime.Call(function); }
+                catch (Exception exception) { Debug.LogWarning("Gift cleanup failed: " + exception.Message); }
+                finally { function.Dispose(); }
+            }
+            callbacks.Clear();
+        }
 
         internal GiftScriptHost(RectTransform root, RectTransform layer, RectTransform sender, RectTransform target,
             Func<string, Object> resource, int seed)
         {
             _root = root;
+            _concurrencyScope = root.GetComponentInParent<Canvas>().rootCanvas;
             _sender = sender;
             _target = target;
             _resource = resource;
@@ -112,6 +249,49 @@ namespace Game.UI.Gifts
             return Add(rect);
         }
 
+        public void Joint(int node, float reach, float direction)
+        {
+            var target = NodeAt(node);
+            if (target.Image == null) throw new ArgumentException("Joint requires an image node.");
+            if (float.IsNaN(reach) || float.IsInfinity(reach) || float.IsNaN(direction) || float.IsInfinity(direction) || reach <= 0f)
+                throw new ArgumentException("Invalid joint reach or direction.");
+            target.ConfigureJoint(reach, direction);
+        }
+
+        public int ScreenEffect(int parent, string material)
+        {
+            ScreenPoint(0f, 0f, out var left, out var bottom);
+            ScreenPoint(1f, 1f, out var right, out var top);
+            var rect = CreateRect(parent, "Frozen screen", right - left, top - bottom);
+            rect.anchoredPosition = new Vector2((left + right) * 0.5f, (bottom + top) * 0.5f);
+            rect.gameObject.AddComponent<RawImage>();
+            rect.gameObject.AddComponent<GiftScreenEffect>().Configure(Resource<Material>(material), _nodes[0].Rect.GetComponent<Canvas>());
+            rect.SetAsFirstSibling();
+            return Add(rect);
+        }
+
+        public int ScreenParameter(int node, string parameter, float at, float duration, float from, float to, string ease)
+        {
+            var effect = NodeAt(node).Rect.GetComponent<GiftScreenEffect>();
+            if (effect == null) throw new ArgumentException("Node is not a screen effect.");
+            effect.SetParameter(parameter, from);
+            return AddTween(at, duration, ease, t => effect.SetParameter(parameter, Mathf.LerpUnclamped(from, to, t)));
+        }
+
+        public int Tint(int node, float at, float duration, float r0, float g0, float b0, float r1, float g1, float b1, string ease)
+        {
+            var graphic = NodeAt(node).Graphic;
+            if (graphic == null) throw new ArgumentException("Tint requires a graphic node.");
+            var from = new Color(r0, g0, b0);
+            var to = new Color(r1, g1, b1);
+            return AddTween(at, duration, ease, t =>
+            {
+                var color = Color.LerpUnclamped(from, to, t);
+                color.a = graphic.color.a;
+                graphic.color = color;
+            });
+        }
+
         public int Shape(int parent, string name, string kind, float width, float height)
         {
             var rect = CreateRect(parent, name, width, height);
@@ -124,6 +304,16 @@ namespace Game.UI.Gifts
                 case "ring": graphic = Accent(rect, RottenEggAccent.Shape.Ring); break;
                 case "hole": graphic = Gunfire(rect, GunfireAccent.Shape.Hole); break;
                 case "flash": graphic = Gunfire(rect, GunfireAccent.Shape.Flash); break;
+                case "butterfly":
+                case "knife":
+                case "star":
+                case "beam":
+                case "cannon":
+                case "orb":
+                    var bullet = rect.gameObject.AddComponent<SpellBulletGraphic>();
+                    bullet.Kind = (SpellBulletGraphic.Shape)Enum.Parse(typeof(SpellBulletGraphic.Shape), kind, true);
+                    graphic = bullet;
+                    break;
                 case "glass":
                     var glass = rect.gameObject.AddComponent<ChampagneGlassGraphic>();
                     // The glass mesh has its own colors; fading goes through a group.
@@ -280,6 +470,7 @@ namespace Game.UI.Gifts
         {
             if (_finished) throw new InvalidOperationException("Gift playback already built.");
             _finished = true;
+            _muted = muted;
             var sequence = DOTween.Sequence().SetUpdate(UpdateType.Normal, true).SetAutoKill(false).Pause();
             foreach (var spec in _tweens)
             {
@@ -314,17 +505,29 @@ namespace Game.UI.Gifts
                 sequence.InsertCallback(at, () => { if (!muted()) play(clip, volume); });
             foreach (var (at, function) in _callbacks)
                 sequence.InsertCallback(at, () => { if (!muted()) call(function); });
+            _timeline = sequence;
+            sequence.OnUpdate(() => UpdateClocks(sequence.Elapsed()));
             return sequence;
         }
 
         internal void UpdateClocks(float elapsed)
         {
+            UpdateConcurrentScales();
             foreach (var (graphic, offset) in _clocks)
                 if (graphic != null) graphic.Clock = elapsed + offset;
         }
 
         internal void Dispose()
         {
+            if (_disposed) return;
+            _disposed = true;
+            EndAudio();
+            RunCleanup(_stopCallbacks);
+            ConcurrentBindings.RemoveAll(binding => binding.Host == this);
+            _timeline = null;
+            AudioEnabled = null;
+            RetainAudioResources = null;
+            _muted = null;
             foreach (var (_, function) in _callbacks) function.Dispose();
             _callbacks.Clear();
         }

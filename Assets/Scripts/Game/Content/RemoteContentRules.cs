@@ -27,6 +27,9 @@ namespace Game.Content
         public string AssetProvider;
         public string Format;
         public List<RemoteBundleRecord> Bundles = new List<RemoteBundleRecord>();
+        // From content-packages.json: empty unless other packages depend on this one / it depends on others.
+        public string Version;
+        public List<RemoteContentDependency> Dependencies = new List<RemoteContentDependency>();
 
         public bool SameContent(RemoteContentRecord other) => other != null && AssetId == other.AssetId &&
             AssetProvider == other.AssetProvider && Bundles.Count == other.Bundles.Count &&
@@ -37,19 +40,22 @@ namespace Game.Content
             other == null ? Bundles : Bundles.Where(bundle => !other.Bundles.Any(bundle.Same));
     }
 
-    /// <summary>content-version.txt: the UTC build timestamp, the content format and the catalog file name.</summary>
+    /// <summary>content-version.txt: the UTC build timestamp, the content format, the catalog and the package manifest file names.</summary>
     public sealed class RemoteContentVersion
     {
         public const string FileName = "content-version.txt";
         public string Version { get; }
         public string Format { get; }
         public string Catalog { get; }
+        /// <summary>The package manifest file; empty when the build has none.</summary>
+        public string Packages { get; }
 
-        public RemoteContentVersion(string version, string format, string catalog)
+        public RemoteContentVersion(string version, string format, string catalog, string packages = null)
         {
             Version = version;
             Format = format;
             Catalog = catalog;
+            Packages = packages ?? string.Empty;
         }
 
         public static bool TryParse(string text, out RemoteContentVersion version)
@@ -59,13 +65,18 @@ namespace Game.Content
             var values = ParseLines(text);
             if (!values.TryGetValue("version", out var stamp) || !values.TryGetValue("format", out var format) ||
                 !values.TryGetValue("catalog", out var catalog) || stamp.Length == 0 || format.Length == 0 ||
-                catalog.Length == 0 || catalog.IndexOfAny(new[] { '/', '\\', '?', '#' }) >= 0)
+                catalog.Length == 0 || !IsFileName(catalog))
                 return false;
-            version = new RemoteContentVersion(stamp, format, catalog);
+            values.TryGetValue("packages", out var packages);
+            if (!string.IsNullOrEmpty(packages) && !IsFileName(packages)) return false;
+            version = new RemoteContentVersion(stamp, format, catalog, packages);
             return true;
         }
 
-        public override string ToString() => "version=" + Version + "\nformat=" + Format + "\ncatalog=" + Catalog + "\n";
+        private static bool IsFileName(string name) => name.IndexOfAny(new[] { '/', '\\', '?', '#' }) < 0;
+
+        public override string ToString() => "version=" + Version + "\nformat=" + Format + "\ncatalog=" + Catalog + "\n" +
+            (Packages.Length > 0 ? "packages=" + Packages + "\n" : string.Empty);
 
         // key=value lines; also used by the page build information.
         public static Dictionary<string, string> ParseLines(string text)

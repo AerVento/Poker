@@ -1,0 +1,36 @@
+-- Touhou spell-card music policy. State is explicitly shared across gift environments.
+local M = {}
+local FADE = 0.3
+
+function M.play(g, track, at, resource, volume)
+  local handle
+  local state
+  g.onAudioStop(function()
+    if not handle then return end
+    if state.handle == handle then
+      state.references = math.max(0, state.references - 1)
+      if state.references == 0 then g.musicFade(handle, 0, FADE, true) end
+    end
+    handle = nil
+  end)
+  g.callback(at, function()
+    if handle then return end
+    state = g.sharedState('touhou.music')
+    if state.handle and not g.musicAlive(state.handle) then
+      state.handle, state.track, state.references = nil, nil, 0
+    end
+    if state.handle then
+      -- The fading tail still occupies the slot; a matching request may cancel the fade.
+      if state.track ~= track or not g.musicRetain(state.handle) then return end
+    else
+      local started = g.musicStart(resource, 0, true)
+      if started == 0 then return end
+      state.handle, state.track, state.references = started, track, 0
+    end
+    handle = state.handle
+    state.references = state.references + 1
+    g.musicFade(handle, volume, FADE, false)
+  end)
+end
+
+return M

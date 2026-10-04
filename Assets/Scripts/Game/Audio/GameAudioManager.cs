@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Game.Network;
 using UnityEngine;
 
@@ -19,7 +20,22 @@ namespace Game
         private AudioClip _musicOverrideClip;
         private AudioClip _musicOnceClip;
         private double _musicOnceStartedAt = -1d;
+        private readonly HashSet<UnityEngine.Object> _musicSuppressors = new HashSet<UnityEngine.Object>();
+        private float _musicSuppressionGain = 1f;
         private bool _musicNeedsRestart;
+
+        // A temporary external music channel can silence this channel without replacing its owner or track.
+        public void SetMusicSuppressed(UnityEngine.Object owner, bool suppressed)
+        {
+            if (owner == null) return;
+            if (suppressed)
+            {
+                _musicSuppressors.Add(owner);
+                _musicSuppressionGain = 0f;
+                if (_musicSource != null) _musicSource.volume = 0f;
+            }
+            else _musicSuppressors.Remove(owner);
+        }
         private const float MusicFadeOutSeconds = 0.2f;
         private const float MusicFadeInSeconds = 0.4f;
         private float _musicEnvelope;
@@ -162,7 +178,7 @@ namespace Game
         {
             _musicSource.mute = AudioPreferences.MusicMuted;
             _soundSource.mute = AudioPreferences.SoundMuted;
-            _musicSource.volume = MusicVolume * _musicEnvelope * _duckEnvelope;
+            _musicSource.volume = MusicVolume * _musicEnvelope * _duckEnvelope * _musicSuppressionGain;
             _soundSource.volume = SoundVolume;
             if (MusicVolume <= 0f)
             {
@@ -196,11 +212,13 @@ namespace Game
         private void Update()
         {
             float delta = Time.unscaledDeltaTime;
+            _musicSuppressors.RemoveWhere(owner => owner == null);
+            _musicSuppressionGain = Mathf.MoveTowards(_musicSuppressionGain, _musicSuppressors.Count > 0 ? 0f : 1f, delta / MusicFadeInSeconds);
             UpdateMusic(delta);
 
             _duckEnvelope = Mathf.MoveTowards(_duckEnvelope,
                 Time.unscaledTime < _duckUntil ? 0.45f : 1f, delta * 4f);
-            _musicSource.volume = MusicVolume * _musicEnvelope * _duckEnvelope;
+            _musicSource.volume = MusicVolume * _musicEnvelope * _duckEnvelope * _musicSuppressionGain;
             if (_preferencesDirty && Time.unscaledTime >= _saveAt)
                 SaveVolumes();
         }

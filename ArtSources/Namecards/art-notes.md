@@ -96,3 +96,21 @@
 每个商品 SO 新增 `_artwork4x3` 引用，保留 `_artwork` 宽图。名片目录提供 ID + 目标比例选图；玩家现有 SetNamecard 接口沿用。共享外观组件保持图片比例，并把内容安全区放到实际图片内部；三个玩家档位和房间补 Content 引用，保留另一项布局工作的根节点配置；8 / 16 人档金额自动缩小下限补调为 14 / 12，以适应实际图片安全区。
 
 提示词和文件哈希见 NamecardPreviews/prompts-v6-4x3-collection.json、manifest-v6-4x3-collection.json；图册见 NamecardGallery.md。测试与实际 UI 结果记入 NamecardShopValidation.md。
+
+## 各款主题背景方向
+
+按 [名片美术规范](../../Docs/Standards/NamecardArt.md) 制作时，各款保留的主题背景方向：
+
+| 名片 | 保留的主题背景方向 |
+| --- | --- |
+| 星河 / galaxy | 蓝紫星云带、暗淡旋涡星系、稀疏远星 |
+| 赤焰 / ember | 暗红熔岩脉络、火山岩与烟雾 |
+| 霓虹 / neon | 蓝紫城市剪影、柔和电路与霓虹反光 |
+| 鎏金 / gilded | 深翡翠缎面、暗金扇形与叶纹 |
+| 极霜 / frost | 青蓝极光、冰川远山与冰面暗纹 |
+| 幽海 / abyss | 深海水流、珊瑚剪影与远处水母 |
+| 龙珀 / jade | 玉石层次、流云与云龙暗纹 |
+| 绯樱 / sakura | 酒红薄雾、樱枝剪影与少量暗色花瓣 |
+| 时轮 / clockwork | 古铜金属、齿轮浮雕与机械弧线 |
+| 蚀日 / eclipse | 暮紫尘云、暗淡日蚀与低亮度日冕 |
+| 幻晶 / prism | 靛紫晶面、柔和折射与青粉色彩层次 |
