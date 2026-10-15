@@ -289,7 +289,11 @@ namespace Game.Network
             NetworkClient.RegisterHandler<ItemActionResponse>(response =>
             {
                 if (!HasAuthenticatedClient || response.AccountId != GameController.Instance.State.AccountId) return;
-                if (response.HasSnapshot) CardFaceAppearance.Equip(response.Snapshot.EquippedCardFace);
+                if (response.HasSnapshot)
+                {
+                    CardFaceAppearance.Equip(response.Snapshot.EquippedCardFace);
+                    EquippedArtwork.PreloadNamecard(response.Snapshot);
+                }
                 if (response.Action == ItemAction.Give) GiftInteractionController.EnsureActive()?.ReceiveGiveResponse(response);
                 else if (CanOpenShop) ShopPanel.Instance?.ReceiveItemAction(response);
             });

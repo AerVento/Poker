@@ -1,0 +1,21 @@
+{
+  "status": "preview",
+  "font": "STKaiti",
+  "fontSize": 36,
+  "fontWeight": 400,
+  "letterSpacing": 2,
+  "color": "#75644B",
+  "centerX": 408,
+  "stripTop": 66,
+  "stripHeight": 44,
+  "examples": [
+    {
+      "file": "spade-6",
+      "name": "姬海棠果"
+    },
+    {
+      "file": "heart-2",
+      "name": "芙兰朵露·斯卡蕾特"
+    }
+  ]
+}

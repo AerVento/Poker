@@ -1,0 +1,56 @@
+{
+  "tool": "built-in image_gen",
+  "date": "2026-10-05",
+  "attempts": [
+    {
+      "file": "spade-10",
+      "prompt": "Use case: precise-object-edit. Edit this crop of existing Touhou playing-card artwork, preserving composition scale and all unmentioned pixels. Opaque warm cream paper, matching existing simplified anime chibi linework and cel shading. NO restyling, no new text, no reframing. Replace ONLY the confused sword parts behind Youmu's torso on image right. Exactly TWO complete SHEATHED Japanese swords strapped on her back. Arrange TWO parallel diagonal axes pointing from upper right hilts to lower left scabbard tips: each hilt joins its own guard, scabbard mouth, long scabbard, closed tip. The long scabbard must re-emerge visibly to the LEFT of her torso at lower waist level behind her reaching arm; the shorter scabbard can end nearer the waist but must have coherent length. No third hilt or unassigned rod. Remove existing three disconnected pieces entirely. Do not draw blades through her body. Preserve picking-petals pose, hands, face, hair, green dress and ghost exactly.",
+      "generated": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-96c83f4e-bb19-4697-961d-0d0af3e12711.png"
+    },
+    {
+      "file": "spade-6",
+      "prompt": "Use case: precise-object-edit. Edit this crop of existing Touhou playing-card artwork, preserving composition scale and all unmentioned pixels. Opaque warm cream paper, matching existing simplified anime chibi linework and cel shading. NO restyling, no new text, no reframing. Fix ONLY her legs below the plaid skirt and nearby fade edge. Preserve seated-on-railing pose. Clearly draw TWO legs and exactly TWO brown loafers, each continuous from its own knee through black stocking calf and ankle. Near leg remains diagonally forward with original front loafer. Far leg should descend just behind and slightly to viewer RIGHT of the near calf, ending in its own smaller perspective loafer about 30 px higher and 70 px right of front shoe. Remove the disconnected shoe sole beside front shoe. Make both feet fully opaque and inside the paper, no limb fading. Keep upper body, face, hands, cellphone and railing unchanged.",
+      "generated": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-9cd8ae09-f653-4a97-a75e-6dddd9f9f5b0.png"
+    },
+    {
+      "file": "club-k",
+      "prompt": "Precise local edit of the supplied illustration crop. Preserve same composition and scale, all unmentioned artwork, opaque cream paper, original anime chibi style, colors and facial identity. Do not reframe or add text. Correct ONLY the umbrella geometry. The shaft held in her hand currently extrapolates to the wrong canopy point. Keep grip and curved J handle. Rebuild canopy apex and rib hub so a straight line from the J handle through her gripping hand and the visible shaft continues behind her hair to the true canopy center and top finial. The current finial near upper right must be removed and placed on this SAME axis, closer to upper center-left. Tilt canopy/ribs appropriately; the shaft must be one straight continuous rod even when occluded by hair. Preserve Yuuka's face, hair, seated pose, clothing and sunflowers.",
+      "generated": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-841c82ca-7727-455a-abcb-1283c3c15847.png"
+    },
+    {
+      "file": "club-8",
+      "prompt": "Precise local edit of the supplied illustration crop. Preserve same composition and scale, all unmentioned artwork, opaque cream paper, original anime chibi style, colors and facial identity. Do not reframe or add text. Correct ONLY both brass dowsing rods and fingers touching them. Draw TWO separate L-shaped rods, one held by each hand, each with a short vertical grip IN that hand and a single long straight horizontal probing arm bending 90 degrees at the TOP of its grip. Let the probing arms fan forward-left toward the map on two separated trajectories, no contact between them. Remove the current melted triangular/connected construction and the dangling vertical end at map. Exactly two rods, no welding, no shared segment, no third piece. Maintain hands approximately in existing places with sensible finger wrap. Preserve all head, clothing, body, map and background.",
+      "generated": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-cab5d11e-9ca8-4c30-b966-54acb42f1514.png"
+    },
+    {
+      "file": "club-q",
+      "prompt": "Use case precise-object-edit. Local correction of provided existing artwork crop. Preserve original style, framing, scale, all unrelated pixels and opaque cream paper. No text changes. Only correct Utsuho's ANATOMICAL RIGHT lower leg and foot: this is the forward leg on VIEWER LEFT, same side as her cannon arm. Replace its black sock/ordinary shoe with the canonical rugged heavy gray rock casing surrounding the lower shin, ankle and whole foot. Keep bare knee above, show connected chunky irregular stone facets and a broad planted rocky foot with clear ground contact. Viewer-right leg stays unchanged. Keep exact stance, face, hair, wings, clothing, cannon and reactor background. No extra rocks floating, no change to left leg.",
+      "generated": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-1c627fee-2153-44e7-8293-4b7fd52ce978.png"
+    },
+    {
+      "file": "spade-4",
+      "prompt": "Use case precise-object-edit. Local correction of provided existing artwork crop. Preserve original style, framing, scale, all unrelated pixels and opaque cream paper. No text changes. Only fix Nitori's screwdriver-to-machine contact and gripping wrist. Add one clearly visible slotted metal screw on a small slanted UPPER-LEFT mounting face of the machine. Seat screwdriver tip inside its slot, and align screwdriver shaft normal to that slanted face, on the screw's insertion axis. The hand, screwdriver handle, straight shaft and screw head form one natural axis. Remove the old ambiguous contact at the side axle rim. Let the other hand stabilize the machine. Preserve entire face, hair, seated pose, outfit, machine overall size and river workshop theme.",
+      "generated": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-bf1ff020-ba35-49cc-8486-8ad893ca7565.png"
+    },
+    {
+      "file": "diamond-a",
+      "prompt": "Precision local edit of existing anime chibi illustration crop. Preserve exact framing, scale, style, character identity, opaque paper and all unmentioned elements. Fix only the front exposed lower leg which currently dissolves at the bottom. Preserve Yukari sitting elegantly on a purple supernatural gap. Complete that calf with a continuous slender ankle and a small purple closed shoe angled down-left, fully visible in front of the cream negative space. Slightly adjust nearest skirt ruffle only if needed. Keep second leg naturally hidden by skirt, no extra limb. Do NOT fade out human skin. Existing purple gap, eyes, parasol, face, fan, upper body and all other art remain unchanged.",
+      "generated": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-dd218dd6-be47-4227-aed4-bf8da9bf473a.png"
+    },
+    {
+      "file": "spade-2",
+      "prompt": "Precision local edit of existing anime chibi illustration crop. Preserve exact framing, scale, style, character identity, opaque paper and all unmentioned elements. Fix ONLY skirt bottom and ambiguous flesh shapes. Establish clear modest side-kneeling pose: both knees together pointing toward viewer-left, shins folded behind toward viewer-right under long maple-patterned skirt. Show two small rounded knee contours emerging slightly at front-left hem, one behind the other, with a short visible shin transition disappearing naturally under fabric; small brown shoe tips may peek from the rear-right hem. Replace old disconnected skin blobs. Ground contact shadow beneath knees and skirt conveys weight. Keep torso, leaf-admiring hands, face, hair, all upper clothing and maple setting unchanged.",
+      "generated": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-f3e4e866-1e39-46ea-9262-441552feec7a.png"
+    },
+    {
+      "file": "heart-4",
+      "prompt": "Use case precise-object-edit. Minimal local structural correction of existing artwork. Match original anime chibi linework, shading, identity, scale, opaque paper and framing. No changes to unrelated regions. Correct ONLY lower skirt hem and exposed knee contours so Kokoro clearly kneels in seiza holding her mask. Replace the two detached-looking skin ovals with recognisable rounded bent knees: short foreshortened thigh surfaces continuing out of skirt into subtle kneecap transitions, knees grounded on tatami, shins folded backwards and covered by skirt. Add small contact shadows under knees, coherent cloth tension/folds over knees; do not expose thighs excessively. The knees must not look like toes or two disconnected oval tokens. Preserve face, hands, masks, hair, torso, skirt pattern and background.",
+      "generated": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-4124d931-baf8-47b2-ab8d-dc07e1053e63.png"
+    },
+    {
+      "file": "diamond-7",
+      "prompt": "Use case precise-object-edit. Minimal local structural correction of existing artwork. Match original anime chibi linework, shading, identity, scale, opaque paper and framing. No changes to unrelated regions. Fix ONLY near boat gunwale and the legs so Komachi visibly sits on the boat edge with feet dangling outside toward water. Lower the obstructing front-right gunwale segment slightly beneath her knees, and show a clear thigh-to-knee bend over the top rail. The forward calf must be IN FRONT of the board, with separation from the board's end edge, then a connected ankle and bare foot reaching water. Rear leg can be partly hidden but must connect naturally. Keep exactly two legs/feet. Preserve original face, resting head/arm, outfit, scythe, boat theme and composition. No shin emerging through wood.",
+      "generated": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-ed952331-4993-406a-b28c-09416df866d8.png"
+    }
+  ]
+}

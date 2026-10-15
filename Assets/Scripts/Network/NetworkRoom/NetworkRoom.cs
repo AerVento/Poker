@@ -536,6 +536,7 @@ namespace Game.Network
 
             ClearClientRoomNavigation();
             BeginAchievementClientSession();
+            LoadCollection();
             OpenLobby();
 
             if (!response.HasLastRoom)

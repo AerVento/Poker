@@ -1,0 +1,8 @@
+{
+  "id": "club-k-ear-occlusion",
+  "refs": [
+    "D:/GitHubRepos/Poker/ArtSources/CardFaces/Gensokyo/Retouch/Inputs/club-k-ear-occlusion.png"
+  ],
+  "prompt": "Precise local edit of this existing Yuuka illustration crop. The umbrella shaft looks pressed against the visible ear. FIX OCCLUSION ONLY: grow a natural soft lock of the existing GREEN HAIR to COMPLETELY COVER THE EAR and PLACE THE UMBRELLA SHAFT BEHIND HER HAIR. No visible ear or ear-shaped skin sliver. Between the upper edge of this crop and the bottom tips of her hair, the shaft should be HIDDEN BY THE FOREGROUND GREEN HAIR, including the currently visible long cream vertical stripe through her hair. The same straight shaft reappears ONLY BELOW THE LOWEST HAIR TIPS, above her gripping hand, aligned with its existing gold collar and handle. Fill the former ear and shaft region with coherent green locks, same shape language and layered shading as surrounding hair, no weird bulge. Keep the exact outer hair silhouette, face, red eye, cheek, neck, shirt, bow, fingers, grip, background, and original straight shaft location below the hair unchanged. Do not move her face, hand, or shaft. This edit establishes the depth order: umbrella behind head, hair in front. Return same crop and same art style.",
+  "output": "Generated/club-k-ear-occlusion.png"
+}

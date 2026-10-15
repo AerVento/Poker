@@ -15,6 +15,9 @@ namespace Game.Content
         private static readonly Set Previews = new Set(CardFacePreviewsAddress);
         public static event Action Changed;
 
+        // Start the session-wide icon binding even before a view asks for an icon.
+        public static void PreloadIcons() => Icons.Load();
+
         public static Sprite ItemIcon(string name) => Icons.Find(name);
         public static Sprite CardFacePreview(string name) => Previews.Find(name);
 
@@ -28,6 +31,12 @@ namespace Game.Content
 
             public Sprite Find(string name)
             {
+                Load();
+                return string.IsNullOrEmpty(name) || _sprites == null ? null : _sprites.Find(name);
+            }
+
+            public void Load()
+            {
                 if (_binding == null && Application.isPlaying)
                 {
                     // One lease for the whole session; a newer version replaces it through the binding.
@@ -38,7 +47,6 @@ namespace Game.Content
                         Changed?.Invoke();
                     });
                 }
-                return string.IsNullOrEmpty(name) || _sprites == null ? null : _sprites.Find(name);
             }
 
             public void Reset()

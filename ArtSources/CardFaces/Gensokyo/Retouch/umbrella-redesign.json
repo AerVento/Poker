@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-05",
+  "selected": "club-k-v6",
+  "jobs": [
+    {
+      "id": "club-k-v5",
+      "refs": [
+        "D:/GitHubRepos/Poker/ArtSources/CardFaces/Gensokyo/Retouch/Inputs/club-k.png"
+      ],
+      "prompt": "Use case: precise-object-edit. This is the edit target, an existing chibi Yuuka Kazami card illustration. COMPLETELY REPLACE THE ENTIRE PARASOL with a NEW coherent parasol design, not a repair of this warped parasol. Remove all of the old canopy, ribs, shaft and handle. Design a beautiful cream-white open sun parasol with modest scalloped/frilled edging. A simple believable domed canopy in three-quarter perspective; its peak, radial ribs meeting at a single central hub, straight shaft and J handle must form ONE physically coherent object. Choose a substantially NEW orientation and silhouette. Place the canopy higher above and to the right of her head, tilted gently to shade her, and let the shaft descend OUTSIDE the right side of her hair so most of its length is visibly continuous from central hub to her hand. Shift her gripping hand and forearm outward to the right as needed, preserving her shoulder and seated posture. The parasol is light and held comfortably. Construct the whole parasol first before any occlusion: the shaft is ONE STRAIGHT line through the canopy center, never bent or kinked, and the canopy is symmetrical around that axis in 3D. No disconnected ribs, no asymmetrical melted canopy, no extra handle. Preserve exactly her face, expression, green hair, free hand touching sunflower, red plaid outfit, side-sitting legs and brown shoes, sunflowers, warm palette, simplified anime chibi rendering and opaque cream-paper background. Only parasol and gripping forearm may change, plus background formerly occupied by the old parasol. Preserve card symbols, crop, illustration scale. The new umbrella must stay inside the card. Return the full supplied image with same aspect ratio. Prioritize an immediately understandable umbrella over retaining any old umbrella geometry.",
+      "output": "Generated/club-k-v5.png"
+    },
+    {
+      "id": "club-k-v6",
+      "refs": [
+        "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-4dc8bd7b-e5d2-4173-9402-ee6535d0402a.png"
+      ],
+      "prompt": "Precise object edit. Keep this Yuuka card and the new extended holding arm and long straight shaft. Fix ONLY the whole canopy geometry: the current parasol peak is incorrectly offset to the right of the shaft. REDESIGN THE CANOPY AS A NEARLY LEVEL, SYMMETRICAL SHALLOW DOME CENTERED ON THE UPWARD EXTENSION OF THE EXISTING SHAFT, like a normal open umbrella seen at a slight low angle. Do not keep its current diagonally stretched shell. The long shaft in this 1088x1440 image runs from (840,780) through the hub (787,263); extend this exact straight line UP to peak (771,105) with the finial tip at (768,77). Move the finial from its old right-side position (840,90) to (768,77), no leftover old finial or loop. All top fabric seams converge at peak771105, all underside support struts connect to the single hub787263. Rim is a coherent foreshortened ellipse, approximately leftmost(440,245), rightmost(1060,305), frontmost(755,360), backmost(775,190). This creates a gently tilted, near-horizontal symmetrical canopy with a shallow dome, not a tall sideways shell. Preserve modest cream ruffles and simple shading matching the existing art. Canopy must not cover her face. Preserve ALL of character including face, hair, outfit, legs, free hand, gripping hand/forearm, flowers and card graphics. Restore blue sky where the former huge sloping canopy extended on the right. Exactly one continuous straight shaft and one ordinary umbrella, physically coherent. Return full image, opaque paper.",
+      "output": "Generated/club-k-v6.png"
+    }
+  ]
+}

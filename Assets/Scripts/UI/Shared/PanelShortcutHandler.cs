@@ -24,6 +24,9 @@ namespace Game.UI
 
         public event Action<PokerShortcutAction> ShortcutTriggered;
 
+        // Passive overlays can handle dismissal without taking the page's keyboard focus.
+        public event Func<PokerShortcutAction, bool> ShortcutIntercepted;
+
         private void Awake()
         {
             InitializeForPanel(_panel == null ? GetComponentInParent<BasePanel>(true) : _panel);
@@ -59,6 +62,15 @@ namespace Game.UI
         {
             if (!IsTopPanel() || !PokerShortcutBindings.TryConsumeCurrentFrame())
                 return;
+
+            if (ShortcutIntercepted != null)
+            {
+                foreach (Func<PokerShortcutAction, bool> intercept in ShortcutIntercepted.GetInvocationList())
+                {
+                    if (intercept(shortcut))
+                        return;
+                }
+            }
 
             bool editingText = IsEditingText();
             switch (shortcut)

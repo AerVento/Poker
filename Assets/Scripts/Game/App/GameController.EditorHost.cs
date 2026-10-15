@@ -24,6 +24,7 @@ namespace Game
                 var configuration = await NetworkConfigurationLoader.LoadAndApplyEditorLocalHostAsync(
                     networkRoom, cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
+                Game.Content.ItemArt.PreloadIcons();
                 IsClientNetworkReady = true;
                 _ = ServerConfiguration.Current;
                 networkRoom.StartHost();

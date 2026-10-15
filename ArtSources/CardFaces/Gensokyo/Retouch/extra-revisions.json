@@ -1,0 +1,12 @@
+[
+  {
+    "file": "club-k-v3",
+    "generated": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-1fdd4efc-ad53-4057-9ab6-b8d3101d27a3.png",
+    "prompt": "Use case: precise-object-edit. Only correct the umbrella top finial and apex on this image; everything else unchanged including canopy lower edge, hub, hand, shaft, all of Yuuka and sunflowers. The small brown knob is too far left. Move the knob and the adjoining small apex of the cream fabric approximately 30 pixels to the RIGHT at this 1088x1440 image scale, keeping its height. The straight center line from the visible shaft through the round rib hub above her hair must meet the knob. Do not move the rib hub or lower shaft. Reconnect only the few canopy seam lines near the relocated apex; erase old knob. Keep opaque cream paper, framing and all colors identical."
+  },
+  {
+    "file": "diamond-6-ear",
+    "generated": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-44f03c2c-6ba7-40be-b324-54f88e141743.png",
+    "prompt": "Use case: precise-object-edit. Edit only this close-up crop of Reisen rabbit ear. Keep lower hair, the two brown ear bases and right edge other ear exactly fixed. The highest bend/top of the tall left rabbit ear needs to be lowered by 27 pixels in this 350x230 source composition (about 12% of crop height). Gently bend this ear outward to viewer LEFT, keeping the ear attached at its existing brown base and retaining its thickness, white outer surface and pink inner surface. Topmost visible ear contour should be around y53 rather than y26. Repaint only the tiny former ear-tip area with matching opaque cream paper and adjust the upper ear folds naturally. Do not shrink the crop or change head/hair/ear base. Same simplified anime ink line, same colors, same cropping."
+  }
+]

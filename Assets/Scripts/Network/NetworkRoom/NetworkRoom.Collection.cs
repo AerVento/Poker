@@ -90,6 +90,7 @@ namespace Game.Network
                     _collectionCache.Store(response, Time.realtimeSinceStartupAsDouble);
                     GameController.Instance.State.SetWallet(response.Snapshot.Dollars, response.Snapshot.Chips);
                     CardFaceAppearance.Equip(response.Snapshot.EquippedCardFace);
+                    EquippedArtwork.PreloadNamecard(response.Snapshot);
                 }
                 else _collectionCache.Clear();
                 CollectionReceived?.Invoke(response);
@@ -104,6 +105,7 @@ namespace Game.Network
 
         private void ClearClientCaches()
         {
+            EquippedArtwork.Clear();
             _cacheSession++;
             InvalidateCollection();
             _collectionRevision = 0;

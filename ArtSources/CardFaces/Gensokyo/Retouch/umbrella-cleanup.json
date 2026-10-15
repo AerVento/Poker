@@ -1,0 +1,8 @@
+{
+  "id": "club-k-background-cleanup",
+  "refs": [
+    "D:/GitHubRepos/Poker/ArtSources/CardFaces/Gensokyo/Retouch/Inputs/club-k-background-cleanup.png"
+  ],
+  "prompt": "Precise local cleanup of the supplied crop. There is an ORPHANED CREAM RUFFLED UMBRELLA FABRIC behind the tips of the girl's green hair and her white shoulder, immediately LEFT of the large sunflower, in the center of the image roughly x270..570,y150..315. ERASE ALL this stray cream parasol fabric, its brown scalloped outline, and little cream pieces in gaps between green hair tips. Replace it with the existing softly painted sunflower field background: soft distant green leaves blending naturally with the existing blue sky. This fabric does not belong here; the real umbrella is far above outside this crop. Preserve EXACTLY the green hair tips, continuous straight cream shaft, hand and all fingers, white shirt, yellow bow, red vest, large sunflower and all petals. Only the small background patch behind hair changes. Same crop, same painterly anime style, no new objects.",
+  "output": "Generated/club-k-background-cleanup.png"
+}

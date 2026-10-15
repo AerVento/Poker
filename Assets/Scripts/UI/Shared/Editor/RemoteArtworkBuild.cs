@@ -219,11 +219,9 @@ namespace Game.UI.Editor
             foreach (var face in definitions.CardFaces.Where(f => !f.IsDefault))
                 if (previews.Find(face.Preview) == null)
                     throw new InvalidOperationException("Card face " + face.ItemId + " preview is missing; run Poker/Card Faces/Generate Previews.");
-            // UI theme sprites and the contract icons (also leaderboard headings; contracts ship with the page) may be
-            // copied into bundles; all other item art must never be in the page.
+            // UI theme sprites may be copied into bundles; every item icon stays exclusively in remote content.
             var remote = new HashSet<string>(AssetDatabase.GetDependencies(roots, true).Where(p => !p.EndsWith(".cs", StringComparison.Ordinal) &&
-                !p.StartsWith(GiftLuaRoot, StringComparison.Ordinal) && !p.StartsWith("Assets/Sprites/UITheme/", StringComparison.Ordinal) &&
-                !p.StartsWith(ItemIconRoot + "/Contracts/", StringComparison.Ordinal)));
+                !p.StartsWith(GiftLuaRoot, StringComparison.Ordinal) && !p.StartsWith("Assets/Sprites/UITheme/", StringComparison.Ordinal)));
             var localRoots = AssetDatabase.GetAllAssetPaths().Where(p => p.StartsWith("Assets/") &&
                 p.Contains("/Resources/") && !AssetDatabase.IsValidFolder(p)).Concat(
                 EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path)).ToArray();

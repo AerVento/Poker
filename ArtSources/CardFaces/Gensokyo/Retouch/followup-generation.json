@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-05",
+  "jobs": [
+    {
+      "id": "spade-6-v2",
+      "refs": [
+        "D:/GitHubRepos/Poker/ArtSources/CardFaces/Gensokyo/Retouch/Inputs/spade-6.png"
+      ],
+      "prompt": "Use case: precise-object-edit. Edit the supplied playing-card illustration. Completely redesign ONLY Hatate's legs, stockings and shoes and the very bottom of the skirt needed for the pose. Keep her sitting on the same wooden railing. Replace the ambiguous crossed legs with TWO UNCROSSED legs hanging comfortably SIDE BY SIDE. Two knees clearly emerge from under the skirt, two separate black-stockinged shins descend with a visible space between them, each ankle joins its own brown loafer. Exactly two legs and two shoes. Keep the knees together loosely but the feet separated, one foot a little higher for a natural relaxed pose. Both shoes fully visible above the bottom paper fade, no detached shoe sole. Anatomically coherent hips-thighs-knees-ankles. Preserve exactly the upper-body posture, face, hair, phone, hands, costume colors, railing, landscape, card symbols, painterly anime chibi style, lighting and crop. Background fade must not cut through limbs. Opaque cream paper. Return entire supplied crop with exactly the same composition outside lower-body repair.",
+      "output": "Generated/spade-6-v2.png"
+    },
+    {
+      "id": "club-k-v4",
+      "refs": [
+        "D:/GitHubRepos/Poker/ArtSources/CardFaces/Gensokyo/Retouch/Inputs/club-k.png"
+      ],
+      "prompt": "Use case: precise-object-edit. Repair ONLY the umbrella shaft and gripping hand in this supplied Yuuka card. The existing cream canopy is APPROVED: KEEP ITS EXACT OUTLINE, PEAK, FINIAL POSITION, TILT, RIBS AND SHAPE UNCHANGED. Current shaft near her right shoulder points the wrong way. Redraw the straight shaft so that from her gripping hand it slopes UP AND TO THE RIGHT toward the existing brown finial, passing behind her green hair. Do NOT tilt the shaft up-left. In the supplied 752x994 crop: fixed finial approx(585,133), rib hub hidden behind hair approx(560,280), grip approximately(522,530). The continuous straight shaft axis is finial585,133 through grip522,530. At hair exit around y440 its x is536. Remove old wrong shaft at x493,y453. The visible shaft above and below the hand must be collinear with the finial behind the head. Keep an elegant curved J handle below the grip; can change wrist/fingers locally to grasp it. Preserve exact original canopy geometry, face, head, hair outline, red plaid clothes, sitting legs, sunflowers, free hand, card symbols and warm anime chibi rendering. No whole-image rearrangement. Return same full crop, opaque cream paper.",
+      "output": "Generated/club-k-v4.png"
+    },
+    {
+      "id": "spade-10-v4",
+      "refs": [
+        "D:/GitHubRepos/Poker/ArtSources/CardFaces/Gensokyo/Retouch/Generated/spade-10-v3.png",
+        "D:/GitHubRepos/Poker/ArtSources/CardFaces/Gensokyo/Retouch/References/youmu-user-reference-01.png",
+        "D:/GitHubRepos/Poker/ArtSources/CardFaces/Gensokyo/Retouch/References/youmu-user-reference-02.png"
+      ],
+      "prompt": "Use case: precise-object-edit. Image1 is the EDIT TARGET: retain this exact chibi Youmu illustration and pose. Images2 and3 are references ONLY for authentic sword construction and decorations, do not copy their art style or body pose. Repair and decorate ONLY the TWO SHEATHED SWORDS behind Youmu, keeping her face, hair, outfit, hands picking a petal, legs, spirit, cherry garden and card indices unchanged. Exactly two swords, both black guards, not gold. Upper sword is LONG Roukanken: black hilt with distinctive PINK SAKURA FLOWER PATTERN (replace white diamonds), white cloth tied around the pommel plus a fluffy wispy white ghostlike tuft extending from the end (separate from her big spirit). Its long black scabbard runs in one continuous diagonal axis behind her torso from upper-right hilt to lower-left closed end, as in Image1. Tie a pink-lilac COSMOS FLOWER with a short green stem onto the exposed lower-left section of this sheath using white binding with a small red accent, as in references2/3. This is a flower attached to the scabbard, not floating, not on the hilt. Lower sword is SHORT Hakurouken: shorter hilt, BLACK guard, TWO SMALL WHITE FLOWERS tied beside its guard; REMOVE its pink tassel and pink flower. Its sheath is separately attached behind her waist, naturally mostly hidden by her dress. Maintain reasonable straight hilt-guard-scabbard axes, two complete weapons, no extra handles, no stray fragments, no swords piercing body. Only modify props; preserve original illustration composition and opaque cream paper. Match simplified clean anime chibi linework and shading.",
+      "output": "Generated/spade-10-v4.png"
+    }
+  ]
+}

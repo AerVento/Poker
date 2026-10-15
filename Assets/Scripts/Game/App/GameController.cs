@@ -80,6 +80,7 @@ namespace Game
                 if (!(NetworkManager.singleton is NetworkRoom networkRoom))
                     throw new InvalidOperationException("NetworkRoom is missing from the startup scene.");
                 networkRoom.ConfigureClient(configuration);
+                Game.Content.ItemArt.PreloadIcons();
                 IsClientNetworkReady = true;
                 NetworkConfigurationLoader.LogInfo($"Client network configuration loaded: {configuration.ServerUri}.");
                 networkRoom.StartSilentClientConnection(configuration.ConnectTimeoutSeconds);

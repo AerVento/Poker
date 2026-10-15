@@ -1,0 +1,22 @@
+[
+  {
+    "file": "spade-10",
+    "generated": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-21c100dc-0904-4079-a919-7b99d80421f5.png",
+    "prompt": "Precise local object geometry repair of the ORIGINAL illustration crop. Opaque cream paper, same size and framing. Rebuild only the two sheathed swords behind Youmu. CRITICAL AXES: BOTH handles must point UP-RIGHT (toward upper-right corner), NEVER down-right. Arrange two parallel diagonal swords, each descending DOWN-LEFT behind torso. On this 752x994 crop approximate first pommel (690,325), first guard (615,430), first scabbard tip (170,840); second pommel (690,420), guard (620,520), shorter scabbard tip (300,790). Hilts above guards, sheath mouths immediately BELOW-LEFT of guards. Much of scabbards hidden by torso; show coherent parallel scabbard tails re-emerging to LEFT of torso behind arm at waist, following same axes. Exactly two wrapped hilts and two closed sheath tails; REMOVE all old three black fragments. Keep character, ghost, hands, clothing and setting unchanged."
+  },
+  {
+    "file": "club-k",
+    "generated": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-ad269d7f-c851-41ea-ac4d-d6f77a735f0e.png",
+    "prompt": "Precise local object geometry repair of the ORIGINAL illustration crop. Opaque cream paper, same size and framing. Edit only umbrella canopy and its geometry. Fixed hand and J handle stay original. Extend the visible straight cream shaft UP-LEFT behind the hair; rib hub and canopy finial must sit on that exact straight axis. Use a visibly exposed short shaft above the hair joining one central rib hub; then continue same axis to finial at top. The apex must be about x390,y85 on this 752x994 crop, not the old x586,y135. Adjust canopy contour and ribs around the corrected center. No extra knob, no bent shaft, no displaced hub. Keep Yuuka's original face, hair, exact seated body, flowers and palette unchanged."
+  },
+  {
+    "file": "spade-2",
+    "generated": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-934c4b9b-e981-4032-aba8-8dabc3e04f58.png",
+    "prompt": "Precise localized anatomical readability correction. Keep original composition scale and all unmentioned artwork untouched, opaque warm paper. Repose ONLY lower skirt and legs into unmistakable SIDE-SITTING with BOTH LOWER LEGS FOLDED TO VIEWER LEFT. One rounded knee is visible at front below skirt; a SHORT CONTINUOUS shin travels LEFT from that knee to a brown shoe at far left. Other leg rests behind it, its knee mostly covered, with second brown shoe beside first. Use natural bent-knee anatomy and ground contact shadows. Remove both original ambiguous disconnected skin blobs. Show enough continuous knee-to-shin-to-shoe connection that it cannot be mistaken for two toes. Keep skirt modest, no extra exposed thigh. Preserve upper body holding maple leaf, face, hair and original art style."
+  },
+  {
+    "file": "heart-4",
+    "generated": "C:\\Users\\jinshengkai\\.codex\\generated_images\\01a0fae9-91fe-7bc2-82bd-09066952510e\\exec-1f73f374-0599-4b3f-b4d3-37fbf0212e3b.png",
+    "prompt": "Precise localized anatomical readability correction. Keep original composition scale and all unmentioned artwork untouched, opaque warm paper. Keep Kokoro kneeling in seiza holding mask. Modify ONLY lower skirt and knees. Current twin round skin ovals look like two detached feet: REMOVE that oval-token look. Let the patterned pink skirt cover MOST of each knee, with two shallow crescent glimpses of kneecaps below the hem and a short shin surface curving rearward under the skirt, shaded where weight rests on floor. Knees connected to fabric-covered thighs, NOT two circles poking out. Add grounded contact shadows. Slightly asymmetric natural knee placement in perspective. Preserve face, hands, torso, hair, masks, clothing pattern and room."
+  }
+]

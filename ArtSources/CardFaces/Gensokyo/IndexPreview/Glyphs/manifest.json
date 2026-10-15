@@ -1,0 +1,214 @@
+{
+  "colors": {
+    "spade": "#37855B",
+    "club": "#397DB5",
+    "diamond": "#D98A32",
+    "heart": "#C94F58"
+  },
+  "glyphs": [
+    {
+      "key": "rank-a",
+      "source": "Deck/spade-a.png",
+      "bounds": [
+        54,
+        72,
+        124,
+        139
+      ],
+      "width": 124,
+      "height": 139
+    },
+    {
+      "key": "rank-2",
+      "source": "Deck/spade-2.png",
+      "bounds": [
+        61,
+        73,
+        103,
+        141
+      ],
+      "width": 103,
+      "height": 141
+    },
+    {
+      "key": "rank-3",
+      "source": "Deck/spade-3.png",
+      "bounds": [
+        61,
+        72,
+        101,
+        138
+      ],
+      "width": 101,
+      "height": 138
+    },
+    {
+      "key": "rank-4",
+      "source": "Deck/spade-4.png",
+      "bounds": [
+        62,
+        72,
+        107,
+        142
+      ],
+      "width": 107,
+      "height": 142
+    },
+    {
+      "key": "rank-5",
+      "source": "Deck/spade-5.png",
+      "bounds": [
+        61,
+        72,
+        100,
+        143
+      ],
+      "width": 100,
+      "height": 143
+    },
+    {
+      "key": "rank-6",
+      "source": "Deck/spade-6.png",
+      "bounds": [
+        61,
+        71,
+        97,
+        141
+      ],
+      "width": 97,
+      "height": 141
+    },
+    {
+      "key": "rank-7",
+      "source": "Deck/spade-7.png",
+      "bounds": [
+        68,
+        73,
+        96,
+        142
+      ],
+      "width": 96,
+      "height": 142
+    },
+    {
+      "key": "rank-8",
+      "source": "Deck/spade-8.png",
+      "bounds": [
+        62,
+        72,
+        98,
+        139
+      ],
+      "width": 98,
+      "height": 139
+    },
+    {
+      "key": "rank-9",
+      "source": "Deck/spade-9.png",
+      "bounds": [
+        65,
+        73,
+        94,
+        144
+      ],
+      "width": 94,
+      "height": 144
+    },
+    {
+      "key": "rank-10",
+      "source": "Deck/spade-10.png",
+      "bounds": [
+        56,
+        72,
+        125,
+        141
+      ],
+      "width": 125,
+      "height": 141
+    },
+    {
+      "key": "rank-j",
+      "source": "Deck/spade-j.png",
+      "bounds": [
+        60,
+        72,
+        99,
+        143
+      ],
+      "width": 99,
+      "height": 143
+    },
+    {
+      "key": "rank-q",
+      "source": "Deck/spade-q.png",
+      "bounds": [
+        53,
+        71,
+        129,
+        159
+      ],
+      "width": 129,
+      "height": 159
+    },
+    {
+      "key": "rank-k",
+      "source": "Deck/spade-k.png",
+      "bounds": [
+        59,
+        75,
+        121,
+        138
+      ],
+      "width": 121,
+      "height": 138
+    },
+    {
+      "key": "suit-spade",
+      "source": "Deck/spade-a.png",
+      "bounds": [
+        56,
+        219,
+        112,
+        131
+      ],
+      "width": 112,
+      "height": 131
+    },
+    {
+      "key": "suit-club",
+      "source": "Deck/club-a.png",
+      "bounds": [
+        52,
+        225,
+        128,
+        129
+      ],
+      "width": 128,
+      "height": 129
+    },
+    {
+      "key": "suit-diamond",
+      "source": "Deck/diamond-a.png",
+      "bounds": [
+        69,
+        222,
+        91,
+        123
+      ],
+      "width": 91,
+      "height": 123
+    },
+    {
+      "key": "suit-heart",
+      "source": "Deck/heart-a.png",
+      "bounds": [
+        58,
+        225,
+        110,
+        110
+      ],
+      "width": 110,
+      "height": 110
+    }
+  ]
+}

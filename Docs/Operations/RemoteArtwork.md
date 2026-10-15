@@ -102,7 +102,10 @@ packages=content-packages.json
 
 ## 启动与回到大厅
 
-- 页面启动：读取 `content-version.txt` 和其中指定的目录，均绕过缓存；运行时只使用这份远程目录，页面内置的目录不参与查找。读取失败时有限重试，期间名片、牌面显示默认外观，礼物不可用；网站内容的格式版本与页面不同时同样不采用。不预下载任何内容。
+- 页面启动：读取 `content-version.txt` 和其中指定的目录，均绕过缓存；运行时只使用这份远程目录，页面内置的目录不参与查找。读取失败时有限重试，期间名片、牌面显示默认外观，礼物不可用；网站内容的格式版本与页面不同时同样不采用。
+- 客户端启动：网络配置就绪后主动下载并加载物品图标集 `icons/items`，整个会话持有。
+- 登录成功取得装备信息和物品目录后：主动下载并加载当前牌面；通过已有库存请求取得当前名片及服刑状态，预加载实际显示的名片。当前外观通过共享绑定持续持有，更换装备或断线时释放，版本替换沿用原流程。
+- 预加载在后台执行，失败仍使用默认外观，不阻塞连接、登录或进入房间。其他内容（包括牌面小预览）继续按需加载。
 - 每次进入大厅：先检查页面版本（见下）；页面未过期时再读一次 `content-version.txt`。格式不同不采用；版本不同则换用新目录；之后在后台依次更新已下载过且发生变化的资源（被依赖的包优先），之前失败的后台更新也在此时重试。从未下载的资源不在大厅主动下载，除非某个已下载资源的新版本依赖它。检查与下载都不打断玩家。
 
 ## 页面更新
@@ -125,7 +128,8 @@ packages=content-packages.json
 | `RemoteContentCatalog.cs` | 解析远程目录与包清单，记录与加载位置的相互转换 |
 | `RemoteBundleStore.cs`、`RemoteContent.jslib` | WebGL：通过 Unity 自己的 `cachedFetch` 只下载、删除单个缓存条目、读写 `localStorage`；Editor：`Caching` 与 `PlayerPrefs` |
 | `RemoteAssetBinding<T>` | 视图持有资源；新版本就绪时释放旧版本、显示默认外观并重新获取；失败最多三轮，间隔 30 秒 |
-| `ItemArt` | 物品图标与牌面预览两个公共包，整个会话各持有一份 |
+| `ItemArt` | 物品图标在客户端启动时预加载；牌面预览仍按需加载，各自在整个会话持有一份 |
+| `UI/Shared/EquippedArtwork` | 登录后的当前牌面与实际显示的名片预加载、常驻与账户清理；等待物品目录，名片由私有库存快照解析 |
 | `Game.PageVersion`、`UI/MsgBox/PageUpdatePrompt.cs` | 页面版本检查与刷新提示 |
 
 `RemoteContent.jslib` 依赖 Unity WebGL 加载器的内部实现（`Module.cachedFetch`、`Module.UnityCache`），升级 Unity 时需要重新验证下载、命中缓存和删除条目。
@@ -136,7 +140,7 @@ Unity 菜单：
 
 1. `Poker/Remote Artwork/Prepare Catalogs and Groups`：按 `Configs/Items` 的名片、牌面与礼物目录为每款内容注册分组，把 `Assets/Scripts/UI/Gifts/Lua/Shared/` 的模块收集进共享 Lua 包（保留其版本号），重建物品图标集和牌面预览集，并运行校验。
 2. `Poker/Remote Artwork/Optimize Texture Imports`：应用远程美术的导入压缩设置，保留源图。
-3. `Poker/Remote Artwork/Validate First Build Dependencies`：检查每个远程入口独立成组、配置中的地址都已准备、图标和预览齐全、页面不引用远程美术（界面主题图和契约图标除外）、礼物脚本可加载且礼物包之间不共享任何资源、包依赖与版本声明（见“包依赖与版本”）、锁文件、本地经典牌组完整。
+3. `Poker/Remote Artwork/Validate First Build Dependencies`：检查每个远程入口独立成组、配置中的地址都已准备、图标和预览齐全、页面不引用远程美术（界面主题图除外；全部物品图标，包括排行榜表头的契约图标，都从 `icons/items` 加载）、礼物脚本可加载且礼物包之间不共享任何资源、包依赖与版本声明（见“包依赖与版本”）、锁文件、本地经典牌组完整。
 4. 切换到目标平台，执行 `Poker/Remote Artwork/Build for Active Platform`。输出 `Build/RemoteContent/Content/v1/<平台>/`：包、目录、包清单 `content-packages.json`、`content-version.txt` 和文件清单 `files.txt`；旧包会被删除。构建成功后更新锁文件 `Assets/RemoteContent/packages-lock.json`，与内容改动一起提交。
 5. 可选：WebGL 平台下执行 `Poker/Remote Artwork/Build WebGL Deployment Example`，输出配套的页面到 `Build/RemoteContent/WebGLGame`，配置为读取旁边的 `../Content/v1`。
 

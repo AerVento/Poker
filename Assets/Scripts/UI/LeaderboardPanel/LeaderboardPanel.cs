@@ -1,4 +1,5 @@
 using Framework.UI;
+using Game.Content;
 using Game.Network;
 using Game.Network.Accounts;
 using Mirror;
@@ -31,6 +32,7 @@ namespace Game.UI
         [SerializeField] private TextMeshProUGUI _subtitle;
         [SerializeField] private TextMeshProUGUI _eyebrow;
         [SerializeField] private TextMeshProUGUI _amountHeading;
+        [SerializeField] private Image[] _contractHeadings;
 
         public LeaderboardTab SelectedTab { get; private set; }
         private LeaderboardSnapshot _snapshot;
@@ -40,6 +42,9 @@ namespace Game.UI
 
         private void OnEnable()
         {
+            ClientCatalog.Changed += RefreshContractHeadings;
+            ItemArt.Changed += RefreshContractHeadings;
+            RefreshContractHeadings();
             FitContent();
             _wealthTab.onClick.AddListener(SelectWealth);
             _serviceTab.onClick.AddListener(SelectService);
@@ -52,12 +57,29 @@ namespace Game.UI
 
         private void OnDisable()
         {
+            ClientCatalog.Changed -= RefreshContractHeadings;
+            ItemArt.Changed -= RefreshContractHeadings;
+            foreach (var heading in _contractHeadings)
+                heading.sprite = null;
             _back.onClick.RemoveListener(Back);
             _refresh.onClick.RemoveListener(Refresh);
             _wealthTab.onClick.RemoveListener(SelectWealth);
             _serviceTab.onClick.RemoveListener(SelectService);
             _requestId = 0;
             _snapshot = default;
+        }
+
+        private void RefreshContractHeadings()
+        {
+            var catalog = ClientCatalog.Current;
+            var contracts = catalog?.Contracts;
+            for (int i = 0; i < _contractHeadings.Length; i++)
+            {
+                var heading = _contractHeadings[i];
+                var item = contracts != null && i < contracts.Length ? catalog.FindItem(contracts[i].ItemId) : null;
+                heading.sprite = ItemArt.ItemIcon(item?.Icon);
+                heading.enabled = heading.sprite != null;
+            }
         }
 
         private void OnRectTransformDimensionsChange() => FitContent();

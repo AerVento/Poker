@@ -1,0 +1,36 @@
+[
+  {
+    "id": "zhuque",
+    "name": "朱雀仿宋",
+    "file": "Zhuque/ZhuqueFangsong-Regular.ttf",
+    "note": "古籍印刷感，清雅克制",
+    "url": "https://github.com/TrionesType/zhuque",
+    "missing": [
+      "鵺"
+    ]
+  },
+  {
+    "id": "wenkai",
+    "name": "霞鹜文楷 Medium",
+    "file": "lxgw-wenkai-medium.ttf",
+    "note": "温润手写感，笔画较柔和",
+    "url": "https://github.com/lxgw/LxgwWenKai",
+    "missing": []
+  },
+  {
+    "id": "mashan",
+    "name": "马善政毛笔楷书",
+    "file": "ma-shan-zheng.ttf",
+    "note": "毛笔题字感，笔画更鲜明",
+    "url": "https://github.com/googlefonts/mashanzheng",
+    "missing": [
+      "椛",
+      "洩",
+      "·",
+      "燐",
+      "塚",
+      "鵺",
+      "咲"
+    ]
+  }
+]

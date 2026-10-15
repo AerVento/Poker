@@ -21,6 +21,7 @@ namespace Game.UI
         public static void Equip(string id)
         {
             _equippedId = string.IsNullOrEmpty(id) ? CardFaceDefinition.DefaultItemId : id;
+            EquippedArtwork.PreloadCardFace(_equippedId);
             Changed?.Invoke();
         }
 

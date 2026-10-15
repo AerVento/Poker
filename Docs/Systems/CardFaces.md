@@ -10,6 +10,14 @@
 - 单套牌面的设计、生成与导出记录放在 `ArtSources/CardFaces/<主题>/`。
 - 使用第三方授权素材的款式，授权声明随源文件放在对应目录，发布前确认授权范围。目前简约款基于 Bad Hand Studio 的 [Simplified Playing Cards](https://badhandstudio.itch.io/simplified-playing-cards)，**仅限非商业用途**，原始 SVG 与授权声明在 `ArtSources/CardFaces/Minimal/`。
 
+## 牌局预览
+
+GamePanel 的五张公共牌和两张底牌可以点击预览当前显示的正面或牌背。预览使用当前装备牌面，远程资源未就绪时沿用经典牌面，不显示隐藏牌的正面。
+
+预览不显示标题、操作文字或按钮。整个游戏先覆盖一层阻挡点击的半透明黑色遮罩，仍能看到下方牌桌；牌面显示在遮罩上方，居中按游戏 Canvas 高度 FitHeight，初始尺寸为 1×。整张牌可自由拖离中心，不使用固定窗口裁切，也不限制拖拽位置；缩放范围为 0.5×～4×。PC 使用左键拖拽和滚轮缩放，移动端使用单指拖拽和双指捏合；双击／双击触摸牌面恢复 1× 与居中位置，点击牌面外的遮罩或按 Esc 关闭。
+
+预览仅遮挡指针点击，不禁用牌桌控件、不屏蔽原有牌局快捷键，也不暂停操作计时。拖拽或双指手势不会误触关闭或复位。出现其他交互面板、结算、新一手、牌面内容失效、离开房间或断线时关闭预览。预览独立持有远程资源绑定，关闭时释放。入口为 `CardPreviewTrigger`，显示与手势位于 `Assets/Scripts/UI/CardPreviewPanel/`，预制体为 `Assets/Prefabs/UI/Panels/CardPreviewPanel/CardPreviewPanel.prefab`。
+
 ## 数据结构
 
 | 内容 | 位置 |
@@ -25,11 +33,13 @@
 | 当前装备 `CardFaceAppearance` | `Assets/Scripts/UI/Shared/CardFaceAppearance.cs` |
 
 - 所有牌面共用同一个 `CardFaceView.prefab`，新增主题不需要新 prefab。组件提供 `SetCards(PokerCardsSO)` 与 `Display(Poker, bool showFront)`；装饰图关闭 Raycast Target，不含规则或网络组件。
-- `PokerElement` 在远程牌面下载完成前使用经典牌面。
+- 登录成功取得装备信息和物品目录后，由 `EquippedArtwork` 主动下载并加载当前牌面，持续持有到更换装备或断线。`PokerElement` 复用同一资源；预加载尚未完成或失败时仍使用经典牌面。
 
 ## 美术要求
 
-52 张正面 + 1 张牌背，不含大小王；统一竖版 17:24，显示基准 204×288，原图建议至少 408×576。同一套的尺寸、透明边距和圆角位置一致，缩小到 102×144 时点数与花色仍清晰。导入为 Sprite（Single、Full Rect），带透明通道，不使用有损压缩；远程牌面的导入尺寸与压缩由 `Poker/Remote Artwork/Optimize Texture Imports` 统一设置。
+52 张正面 + 1 张牌背，不含大小王；统一竖版 17:24，显示基准 204×288，原图建议至少 408×576。同一套的尺寸、透明边距和圆角位置一致，缩小到 102×144 时点数与花色仍清晰。原图保留透明通道并使用无损格式，导入为 Sprite（Single、Full Rect）；远程牌面的导入尺寸与压缩由 `Poker/Remote Artwork/Optimize Texture Imports` 统一设置。
+
+经典牌面使用本地图集：整张图集为 2048×2048，单张切片为 204×288。WebGL 保持图集及切片尺寸，使用高质量纹理压缩，不启用 Mipmap；不要把整张图集尺寸当成单张牌面的分辨率。
 
 每套牌面还必须同时制作一张 `Assets/Sprites/Items/CardFaces/cardface-<商品ID>.png`，经典、默认拥有和奖励专属款也适用。物品图标统一为三张扇形扑克牌，前一张显示主题的简化正面，后两张显示牌背；与商城小预览分别交付。具体风格、1024×1024 透明 PNG、导入、生成记录和小尺寸验收要求见 [UI 规范第 8.4 节](../Standards/UIConvention.md)。主题或牌背核心元素变化时同步更新图标。
 

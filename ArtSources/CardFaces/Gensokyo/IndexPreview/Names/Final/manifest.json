@@ -1,0 +1,271 @@
+{
+  "font": "LXGW WenKai Medium",
+  "version": "1.522",
+  "size": 36,
+  "tracking": 2,
+  "color": "#75644B",
+  "top": 66,
+  "lineHeight": 44,
+  "cards": [
+    {
+      "file": "spade-a.png",
+      "name": "东风谷早苗",
+      "width": 190
+    },
+    {
+      "file": "club-a.png",
+      "name": "雾雨魔理沙",
+      "width": 190
+    },
+    {
+      "file": "diamond-a.png",
+      "name": "八云紫",
+      "width": 114
+    },
+    {
+      "file": "heart-a.png",
+      "name": "博丽灵梦",
+      "width": 152
+    },
+    {
+      "file": "spade-2.png",
+      "name": "秋静叶",
+      "width": 114
+    },
+    {
+      "file": "spade-3.png",
+      "name": "键山雏",
+      "width": 114
+    },
+    {
+      "file": "spade-4.png",
+      "name": "河城荷取",
+      "width": 152
+    },
+    {
+      "file": "spade-5.png",
+      "name": "犬走椛",
+      "width": 114
+    },
+    {
+      "file": "spade-6.png",
+      "name": "姬海棠果",
+      "width": 152
+    },
+    {
+      "file": "spade-8.png",
+      "name": "伊吹萃香",
+      "width": 152
+    },
+    {
+      "file": "spade-9.png",
+      "name": "星熊勇仪",
+      "width": 152
+    },
+    {
+      "file": "spade-10.png",
+      "name": "魂魄妖梦",
+      "width": 152
+    },
+    {
+      "file": "spade-j.png",
+      "name": "洩矢诹访子",
+      "width": 190
+    },
+    {
+      "file": "spade-q.png",
+      "name": "八坂神奈子",
+      "width": 190
+    },
+    {
+      "file": "spade-k.png",
+      "name": "摩多罗隐岐奈",
+      "width": 228
+    },
+    {
+      "file": "club-2.png",
+      "name": "古明地恋",
+      "width": 152
+    },
+    {
+      "file": "club-3.png",
+      "name": "露米娅",
+      "width": 114
+    },
+    {
+      "file": "club-4.png",
+      "name": "鬼人正邪",
+      "width": 152
+    },
+    {
+      "file": "club-5.png",
+      "name": "少名针妙丸",
+      "width": 190
+    },
+    {
+      "file": "club-6.png",
+      "name": "米斯蒂娅·萝蕾拉",
+      "width": 280.609375
+    },
+    {
+      "file": "club-7.png",
+      "name": "多多良小伞",
+      "width": 190
+    },
+    {
+      "file": "club-8.png",
+      "name": "娜兹玲",
+      "width": 114
+    },
+    {
+      "file": "club-9.png",
+      "name": "琪露诺",
+      "width": 114
+    },
+    {
+      "file": "club-10.png",
+      "name": "火焰猫燐",
+      "width": 152
+    },
+    {
+      "file": "club-j.png",
+      "name": "古明地觉",
+      "width": 152
+    },
+    {
+      "file": "club-q.png",
+      "name": "灵乌路空",
+      "width": 152
+    },
+    {
+      "file": "diamond-2.png",
+      "name": "橙",
+      "width": 38
+    },
+    {
+      "file": "diamond-3.png",
+      "name": "爱丽丝·玛格特洛依德",
+      "width": 356.609375
+    },
+    {
+      "file": "diamond-4.png",
+      "name": "上白泽慧音",
+      "width": 190
+    },
+    {
+      "file": "diamond-5.png",
+      "name": "因幡帝",
+      "width": 114
+    },
+    {
+      "file": "diamond-6.png",
+      "name": "铃仙·优昙华院·因幡",
+      "width": 333.203125
+    },
+    {
+      "file": "diamond-7.png",
+      "name": "小野塚小町",
+      "width": 190
+    },
+    {
+      "file": "diamond-8.png",
+      "name": "四季映姬·亚玛萨那度",
+      "width": 356.609375
+    },
+    {
+      "file": "diamond-9.png",
+      "name": "物部布都",
+      "width": 152
+    },
+    {
+      "file": "diamond-10.png",
+      "name": "丰聪耳神子",
+      "width": 190
+    },
+    {
+      "file": "diamond-j.png",
+      "name": "八云蓝",
+      "width": 114
+    },
+    {
+      "file": "diamond-q.png",
+      "name": "蓬莱山辉夜",
+      "width": 190
+    },
+    {
+      "file": "heart-2.png",
+      "name": "芙兰朵露·斯卡蕾特",
+      "width": 318.609375
+    },
+    {
+      "file": "heart-3.png",
+      "name": "红美铃",
+      "width": 114
+    },
+    {
+      "file": "heart-4.png",
+      "name": "秦心",
+      "width": 76
+    },
+    {
+      "file": "heart-5.png",
+      "name": "圣白莲",
+      "width": 114
+    },
+    {
+      "file": "heart-6.png",
+      "name": "西行寺幽幽子",
+      "width": 228
+    },
+    {
+      "file": "heart-7.png",
+      "name": "永江衣玖",
+      "width": 152
+    },
+    {
+      "file": "heart-8.png",
+      "name": "比那名居天子",
+      "width": 228
+    },
+    {
+      "file": "heart-9.png",
+      "name": "封兽鵺",
+      "width": 114
+    },
+    {
+      "file": "heart-10.png",
+      "name": "藤原妹红",
+      "width": 152
+    },
+    {
+      "file": "heart-j.png",
+      "name": "十六夜咲夜",
+      "width": 190
+    },
+    {
+      "file": "heart-q.png",
+      "name": "帕秋莉·诺蕾姬",
+      "width": 242.609375
+    },
+    {
+      "file": "heart-k.png",
+      "name": "蕾米莉亚·斯卡蕾特",
+      "width": 318.609375
+    },
+    {
+      "file": "diamond-k.png",
+      "name": "八意永琳",
+      "width": 152
+    },
+    {
+      "file": "club-k.png",
+      "name": "风见幽香",
+      "width": 152
+    },
+    {
+      "file": "spade-7.png",
+      "name": "射命丸文",
+      "width": 152
+    }
+  ]
+}
